@@ -59,6 +59,7 @@ echo "==> root filesystem archive"
 	-path ./assets -prune -o \
 	-path ./tests -prune -o \
 	-name build.sh -prune -o \
+	-name run.sh -prune -o \
 	-name 'README*' -prune -o \
 	-print | cpio --owner 0:0 -H newc -o --quiet ) > "$WORK/tree.cpio"
 

@@ -19,6 +19,19 @@
 
 ## 运行
 
+构建后可以直接启动，脚本默认读取仓库上一级目录中的 ISO：
+
+```bash
+./run.sh                          # 图形模式，1024 MiB 内存
+./run.sh --serial                  # 终端模式；先按 Ctrl-A，再按 X 退出 QEMU
+./run.sh --memory 2048 /path/to/mnOS.iso
+```
+
+能访问 `/dev/kvm` 时使用 KVM，否则使用 QEMU 软件模拟。
+可以用 `QEMU=/path/to/qemu-system-x86_64` 指定 QEMU 程序。
+
+也可以直接调用 QEMU：
+
 ```bash
 # 图形模式（GRUB 菜单 + VGA 控制台）
 qemu-system-x86_64 -enable-kvm -m 512 -cdrom mnOSv1.7.iso

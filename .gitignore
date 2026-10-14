@@ -4,3 +4,6 @@
 # Runtime mounts / test scratch (not part of the source tree)
 /dev/
 /tmp/
+
+# Host-side tests
+/tests/__pycache__/

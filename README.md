@@ -19,6 +19,19 @@ A minimal Linux distribution built from scratch: **Linux 6.13.3 + busybox + GRUB
 
 ## Run
 
+After building, the launcher finds the ISO next to the repository:
+
+```bash
+./run.sh                          # graphical mode, 1024 MiB RAM
+./run.sh --serial                  # terminal mode; Ctrl-A then X to quit QEMU
+./run.sh --memory 2048 /path/to/mnOS.iso
+```
+
+It uses KVM when `/dev/kvm` is accessible, otherwise QEMU's software emulation.
+Set `QEMU=/path/to/qemu-system-x86_64` to use a different QEMU executable.
+
+To launch QEMU directly:
+
 ```bash
 # graphical (GRUB menu + VGA console)
 qemu-system-x86_64 -enable-kvm -m 512 -cdrom mnOSv1.7.iso
