@@ -1,0 +1,8 @@
+button-title=mnOS
+button-icon=mnos
+show-button-title=true
+show-button-icon=true
+favorites=mnos-center.desktop,xfce4-terminal.desktop,thunar.desktop,firefox-esr.desktop,mnos-admin.desktop
+menu-width=590
+menu-height=550
+position-search-alternate=true

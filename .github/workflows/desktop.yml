@@ -1,0 +1,93 @@
+name: Dual-boot ISO
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/live-desktop]
+    paths: ['live/**', 'native/**', '.github/workflows/desktop.yml']
+    tags: ['v2.*-desktop-preview.*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build original kernel and VM tools
+        run: |
+          make -C native -j4
+          docker build -t mnos-live-builder -f live/Builder.Dockerfile live
+      - name: BIOS, UEFI, isolation, UI and power tests
+        run: |
+          docker run --rm --network none -v "$PWD/native:/native:ro" \
+            -v "$PWD/native/build:/out" mnos-live-builder bash -c '
+              set -e
+              bash /native/pack.sh test
+              python3 /native/tests/boot.py /out/native-test.iso
+              bash /native/pack.sh demo
+              python3 /native/tests/ui.py /out/native-demo.iso
+              chmod a+r /out/*.ppm /out/*.log
+            '
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mnOS-native-checks
+          path: |
+            native/build/native-*.log
+            native/build/native-*.ppm
+            native/build/native-demo.iso
+          retention-days: 14
+  build:
+    needs: native
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [qemu, hardware]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enrollment checks
+        run: python3 -m unittest discover -s live/tests -p 'test_*.py'
+      - name: Build ISO
+        run: ./live/build.sh "${{ matrix.profile }}"
+      - name: Check kernel and desktop tools
+        run: |
+          python3 live/tests/check_kernel.py "live/out/kernel-${{ matrix.profile }}.config"
+          docker run --rm --network none -v "$PWD/live/tests:/tests:ro" \
+            "mnos-live:${{ matrix.profile }}" xvfb-run -a python3 /tests/gui_smoke.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mnOS-desktop-${{ matrix.profile }}
+          path: live/out/*
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+      - name: Publish both build variants and native test evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" --prerelease --verify-tag \
+            --title "mnOS dual-boot $TAG" \
+            --notes "Two x86_64 ISOs: QEMU and general hardware. Each includes the original experimental mnOS native kernel and a separate Linux 6.12 LTS desktop with Xfce, Firefox, administration and CTF tools. Native kernel requires Secure Boot off. First Linux boot creates a local account; Live writes are temporary. Native BIOS/UEFI isolation and UI tests, Linux kernel config checks and GTK smoke checks run in CI. See native/README.md, live/README.md and live/VALIDATION.md for exact implementation, boot validation and hardware limits."
+          gh release upload "$TAG" release/*

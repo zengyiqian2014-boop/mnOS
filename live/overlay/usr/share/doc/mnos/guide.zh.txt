@@ -1,0 +1,97 @@
+mnOS Desktop 2.0 Preview
+=======================
+
+这是什么
+--------
+同一张 ISO 提供两个独立的运行环境：
+mnOS native：用 C 和汇编编写的自研实验内核，提供中文图形界面、
+内存管理、用户态隔离、抢占调度和启动自检。暂不支持 Linux 应用。
+Linux 工具环境：Debian 13、Linux 6.12 LTS、Xfce，用于浏览器、CTF、
+系统管理和常见硬件驱动。你现在看到的系统中心属于这个环境。
+
+两个镜像
+--------
+qemu：包含 VirtIO 内核驱动、QEMU Guest Agent、SPICE 桌面集成。
+hardware：增加 Intel/AMD 微码、常见无线网卡和 GPU 固件、蓝牙工具。
+两者都支持 x86_64 BIOS 与 UEFI，均提供同一个图形安装器。
+启动菜单和安装后的菜单均保留两个入口，默认进入 Linux 工具环境。
+自研内核尚未签名，需要关闭 Secure Boot；Linux 入口使用 Debian 签名链。
+ARM、32 位机器及所有具体硬件组合不在本次验证范围内。
+
+首次使用
+--------
+1. 启动后在本机控制台创建用户名与密码，至少 12 个字符。
+2. 在图形登录界面输入刚才创建的密码。
+3. 系统中心提供系统管理、网络与安全、桌面设置入口。
+
+没有默认密码，没有 root 自动登录。管理员通过 sudo / Polkit 提权。
+Live 会话的写入层位于内存。关机后文件、密码、设置和更新都会丢失。
+请将需要保留的文件复制到外部磁盘，或运行安装器安装到磁盘。
+
+安装到磁盘
+----------
+在系统中心选择“安装 mnOS”。安装器会显示磁盘、分区、加密和账户设置。
+最后的分区摘要列出将发生的修改；确认后才开始写入。
+请先备份目标磁盘。加密口令无法找回，请妥善保存。
+安装器使用镜像中的根文件系统，不会复制 Live 会话中新建的文件。
+
+管理系统
+--------
+系统管理：Cockpit 本地桌面模式。网络命名空间隔离，不启用远程管理端口。
+账户 / 服务 / 日志 / 更新 / 存储：系统中心内有直接入口。
+软件：Synaptic，或 sudo apt update && sudo apt full-upgrade。
+图形设置：Xfce 设置管理器，支持显示器、字体、主题和快捷键。
+磁盘：GNOME Disks 与 GParted；检查操作对象后再执行写入。
+进程：Xfce 任务管理器、htop、btop、iotop。
+输入法：Fcitx 5，默认使用 Ctrl+Space 切换输入。
+
+网络与安全工具
+--------------
+Nmap、Wireshark、tcpdump、tshark、mtr、dig、iperf3、openssl、Lynis、debsums。
+这些工具不会开机自动扫描网络或开启监听服务。
+
+Wireshark 以普通用户运行。若需实时抓包，推荐：
+  sudo tcpdump -i 网卡名称 -w /tmp/capture.pcap
+结束抓包后：
+  sudo chown "$USER":"$USER" /tmp/capture.pcap
+  wireshark /tmp/capture.pcap
+不要用 sudo 启动整个 Wireshark 图形界面。
+
+检查安全基线：sudo mnos-security-check
+完整本机审计：sudo lynis audit system
+查看入站策略：sudo ufw status verbose
+为特定服务开放端口前，确认服务的认证与监听地址。
+
+安全范围
+--------
+root 账户锁定；没有空口令或 NOPASSWD sudo；默认拒绝入站和转发。
+AppArmor、审计日志、内核 ASLR / NX / CPU 漏洞缓解措施保留。
+定时获取安全更新，不自动重启。Live 模式更新不会永久写回镜像。
+本镜像提供安全基线和检查脚本，不代表通过等保、CIS 或其他正式认证。
+Secure Boot 使用 Debian 的 shim、GRUB 和内核签名链；不验证整个 Live
+根文件系统。下载时还应核对发布页上的 SHA256，镜像被篡改不能靠这条
+启动链完整防范。硬件固件设置和受信任证书也会影响启动兼容性。
+
+性能与维护
+----------
+按需启动工具；QEMU 默认关闭桌面合成，实体硬件默认开启。
+zram 使用 LZ4，容量为内存的一半、最多 4 GiB；不是额外物理内存。
+保持内核调度、驱动和 CPU 安全缓解默认值。没有关闭安全功能换取跑分。
+QEMU 优先使用 KVM 与 host CPU，无法使用时回退 TCG。
+硬件性能取决于 CPU、存储、显卡和负载，不能仅凭内核文件大小判断。
+
+故障排查
+--------
+黑屏：从启动菜单选择 safe graphics，再检查显卡驱动和显示设置。
+无线网卡不可用：lspci -nnk / lsusb / journalctl -b，确认所需固件。
+服务失败：systemctl --failed，journalctl -b -p warning。
+安装日志：/root/.cache/calamares/session.log（需要管理员权限）。
+系统中心没有打开：在终端执行 mnos-center 查看错误输出。
+
+源码与许可证
+------------
+mnOS 自有代码遵循 GPL-3.0-or-later；第三方组件遵循各自许可证。
+每个包的许可证位于 /usr/share/doc/包名/copyright。
+本次版本、源码包名记录在 /usr/share/doc/mnos/packages.tsv。
+内核配置位于 /boot/config-*，源代码可通过 Debian 的源代码仓库获取。
+构建脚本、配置和测试记录随 mnOS 仓库一起发布。

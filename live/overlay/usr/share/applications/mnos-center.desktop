@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=mnOS System Center
+Name[zh_CN]=mnOS 系统中心
+Comment=System status, settings and administration
+Comment[zh_CN]=系统状态、设置与管理
+Exec=mnos-center
+Icon=mnos
+Categories=System;Settings;
+StartupNotify=true

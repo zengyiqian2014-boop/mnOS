@@ -1,0 +1,9 @@
+[Configuration]
+FontName=JetBrains Mono 10
+ColorForeground=#d8e6ed
+ColorBackground=#161d23
+ColorCursor=#78d4bb
+BackgroundMode=TERMINAL_BACKGROUND_SOLID
+ScrollingLines=10000
+MiscMenubarDefault=FALSE
+MiscAlwaysShowTabs=FALSE

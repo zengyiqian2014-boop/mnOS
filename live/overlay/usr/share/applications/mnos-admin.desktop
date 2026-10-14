@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=System Administration
+Name[zh_CN]=系统管理
+Comment=Services, logs, accounts, storage and updates
+Exec=/usr/lib/cockpit/cockpit-desktop /
+Icon=preferences-system
+Categories=System;Settings;
+StartupNotify=true

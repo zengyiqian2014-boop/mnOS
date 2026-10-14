@@ -1,0 +1,9 @@
+# Focus on administrative changes; avoid tracing every syscall on a desktop.
+-w /etc/passwd -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/group -p wa -k identity
+-w /etc/gshadow -p wa -k identity
+-w /etc/sudoers -p wa -k privilege
+-w /etc/sudoers.d/ -p wa -k privilege
+-w /etc/apparmor.d/ -p wa -k security-policy
+-w /etc/ufw/ -p wa -k firewall

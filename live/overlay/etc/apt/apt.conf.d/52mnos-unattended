@@ -1,0 +1,4 @@
+Unattended-Upgrade::Origins-Pattern {
+    "origin=Debian,codename=trixie-security,label=Debian-Security";
+};
+Unattended-Upgrade::Automatic-Reboot "false";

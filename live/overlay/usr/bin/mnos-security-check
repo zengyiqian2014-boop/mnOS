@@ -1,0 +1,27 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+set -eu
+if [ "$(id -u)" -ne 0 ]; then
+    echo 'Run with sudo to inspect the firewall, audit rules and account state.' >&2
+    exit 1
+fi
+failed=0
+check() {
+    label=$1; shift
+    if "$@"; then printf 'PASS  %s\n' "$label"; else printf 'FAIL  %s\n' "$label"; failed=$((failed + 1)); fi
+}
+check 'root account locked' sh -c 'passwd -S root | grep -q "root L "'
+check 'AppArmor loaded' sh -c 'test "$(cat /sys/module/apparmor/parameters/enabled)" = Y'
+check 'firewall active' sh -c 'LC_ALL=C ufw status | grep -q "Status: active"'
+check 'deny incoming connections' sh -c 'LC_ALL=C ufw status verbose | grep -q "deny (incoming)"'
+check 'audit service running' systemctl is-active --quiet auditd
+check 'kernel pointers restricted' sh -c 'test "$(sysctl -n kernel.kptr_restrict)" = 2'
+check 'address space randomization enabled' sh -c 'test "$(sysctl -n kernel.randomize_va_space)" = 2'
+check 'unprivileged BPF disabled' sh -c 'test "$(sysctl -n kernel.unprivileged_bpf_disabled)" -ne 0'
+check 'no empty-password accounts' sh -c 'test -z "$(awk -F: '\''$2 == "" {print $1}'\'' /etc/shadow)"'
+check 'remote Cockpit socket disabled' sh -c '! systemctl is-active --quiet cockpit.socket'
+check 'automatic update timer enabled' systemctl is-enabled --quiet apt-daily-upgrade.timer
+check 'administrative audit rules loaded' sh -c 'auditctl -l | grep -q "key=privilege\|k privilege"'
+check 'no passwordless sudo rule' sh -c '! grep -rE "^[^#].*NOPASSWD" /etc/sudoers /etc/sudoers.d'
+printf '\n%s failed check(s). These checks are a baseline, not a compliance certification.\n' "$failed"
+exit "$((failed > 0))"

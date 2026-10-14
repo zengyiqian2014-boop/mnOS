@@ -1,0 +1,32 @@
+CTF 工具
+========
+
+浏览器：Firefox ESR，含开发者工具。F12 打开控制台与网络面板。
+抓包：Wireshark、tshark、tcpdump。
+Web：curl、SQLmap、ffuf、Gobuster、dirb、mitmproxy。
+Pwn / 逆向：Pwntools、GDB、GDB Multiarch、GCC、binutils、Checksec、
+patchelf、strace、ltrace、xxd、hexedit。
+密码分析：John the Ripper、Hashcat、Hydra、OpenSSL。
+取证 / 隐写：Binwalk、ExifTool、Steghide、Foremost、YARA、7-Zip。
+网络基础：Nmap、socat、netcat、dig、mtr、iperf3、ss、ethtool。
+
+使用
+----
+系统中心的 CTF 页面提供常用入口。命令行工具的入口通常显示帮助，
+需要你指定题目文件或授权目标后再执行。没有后台扫描或预设攻击目标。
+不需要管理员权限的题目分析请使用普通账户。
+
+Hashcat 带有 POCL CPU OpenCL 后端，可用 hashcat -I 查看设备。
+QEMU 下的 CPU 计算速度受虚拟化方式影响；TCG 不适合高强度计算。
+实体机 GPU 加速取决于具体硬件和驱动。通用镜像没有预装 NVIDIA
+闭源 DKMS 驱动，Nouveau 提供基本图形支持；不能保证所有显卡的
+OpenCL / CUDA 加速。安装专用驱动时还需处理 Secure Boot 模块签名。
+
+Python 扩展包请装入独立环境，不要覆盖系统 Python：
+  python3 -m venv ~/venvs/ctf
+  . ~/venvs/ctf/bin/activate
+  python -m pip install 包名
+
+工具主要来自 Debian 的签名仓库，可用 apt 查询版本和更新。
+没有包含 Burp Suite、IDA 等需要另行获取或授权的专有软件。
+没有内置外部字典下载器、自动执行题目的脚本或远程访问后门。

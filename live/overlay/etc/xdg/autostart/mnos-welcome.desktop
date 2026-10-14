@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=mnOS Settings
+Name[zh_CN]=mnOS 系统中心
+Exec=mnos-center --welcome
+Icon=mnos
+OnlyShowIn=XFCE;
+StartupNotify=false

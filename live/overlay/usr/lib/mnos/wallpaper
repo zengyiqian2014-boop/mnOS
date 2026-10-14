@@ -1,0 +1,22 @@
+#!/usr/bin/python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Set a default for the actual monitor name once; preserve subsequent changes."""
+from pathlib import Path
+import re
+import subprocess
+import time
+
+marker = Path.home() / '.config/mnos/wallpaper-set'
+if not marker.exists():
+    for _ in range(15):
+        props = subprocess.run(['xfconf-query', '-c', 'xfce4-desktop', '-l'],
+                               capture_output=True, text=True).stdout.splitlines()
+        targets = [p for p in props if re.fullmatch(r'/backdrop/screen\d+/monitor[^/]+/workspace\d+/last-image', p)]
+        if targets:
+            for prop in targets:
+                subprocess.run(['xfconf-query', '-c', 'xfce4-desktop', '-p', prop,
+                                '-s', '/usr/share/backgrounds/mnos/default.svg'], check=True)
+            marker.parent.mkdir(parents=True, exist_ok=True)
+            marker.touch()
+            break
+        time.sleep(1)

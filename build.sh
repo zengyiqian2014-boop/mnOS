@@ -67,6 +67,10 @@ echo "==> root filesystem archive"
 	-path ./tests -prune -o \
 	-path ./desktop -prune -o \
 	-path ./tools -prune -o \
+	-path ./live -prune -o \
+	-path ./native -prune -o \
+	-path ./.github -prune -o \
+	-path ./releases -prune -o \
 	-name build.sh -prune -o \
 	-name run.sh -prune -o \
 	-name 'README*' -prune -o \

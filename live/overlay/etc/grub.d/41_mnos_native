@@ -1,0 +1,15 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Keep Linux first after installation. GRUB itself enforces Secure Boot.
+set -e
+test -f /boot/mnos.elf || exit 0
+. /usr/share/grub/grub-mkconfig_lib
+device=$(grub-probe --target=device /boot/mnos.elf)
+path=$(make_system_path_relative_to_its_root /boot/mnos.elf)
+cat <<'EOF'
+menuentry 'mnOS native kernel 0.1 - Secure Boot off' {
+    insmod all_video
+    set gfxpayload=keep
+EOF
+prepare_grub_to_access_device "$device" | sed 's/^/    /'
+printf '    multiboot2 %s\n    boot\n}\n' "$path"

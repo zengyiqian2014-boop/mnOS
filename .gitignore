@@ -7,3 +7,13 @@
 
 # Host-side tests
 /tests/__pycache__/
+
+# Desktop edition build cache, local CA files and release images
+/live/build-ca/
+/live/out/
+/live/build/
+**/__pycache__/
+/native/build/
+/native/assets/*.ttc
+/native/assets/*.ttf
+/native/assets/*.otf

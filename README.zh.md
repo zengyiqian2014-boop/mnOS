@@ -1,5 +1,12 @@
 # mnOS
 
+**双启动开发版：**同一张 ISO 内提供[自研 mnOS 内核](native/README.md)与
+Debian 13 / Linux LTS 工具环境，分别构建 QEMU 和实体硬件版本。
+自研内核用 C 和汇编编写，已有图形界面、用户态隔离与调度，仍处于早期阶段。
+Firefox、CTF 工具、完整系统管理和常见硬件驱动在 Linux 入口使用。
+参见[构建与使用说明](live/README.md)、[安全与性能设计](live/DESIGN.md)。
+原有的最小 BusyBox 版本仍保留，下面的内容介绍原版构建方式。
+
 [English](README.md) | [中文](README.zh.md)
 
 一个从零构建的最小 Linux 发行版：**Linux 6.13.3 + busybox + GRUB**，完整的 FHS 目录树，打包为可直接启动的 ISO（BIOS + UEFI 双引导），开机会显示一张彩色的系统信息卡片。

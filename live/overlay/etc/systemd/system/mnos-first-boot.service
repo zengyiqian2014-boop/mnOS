@@ -1,0 +1,22 @@
+[Unit]
+Description=Create the local mnOS administrator account
+After=systemd-user-sessions.service
+Before=display-manager.service
+ConditionKernelCommandLine=boot=live
+ConditionPathExists=!/var/lib/mnos/setup-complete
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/mnos/first-boot
+StandardInput=tty-force
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+RemainAfterExit=yes
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical.target

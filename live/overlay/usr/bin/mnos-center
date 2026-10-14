@@ -1,0 +1,358 @@
+#!/usr/bin/python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Small native launcher for the installed system tools; no privileged backend."""
+import os
+from pathlib import Path
+import platform
+import shlex
+import shutil
+import subprocess
+import sys
+import time
+
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gio, GLib, Gtk
+import psutil
+
+ADMIN = '/usr/lib/cockpit/cockpit-desktop'
+TOOLS = {
+    'ctf': [
+        ('applications-development', 'GDB / Multiarch', '调试本机与多种架构的程序', ['@terminal', 'gdb-multiarch', '-q']),
+        ('applications-development', 'Pwntools', 'Python 交互环境，已导入 pwn', ['@terminal', 'python3', '-i', '-c', 'from pwn import *']),
+        ('application-x-executable', 'Checksec', '检查 ELF 的常见编译保护', ['@terminal', 'checksec', '--help']),
+        ('utilities-terminal', '二进制分析', 'objdump · readelf · patchelf · strace · ltrace', ['xfce4-terminal']),
+        ('edit-find', 'SQLmap', 'Web 测试命令与参数', ['@terminal', 'sqlmap', '-h']),
+        ('folder-saved-search', 'ffuf', 'HTTP 模糊测试命令与参数', ['@terminal', 'ffuf', '-h']),
+        ('network-workgroup', 'Gobuster', '目录和 DNS 枚举命令与参数', ['@terminal', 'gobuster', '--help']),
+        ('network-server', 'mitmproxy', '查看交互式 HTTP 代理的使用方法', ['@terminal', 'mitmproxy', '--help']),
+        ('application-certificate', 'John / Hashcat', '离线密码分析；Hashcat 支持 CPU OpenCL', ['@terminal', 'hashcat', '--help']),
+        ('package-x-generic', 'Binwalk', '固件签名识别与文件提取', ['@terminal', 'binwalk', '--help']),
+        ('image-x-generic', '取证与隐写', 'ExifTool · Steghide · Foremost · YARA', ['xfce4-terminal']),
+        ('text-x-generic', 'CTF 工具手册', '工具分类与本地使用说明', ['mousepad', '/usr/share/doc/mnos/ctf.zh.txt']),
+    ],
+    'system': [
+        ('preferences-system', '系统管理', '服务、日志、账户与管理员权限', [ADMIN, '/']),
+        ('system-software-update', '软件更新', '检查并安装软件包更新', [ADMIN, 'updates']),
+        ('drive-harddisk', '磁盘与存储', '分区、挂载、SMART 与加密卷', ['gnome-disks']),
+        ('system-users', '用户账户', '账户、密码与所属用户组', [ADMIN, 'users']),
+        ('system-run', '系统服务', '查看服务状态，启停与开机设置', [ADMIN, 'system/services']),
+        ('text-x-log', '系统日志', '按时间与服务查找运行记录', [ADMIN, 'system/logs']),
+        ('utilities-system-monitor', '任务管理器', '进程、CPU 和内存使用情况', ['xfce4-taskmanager']),
+        ('preferences-system-performance', '性能配置', '查看 TuneD 当前生效的配置', ['@terminal', 'tuned-adm', 'active']),
+        ('system-software-install', '软件包管理', '安装、移除与查询 Debian 软件包', ['synaptic-pkexec']),
+        ('drive-harddisk', '分区编辑器', '调整分区前请先备份数据', ['gparted']),
+        ('utilities-terminal', '终端', 'Bash、sudo 与完整的系统命令', ['xfce4-terminal']),
+    ],
+    'network': [
+        ('network-wired', '网络连接', '有线、无线、VPN 与连接配置', ['nm-connection-editor']),
+        ('security-high', '防火墙', '检查规则并管理入站连接', ['gufw']),
+        ('network-workgroup', 'Wireshark', '打开和分析抓包文件', ['wireshark']),
+        ('network-wired', '抓取网络流量', '经管理员授权在指定网卡上抓包', ['@terminal', 'sudo', 'tcpdump', '-D']),
+        ('network-server', 'Nmap', '主机与服务探测；运行前指定授权目标', ['@terminal', 'nmap', '--help']),
+        ('network-transmit-receive', '网络性能', 'iperf3 带宽测试命令与参数', ['@terminal', 'iperf3', '--help']),
+        ('security-medium', '安全基线检查', '验证账户、防火墙与内核保护设置', ['@terminal', 'sudo', 'mnos-security-check']),
+        ('security-high', 'Lynis 审计', '本机配置检查与改进建议', ['@terminal', 'sudo', 'lynis', 'audit', 'system', '--quick']),
+        ('utilities-terminal', '诊断终端', 'mtr · dig · ss · ethtool · openssl', ['xfce4-terminal']),
+        ('application-certificate', '软件完整性', '检查已安装软件包的文件校验和', ['@terminal', 'sudo', 'debsums', '-s']),
+    ],
+    'desktop': [
+        ('preferences-desktop', '桌面设置', '外观、显示、快捷键和输入设备', ['xfce4-settings-manager']),
+        ('preferences-desktop-display', '显示器', '分辨率、缩放与多显示器排列', ['xfce4-display-settings']),
+        ('preferences-desktop-theme', '外观', '主题、图标与字体', ['xfce4-appearance-settings']),
+        ('audio-volume-high', '声音', '输入输出设备与应用音量', ['pavucontrol']),
+        ('preferences-desktop-keyboard', '中文输入', 'Fcitx 5 输入法与键盘设置', ['fcitx5-configtool']),
+        ('preferences-system-power', '电源', '电源、休眠与屏幕亮度', ['xfce4-power-manager-settings']),
+        ('system-file-manager', '文件', '浏览本机、移动设备和网络文件', ['thunar']),
+        ('web-browser', '浏览器', 'Firefox ESR', ['firefox-esr']),
+    ],
+}
+
+CSS = b'''
+window.mnos { background: #191e24; color: #e7edf0; }
+.mnos label { color: #e7edf0; }
+.sidebar { background: #13181d; border-right: 1px solid #2a3139; }
+.brand { font-size: 28px; font-weight: 700; letter-spacing: -1px; }
+.caption { font-size: 11px; color: #7d919d; }
+.muted { color: #94a4af; font-size: 12px; }
+.page-title { font-size: 27px; font-weight: 600; }
+.section-title { font-size: 15px; font-weight: 600; }
+.nav { background: transparent; border: 0; box-shadow: none; border-radius: 7px; padding: 12px; }
+.nav:hover { background: #242d35; }
+.nav:checked { background: #29453f; }
+.nav:checked label { color: #92e1cb; }
+.metric { background: #222a32; border: 1px solid #323c45; border-radius: 10px; }
+.value { font-size: 27px; font-weight: 500; }
+.tool { background: #222a32; border: 1px solid #323c45; box-shadow: none; border-radius: 8px; padding: 14px; }
+.tool:hover { background: #2b3740; border-color: #648b85; }
+.tool:focus { border-color: #77c8b5; }
+.tool-title { font-size: 13px; font-weight: 600; }
+.notice { background: #233330; border: 1px solid #36554c; border-radius: 8px; padding: 14px; }
+.notice label { color: #bed9d1; }
+.detail { border-bottom: 1px solid #2d363e; padding: 10px 0; }
+progressbar trough { min-height: 3px; background: #37434d; border: 0; }
+progressbar progress { min-height: 3px; background: #73cfb7; border: 0; }
+'''
+
+
+def styled(widget, *names):
+    for name in names:
+        widget.get_style_context().add_class(name)
+    return widget
+
+
+def label(text, *names, wrap=False):
+    widget = Gtk.Label(label=text, xalign=0)
+    widget.set_line_wrap(wrap)
+    return styled(widget, *names)
+
+
+def box(vertical=True, spacing=12, margin=0):
+    widget = Gtk.Box(orientation=Gtk.Orientation.VERTICAL if vertical else Gtk.Orientation.HORIZONTAL,
+                     spacing=spacing)
+    for side in ('top', 'bottom', 'start', 'end'):
+        getattr(widget, 'set_margin_' + side)(margin)
+    return widget
+
+
+def os_info():
+    info = {}
+    for line in Path('/etc/os-release').read_text().splitlines():
+        if '=' in line:
+            key, value = line.split('=', 1)
+            info[key] = value.strip('"')
+    return info
+
+
+class Center(Gtk.Application):
+    def __init__(self):
+        super().__init__(application_id='org.mnos.SystemCenter', flags=Gio.ApplicationFlags.FLAGS_NONE)
+        self.window = None
+        self.info = os_info()
+        self.metrics = {}
+        self.selecting = False
+
+    def do_activate(self):
+        if self.window:
+            self.window.present()
+            return
+        css = Gtk.CssProvider()
+        css.load_from_data(CSS)
+        self.window = styled(Gtk.ApplicationWindow(application=self), 'mnos')
+        self.window.set_title('mnOS 系统中心')
+        self.window.set_default_size(1040, 690)
+        self.window.set_position(Gtk.WindowPosition.CENTER)
+        self.window.set_icon_name('mnos')
+        Gtk.StyleContext.add_provider_for_screen(self.window.get_screen(), css,
+                                                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        shell = box(False, 0)
+        self.window.add(shell)
+        sidebar = styled(box(margin=20), 'sidebar')
+        sidebar.set_size_request(190, -1)
+        shell.pack_start(sidebar, False, False, 0)
+        sidebar.pack_start(label('mnOS', 'brand'), False, False, 8)
+        sidebar.pack_start(label('DESKTOP / 2.0 PREVIEW', 'caption'), False, False, 0)
+        spacer = Gtk.Box()
+        spacer.set_size_request(-1, 20)
+        sidebar.pack_start(spacer, False, False, 0)
+        self.stack = Gtk.Stack()
+        self.stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
+        self.stack.set_transition_duration(140)
+        shell.pack_start(self.stack, True, True, 0)
+        self.nav = []
+        for key, title, icon in [
+            ('overview', '概览', 'computer'),
+            ('system', '系统管理', 'preferences-system'),
+            ('network', '网络与安全', 'network-wired'),
+            ('ctf', 'CTF 工具', 'applications-development'),
+            ('desktop', '桌面设置', 'preferences-desktop'),
+            ('about', '关于与帮助', 'help-about'),
+        ]:
+            button = styled(Gtk.ToggleButton(), 'nav')
+            row = box(False, 12)
+            row.pack_start(Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.BUTTON), False, False, 0)
+            row.pack_start(label(title), True, True, 0)
+            button.add(row)
+            button.connect('clicked', self.select, key)
+            self.nav.append((key, button))
+            sidebar.pack_start(button, False, False, 0)
+            self.stack.add_named(self.page(key, title), key)
+        sidebar.pack_start(Gtk.Box(), True, True, 0)
+        sidebar.pack_start(label(platform.node(), 'muted'), False, False, 0)
+        sidebar.pack_start(label('本地会话 · ' + get_user(), 'caption'), False, False, 0)
+        self.nav[0][1].set_active(True)
+        self.stack.set_visible_child_name('overview')
+        self.window.show_all()
+        self.update_metrics()
+        GLib.timeout_add_seconds(2, self.update_metrics)
+
+    def select(self, _button, key):
+        if self.selecting:
+            return
+        self.selecting = True
+        self.stack.set_visible_child_name(key)
+        for name, button in self.nav:
+            button.set_active(name == key)
+        self.selecting = False
+
+    def page(self, key, title):
+        scroller = Gtk.ScrolledWindow()
+        scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        content = box(spacing=20, margin=28)
+        scroller.add(content)
+        content.pack_start(label(title, 'page-title'), False, False, 0)
+        descriptions = {
+            'overview': '设备状态与常用工具',
+            'system': '查看和管理这台计算机；更改系统设置时需要管理员授权。',
+            'network': '本机诊断与授权网络测试。工具由你选择并启动。',
+            'ctf': 'Web、Pwn、逆向与取证。桌面入口打开工具或帮助，不自动运行测试。',
+            'desktop': '调整工作环境，让常用的设置更顺手。',
+            'about': 'mnOS Desktop · 基于 Debian 13 的 Linux 桌面系统',
+        }
+        content.pack_start(label(descriptions[key], 'muted', wrap=True), False, False, 0)
+        if key == 'overview':
+            self.overview(content)
+        elif key == 'about':
+            self.about(content)
+        else:
+            content.pack_start(self.tools(TOOLS[key]), False, False, 0)
+        return scroller
+
+    def tools(self, entries):
+        flow = Gtk.FlowBox()
+        flow.set_selection_mode(Gtk.SelectionMode.NONE)
+        flow.set_min_children_per_line(2)
+        flow.set_max_children_per_line(2)
+        flow.set_column_spacing(12)
+        flow.set_row_spacing(12)
+        flow.set_homogeneous(True)
+        for icon, title, description, command in entries:
+            button = styled(Gtk.Button(), 'tool')
+            button.set_hexpand(True)
+            row = box(False, 14)
+            image = Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.DIALOG)
+            image.set_pixel_size(30)
+            row.pack_start(image, False, False, 0)
+            texts = box(spacing=5)
+            texts.pack_start(label(title, 'tool-title'), False, False, 0)
+            detail = label(description, 'muted', wrap=True)
+            detail.set_max_width_chars(25)
+            texts.pack_start(detail, False, False, 0)
+            row.pack_start(texts, True, True, 0)
+            button.add(row)
+            button.connect('clicked', lambda _b, cmd=command: self.launch(cmd))
+            flow.add(button)
+        return flow
+
+    def overview(self, content):
+        if 'boot=live' in Path('/proc/cmdline').read_text().split():
+            notice = styled(box(spacing=6), 'notice')
+            notice.pack_start(label('当前为 Live 会话', 'tool-title'), False, False, 0)
+            notice.pack_start(label('文件和设置保存在内存中，关机后会丢失。需要长期使用时，可从下方启动安装器。', wrap=True), False, False, 0)
+            content.pack_start(notice, False, False, 0)
+        row = box(False, 12)
+        row.set_homogeneous(True)
+        for key, title in [('cpu', 'CPU'), ('memory', '内存'), ('disk', '根文件系统')]:
+            tile = styled(box(margin=0), 'metric')
+            inner = box(spacing=12, margin=16)
+            inner.pack_start(label(title, 'muted'), False, False, 0)
+            value = label('—', 'value')
+            bar = Gtk.ProgressBar()
+            detail = label('正在读取', 'caption')
+            inner.pack_start(value, False, False, 0)
+            inner.pack_start(bar, False, False, 0)
+            inner.pack_start(detail, False, False, 0)
+            tile.add(inner)
+            row.pack_start(tile, True, True, 0)
+            self.metrics[key] = (value, bar, detail)
+        content.pack_start(row, False, False, 0)
+        content.pack_start(label('常用', 'section-title'), False, False, 0)
+        entries = [TOOLS['system'][0], TOOLS['system'][1], TOOLS['system'][2], TOOLS['desktop'][6]]
+        if 'boot=live' in Path('/proc/cmdline').read_text().split():
+            entries += [('drive-harddisk', '安装 mnOS', '图形安装器，支持磁盘加密与分区确认', ['pkexec', 'calamares'])]
+        entries += [TOOLS['system'][-1]]
+        content.pack_start(self.tools(entries), False, False, 0)
+
+    def about(self, content):
+        try:
+            profile = Path('/etc/mnos/profile').read_text().strip()
+        except OSError:
+            profile = 'unknown'
+        for key, value in [
+            ('版本', self.info.get('PRETTY_NAME', 'mnOS')),
+            ('内核', platform.release()), ('架构', platform.machine()),
+            ('构建配置', profile), ('桌面', 'Xfce / X11'),
+            ('软件源', 'Debian 13 · trixie / trixie-security'),
+        ]:
+            row = styled(box(False), 'detail')
+            row.pack_start(label(key, 'muted'), True, True, 0)
+            row.pack_start(label(value), False, False, 0)
+            content.pack_start(row, False, False, 0)
+        content.pack_start(label('使用说明', 'section-title'), False, False, 0)
+        for text in [
+            '系统管理使用 Cockpit 本地模式，在独立网络命名空间内运行，不开放远程管理端口。提权需要当前管理员的密码。',
+            '抓包：先在终端用 sudo tcpdump -i 网卡 -w 文件.pcap 保存，再用 Wireshark 打开。Wireshark 图形界面以普通用户运行。',
+            '软件安装与更新：使用软件包管理器，或在终端运行 sudo apt update 和 sudo apt full-upgrade。Live 会话中的更新不会写回 ISO。',
+            '磁盘安装会修改你选择的磁盘。请阅读安装器的分区摘要；加密安装需要保管好口令。',
+        ]:
+            content.pack_start(label(text, 'muted', wrap=True), False, False, 0)
+        content.pack_start(self.tools([
+            ('text-x-generic', '本地手册', '启动、安装、安全与故障排查', ['mousepad', '/usr/share/doc/mnos/guide.zh.txt']),
+            ('security-high', '验证安全基线', '逐项检查当前系统设置', ['@terminal', 'sudo', 'mnos-security-check']),
+        ]), False, False, 0)
+
+    def update_metrics(self):
+        if not self.window:
+            return False
+        if self.stack.get_visible_child_name() != 'overview':
+            return True
+        mem = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+        cpu = psutil.cpu_percent()
+        items = {
+            'cpu': (cpu, f'{psutil.cpu_count()} 个逻辑处理器'),
+            'memory': (mem.percent, f'{(mem.total - mem.available) / 2**30:.1f} / {mem.total / 2**30:.1f} GiB'),
+            'disk': (disk.percent, f'{disk.free / 2**30:.1f} GiB 可用'),
+        }
+        for key, (percent, description) in items.items():
+            value, bar, detail = self.metrics[key]
+            value.set_text(f'{percent:.0f}%')
+            bar.set_fraction(max(0, min(1, percent / 100)))
+            detail.set_text(description)
+        return True
+
+    def launch(self, command):
+        if command[0] == '@terminal':
+            command = ['xfce4-terminal', '--hold', '--command', shlex.join(command[1:])]
+        if not shutil.which(command[0]):
+            self.error('未找到程序：' + command[0])
+            return
+        try:
+            subprocess.Popen(command, start_new_session=True)
+        except OSError as exc:
+            self.error(str(exc))
+
+    def error(self, message):
+        dialog = Gtk.MessageDialog(transient_for=self.window, modal=True,
+                                   message_type=Gtk.MessageType.ERROR,
+                                   buttons=Gtk.ButtonsType.CLOSE, text='无法打开工具')
+        dialog.format_secondary_text(message)
+        dialog.run()
+        dialog.destroy()
+
+
+def get_user():
+    import pwd
+    return pwd.getpwuid(os.getuid()).pw_name
+
+
+if __name__ == '__main__':
+    # Welcome appears once per home directory, not at every login.
+    if '--welcome' in sys.argv:
+        marker = Path.home() / '.config/mnos/welcomed'
+        if marker.exists():
+            raise SystemExit(0)
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.touch()
+    app = Center()
+    raise SystemExit(app.run([sys.argv[0]]))

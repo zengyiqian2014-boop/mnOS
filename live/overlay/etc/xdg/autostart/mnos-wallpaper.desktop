@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=mnOS wallpaper
+Exec=/usr/lib/mnos/wallpaper
+OnlyShowIn=XFCE;
+NoDisplay=true
