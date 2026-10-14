@@ -64,6 +64,7 @@ echo "==> root filesystem archive"
 	-path ./boot -prune -o \
 	-path ./.git -prune -o \
 	-path ./assets -prune -o \
+	-path ./releases -prune -o \
 	-path ./tests -prune -o \
 	-path ./desktop -prune -o \
 	-path ./tools -prune -o \
