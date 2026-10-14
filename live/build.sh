@@ -7,12 +7,18 @@ case "$PROFILE" in qemu|hardware) ;; *) echo "Usage: $0 [qemu|hardware]" >&2; ex
 command -v docker >/dev/null || { echo 'Docker is required.' >&2; exit 1; }
 make -C "$ROOT/../native" -j"${JOBS:-4}"
 OUT=${OUT:-$ROOT/out}
-mkdir -p "$ROOT/build-ca" "$OUT"
+mkdir -p "$OUT"
 OUT=$(cd "$OUT" && pwd)
 SOURCE_COMMIT=$(git -C "$ROOT" rev-parse HEAD)
 if [ -n "$(git -C "$ROOT" status --porcelain)" ]; then SOURCE_COMMIT=$SOURCE_COMMIT-dirty; fi
 IMAGE="mnos-live:$PROFILE"
+ca_args=()
+if [ -n "${MNOS_BUILD_CA_BUNDLE:-}" ]; then
+    test -r "$MNOS_BUILD_CA_BUNDLE" || { echo 'CA bundle is not readable.' >&2; exit 2; }
+    ca_args=(--secret "id=build_ca,src=$MNOS_BUILD_CA_BUNDLE")
+fi
 docker build --build-arg HTTP_PROXY --build-arg HTTPS_PROXY --build-arg NO_PROXY \
+    "${ca_args[@]}" \
     --build-arg "PROFILE=$PROFILE" \
     -t "$IMAGE" -f "$ROOT/Rootfs.Dockerfile" "$ROOT"
 docker build --build-arg HTTP_PROXY --build-arg HTTPS_PROXY --build-arg NO_PROXY \

@@ -34,8 +34,9 @@ the scripts do not install packages or start OS services on the host.
 Output goes to `live/out/`. Each ISO has its own SHA256 file, package/source
 version manifest and resolved kernel configuration. `OUT=/path` changes the
 output directory. A normal build does not need additional CA certificates.
-If a build network requires a private CA, place it in ignored `live/build-ca/`;
-the build removes it from the final filesystem and rebuilds the trust store.
+If a build network requires a private CA, set `MNOS_BUILD_CA_BUNDLE` to a PEM
+bundle containing its CA and the normal public roots. BuildKit mounts this bundle
+only during dependency downloads; it is never copied into an image layer.
 
 APT security updates and dependency resolution can change later builds. This is
 a version-recorded build recipe, not a claim of bit-for-bit reproducibility.
@@ -74,8 +75,8 @@ considered tested merely because its driver is present.
 ```sh
 python3 -m unittest discover -s live/tests -p 'test_*.py'
 python3 live/tests/check_kernel.py live/out/kernel-qemu.config
-docker run --rm --network none -v "$PWD/live/tests:/tests:ro" \
-    mnos-live:qemu xvfb-run -a python3 /tests/gui_smoke.py
+docker run --rm --init --network none -v "$PWD/live/tests:/tests:ro" \
+    mnos-live:qemu timeout 120s xvfb-run -a dbus-run-session -- python3 /tests/gui_smoke.py
 ```
 
 In a booted guest:

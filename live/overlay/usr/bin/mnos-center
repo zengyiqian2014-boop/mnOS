@@ -69,7 +69,7 @@ TOOLS = {
 }
 
 CSS = b'''
-window.mnos { background: #191e24; color: #e7edf0; }
+window.mnos { background: #191e24; color: #e7edf0; font-family: Inter, "Noto Sans CJK SC", sans-serif; }
 .mnos label { color: #e7edf0; }
 .sidebar { background: #13181d; border-right: 1px solid #2a3139; }
 .brand { font-size: 28px; font-weight: 700; letter-spacing: -1px; }

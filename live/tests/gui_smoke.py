@@ -6,11 +6,16 @@ import importlib.util
 import shutil
 import sys
 import stat
+import traceback
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import patch
 
 errors = []
-sys.excepthook = lambda kind, value, trace: errors.append(value)
+def record_exception(kind, value, trace):
+    errors.append(value)
+    traceback.print_exception(kind, value, trace)
+sys.excepthook = record_exception
 loader = importlib.machinery.SourceFileLoader('center', '/usr/bin/mnos-center')
 spec = importlib.util.spec_from_loader(loader.name, loader)
 center = importlib.util.module_from_spec(spec)
@@ -27,6 +32,10 @@ assert len(application.nav) == 6
 from gi.repository import GdkPixbuf
 wallpaper = GdkPixbuf.Pixbuf.new_from_file_at_size('/usr/share/backgrounds/mnos/default.svg', 320, 180)
 assert wallpaper.get_width() > 0 and wallpaper.get_height() > 0
+panel = ET.parse('/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml')
+for plugin in panel.findall(".//property[@name='plugins']/property"):
+    name = plugin.get('value')
+    assert Path(f'/usr/share/xfce4/panel/plugins/{name}.desktop').is_file(), name
 for command in ('dbus-launch', 'dbus-run-session', 'xfce4-session', 'xfwm4',
                 'xfce4-panel', 'xfdesktop', 'fcitx5', 'firefox-esr', 'calamares'):
     assert shutil.which(command), command

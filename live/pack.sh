@@ -53,11 +53,13 @@ cp /usr/share/grub/unicode.pf2 "$ISO/boot/grub/unicode.pf2"
 cat > "$ISO/boot/grub/grub.cfg" <<EOF
 set default=0
 set timeout=5
-insmod all_video
-if loadfont /boot/grub/unicode.pf2; then
-    set gfxmode=1280x720,auto
-    set gfxpayload=keep
-    terminal_output gfxterm
+if [ "\$shim_lock" != "y" ]; then
+    insmod all_video
+    if loadfont /boot/grub/unicode.pf2; then
+        set gfxmode=1280x720,auto
+        set gfxpayload=keep
+        terminal_output gfxterm
+    fi
 fi
 set menu_color_normal=light-gray/black
 set menu_color_highlight=black/light-cyan
@@ -100,6 +102,11 @@ if [ -f "$ROOT/usr/lib/shim/mmx64.efi" ]; then
 fi
 mcopy -i /work/efi.img /work/early.cfg ::/EFI/BOOT/grub.cfg
 mcopy -i /work/efi.img /work/early.cfg ::/EFI/debian/grub.cfg
+# Optical boot can leave GRUB's root on the ISO rather than its appended ESP.
+# Signed GRUB must find the same configuration through either device path.
+mkdir -p "$ISO/EFI/BOOT" "$ISO/EFI/debian"
+cp /work/early.cfg "$ISO/EFI/BOOT/grub.cfg"
+cp /work/early.cfg "$ISO/EFI/debian/grub.cfg"
 
 name="mnOS-2.0-preview-$PROFILE-amd64"
 xorriso -as mkisofs -r -J -joliet-long -V "MNOS_${PROFILE^^}" \

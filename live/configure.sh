@@ -57,6 +57,7 @@ printf 'DEVICE partitions\nHOMEHOST <system>\n' > /etc/mdadm/mdadm.conf
 rm -f /etc/NetworkManager/system-connections/* /etc/udev/rules.d/70-persistent-net.rules
 printf 'RESUME=none\n' > /etc/initramfs-tools/conf.d/resume
 printf 'COMPRESS=gzip\n' > /etc/initramfs-tools/conf.d/compression
+printf 'efivarfs\n' >> /etc/initramfs-tools/modules
 printf 'GRUB_TIMEOUT=5\nGRUB_DISTRIBUTOR="mnOS"\nGRUB_CMDLINE_LINUX_DEFAULT="quiet apparmor=1 security=apparmor"\nGRUB_CMDLINE_LINUX=""\n' > /etc/default/grub
 
 # Desktop defaults. Users can change these through the normal Xfce settings.

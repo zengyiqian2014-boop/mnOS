@@ -60,8 +60,16 @@ jobs:
       - name: Check kernel and desktop tools
         run: |
           python3 live/tests/check_kernel.py "live/out/kernel-${{ matrix.profile }}.config"
-          docker run --rm --network none -v "$PWD/live/tests:/tests:ro" \
-            "mnos-live:${{ matrix.profile }}" xvfb-run -a python3 /tests/gui_smoke.py
+          docker run --rm --init --network none -v "$PWD/live/tests:/tests:ro" \
+            "mnos-live:${{ matrix.profile }}" timeout 120s xvfb-run -a \
+            dbus-run-session -- python3 /tests/gui_smoke.py
+      - name: Boot the complete ISO through BIOS and UEFI
+        run: |
+          mkdir -p live/out/boot-${{ matrix.profile }}
+          docker run --rm --init --network none -v "$PWD/live/tests:/tests:ro" \
+            -v "$PWD/live/out:/out" mnos-live-builder \
+            python3 /tests/boot.py "/out/mnOS-2.0-preview-${{ matrix.profile }}-amd64.iso" \
+            --output "/out/boot-${{ matrix.profile }}"
       - uses: actions/upload-artifact@v4
         with:
           name: mnOS-desktop-${{ matrix.profile }}
@@ -90,4 +98,5 @@ jobs:
           gh release create "$TAG" --prerelease --verify-tag \
             --title "mnOS dual-boot $TAG" \
             --notes "Two x86_64 ISOs: QEMU and general hardware. Each includes the original experimental mnOS native kernel and a separate Linux 6.12 LTS desktop with Xfce, Firefox, administration and CTF tools. Native kernel requires Secure Boot off. First Linux boot creates a local account; Live writes are temporary. Native BIOS/UEFI isolation and UI tests, Linux kernel config checks and GTK smoke checks run in CI. See native/README.md, live/README.md and live/VALIDATION.md for exact implementation, boot validation and hardware limits."
-          gh release upload "$TAG" release/*
+          # Logs in subdirectories remain available as workflow artifacts.
+          find release -maxdepth 1 -type f -print0 | xargs -0 -r gh release upload "$TAG"
