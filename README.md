@@ -82,6 +82,8 @@ Device nodes are written straight into the cpio header with the kernel's
 
 ```bash
 cat > devspec <<'EOF'
+dir /proc 0755 0 0
+dir /sys 0755 0 0
 dir /dev 0755 0 0
 nod /dev/console 0600 0 0 c 5 1
 nod /dev/tty      0666 0 0 c 5 0

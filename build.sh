@@ -32,6 +32,8 @@ done
 
 echo "==> device nodes (gen_init_cpio, no root needed)"
 cat > "$WORK/devspec" <<'SPEC'
+dir /proc 0755 0 0
+dir /sys 0755 0 0
 dir /dev 0755 0 0
 nod /dev/console 0600 0 0 c 5 1
 nod /dev/tty     0666 0 0 c 5 0
@@ -55,6 +57,7 @@ echo "==> root filesystem archive"
 	-path ./boot -prune -o \
 	-path ./.git -prune -o \
 	-path ./assets -prune -o \
+	-path ./tests -prune -o \
 	-name build.sh -prune -o \
 	-name 'README*' -prune -o \
 	-print | cpio --owner 0:0 -H newc -o --quiet ) > "$WORK/tree.cpio"
