@@ -2,7 +2,7 @@
 
 [English](README.md) | [中文](README.zh.md)
 
-[Download the dual-boot preview](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-desktop-preview.2)
+[Download the dual-boot preview](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-desktop-preview.3)
 · [Boot and validation record](live/VALIDATION.md)
 
 **Dual-boot edition:** the original [mnOS native kernel](native/README.md) and a

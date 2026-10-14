@@ -50,6 +50,9 @@ cp "$ROOT/etc/mnos/source-commit" "/out/source-$PROFILE.txt"
 mksquashfs "$ROOT" "$ISO/live/filesystem.squashfs" -noappend -comp zstd \
     -Xcompression-level 8 -b 1M -processors 4 -no-progress
 cp /usr/share/grub/unicode.pf2 "$ISO/boot/grub/unicode.pf2"
+# Debian's signed EFI core does not embed the Multiboot2 loader. Keep modules
+# from the SAME rootfs package version available when Secure Boot is off.
+cp -a "$ROOT/usr/lib/grub/x86_64-efi" "$ISO/boot/grub/"
 cat > "$ISO/boot/grub/grub.cfg" <<EOF
 set default=0
 set timeout=5
@@ -68,6 +71,7 @@ menuentry 'mnOS Desktop 2.0 - $PROFILE' {
     initrd /live/initrd.img
 }
 menuentry 'mnOS native kernel 0.1 - Secure Boot off' {
+    insmod multiboot2
     multiboot2 /boot/mnos.elf
     boot
 }

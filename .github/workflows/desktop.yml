@@ -63,7 +63,7 @@ jobs:
           docker run --rm --init --network none -v "$PWD/live/tests:/tests:ro" \
             "mnos-live:${{ matrix.profile }}" timeout 120s xvfb-run -a \
             dbus-run-session -- python3 /tests/gui_smoke.py
-      - name: Boot the complete ISO through BIOS and UEFI
+      - name: Boot Linux and native ISO entries through BIOS and UEFI
         run: |
           mkdir -p live/out/boot-${{ matrix.profile }}
           docker run --rm --init --network none -v "$PWD/live/tests:/tests:ro" \
@@ -95,8 +95,10 @@ jobs:
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
         run: |
-          gh release create "$TAG" --prerelease --verify-tag \
+          (cd release && sha256sum --check ./*.iso.sha256)
+          gh release create "$TAG" --draft --prerelease --verify-tag \
             --title "mnOS dual-boot $TAG" \
-            --notes "Two x86_64 ISOs: QEMU and general hardware. Each includes the original experimental mnOS native kernel and a separate Linux 6.12 LTS desktop with Xfce, Firefox, administration and CTF tools. Native kernel requires Secure Boot off. First Linux boot creates a local account; Live writes are temporary. Native BIOS/UEFI isolation and UI tests, Linux kernel config checks and GTK smoke checks run in CI. See native/README.md, live/README.md and live/VALIDATION.md for exact implementation, boot validation and hardware limits."
+            --notes "Two x86_64 ISOs: QEMU and general hardware. Each includes the original experimental mnOS native kernel and a separate Linux 6.12 LTS desktop with Xfce, Firefox, administration and CTF tools. Native kernel requires Secure Boot off. First Linux boot creates a local account; Live writes are temporary. CI checks native isolation and UI, Linux configuration and GTK tools, Linux BIOS/UEFI/Secure Boot, and both combined-ISO native BIOS/UEFI entries. See native/README.md, live/README.md and live/VALIDATION.md for exact implementation, boot validation and hardware limits."
           # Logs in subdirectories remain available as workflow artifacts.
           find release -maxdepth 1 -type f -print0 | xargs -0 -r gh release upload "$TAG"
+          gh release edit "$TAG" --draft=false

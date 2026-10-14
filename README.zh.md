@@ -1,6 +1,6 @@
 # mnOS
 
-[下载双启动预览版](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-desktop-preview.2)
+[下载双启动预览版](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-desktop-preview.3)
 · [启动与验证记录](live/VALIDATION.md)
 
 **双启动开发版：**同一张 ISO 内提供[自研 mnOS 内核](native/README.md)与

@@ -9,6 +9,7 @@ path=$(make_system_path_relative_to_its_root /boot/mnos.elf)
 cat <<'EOF'
 menuentry 'mnOS native kernel 0.1 - Secure Boot off' {
     insmod all_video
+    insmod multiboot2
     set gfxpayload=keep
 EOF
 prepare_grub_to_access_device "$device" | sed 's/^/    /'
