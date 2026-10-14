@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Local enrollment. No baked-in account, password, or network enrollment API."""
 import getpass
+import fcntl
 import os
 from pathlib import Path
 import re
@@ -64,6 +65,16 @@ def enroll():
 
 if __name__ == '__main__':
     try:
+        # Framebuffer takeover can leave another VT visible after GRUB.
+        if os.geteuid() == 0:
+            try:
+                console = os.open('/dev/tty0', os.O_RDWR | os.O_NOCTTY)
+                try:
+                    fcntl.ioctl(console, 0x5606, 1)  # VT_ACTIVATE
+                finally:
+                    os.close(console)
+            except OSError:
+                pass  # A serial-only machine may have no virtual console.
         enroll()
     except (EOFError, KeyboardInterrupt):
         print('\nSetup interrupted. No desktop session has been unlocked.', file=sys.stderr)
