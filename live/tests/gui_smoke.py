@@ -24,6 +24,9 @@ for name, button in application.nav:
     while center.Gtk.events_pending():
         center.Gtk.main_iteration_do(False)
 assert len(application.nav) == 6
+from gi.repository import GdkPixbuf
+wallpaper = GdkPixbuf.Pixbuf.new_from_file_at_size('/usr/share/backgrounds/mnos/default.svg', 320, 180)
+assert wallpaper.get_width() > 0 and wallpaper.get_height() > 0
 for command in ('dbus-launch', 'dbus-run-session', 'xfce4-session', 'xfwm4',
                 'xfce4-panel', 'xfdesktop', 'fcitx5', 'firefox-esr', 'calamares'):
     assert shutil.which(command), command

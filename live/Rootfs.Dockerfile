@@ -18,7 +18,7 @@ RUN --mount=type=bind,source=packages,target=/tmp/packages \
     --mount=type=bind,source=configure.sh,target=/tmp/mnos-configure \
     case "$PROFILE" in hardware|qemu) ;; *) exit 2 ;; esac \
     && apt-get update && apt-get install -y --no-install-recommends \
-       gir1.2-webkit2-4.1 tuned dbus-x11 dbus-user-session xdg-user-dirs \
+       gir1.2-webkit2-4.1 tuned dbus-x11 dbus-user-session xdg-user-dirs librsvg2-common \
     && xargs -r apt-get install -y --no-install-recommends < "/tmp/packages/$PROFILE.txt" \
     && xargs -r apt-get install -y --no-install-recommends < /tmp/packages/ctf.txt \
     && python3 -m venv /opt/mnos/mitmproxy \
