@@ -14,6 +14,7 @@ parser.add_argument("--out", type=pathlib.Path, default=pathlib.Path("/out"))
 args = parser.parse_args()
 args.out.mkdir(parents=True, exist_ok=True)
 serial = args.out / "native-ui.log"
+serial.unlink(missing_ok=True)
 
 with tempfile.TemporaryDirectory() as tmp:
     qmp = pathlib.Path(tmp) / "qmp"

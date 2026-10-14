@@ -24,6 +24,9 @@ for name, button in application.nav:
     while center.Gtk.events_pending():
         center.Gtk.main_iteration_do(False)
 assert len(application.nav) == 6
+for command in ('dbus-launch', 'dbus-run-session', 'xfce4-session', 'xfwm4',
+                'xfce4-panel', 'xfdesktop', 'fcitx5', 'firefox-esr', 'calamares'):
+    assert shutil.which(command), command
 for directory in ('/', '/usr', '/usr/bin', '/usr/share', '/etc'):
     assert stat.S_IMODE(Path(directory).stat().st_mode) & 0o005 == 0o005, directory
 for public_file in ('/etc/lightdm/lightdm-gtk-greeter.conf',
