@@ -26,6 +26,11 @@ for name, button in application.nav:
 assert len(application.nav) == 6
 for directory in ('/', '/usr', '/usr/bin', '/usr/share', '/etc'):
     assert stat.S_IMODE(Path(directory).stat().st_mode) & 0o005 == 0o005, directory
+for public_file in ('/etc/lightdm/lightdm-gtk-greeter.conf',
+                    '/usr/share/backgrounds/mnos/contour.svg',
+                    '/usr/share/backgrounds/mnos/default.svg',
+                    '/etc/tuned/profiles/mnos-virtual/tuned.conf'):
+    assert Path(public_file).stat().st_mode & stat.S_IROTH, public_file
 # Enrollment must work against the installed dictionary, not just mocked calls.
 import secrets
 candidate = secrets.token_hex(16)

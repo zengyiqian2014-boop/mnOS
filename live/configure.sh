@@ -27,6 +27,7 @@ passwd --lock root
 update-cracklib
 chmod 440 /etc/sudoers.d/50-mnos
 chmod 755 /usr/lib/mnos/first-boot /usr/lib/mnos/wallpaper /usr/bin/mnos-center /usr/bin/mnos-security-check
+chmod 755 /etc/grub.d/41_mnos_native
 visudo -cf /etc/sudoers
 
 sed -i 's/^ENABLED=.*/ENABLED=yes/' /etc/ufw/ufw.conf

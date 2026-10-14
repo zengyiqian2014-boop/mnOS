@@ -244,6 +244,10 @@ void power_off(void) {
         outw(pm1a, sleep_a | 0x2000);
         if (pm1b)
             outw(pm1b, sleep_b | 0x2000);
+        /* Firmware/QEMU may process the power request asynchronously. */
+        log_write("POWER: ACPI S5 issued\n");
+        for (;;)
+            __asm__ volatile("cli; hlt");
     }
     log_write("POWER: ACPI S5 unavailable or not accepted\n");
 }

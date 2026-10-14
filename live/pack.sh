@@ -8,10 +8,18 @@ mkdir -p /work/root /work/iso/{live,boot/grub/i386-pc}
 tar --numeric-owner -xf - -C /work/root
 ROOT=/work/root
 ISO=/work/iso
+cp -a --no-preserve=ownership /source/overlay/. "$ROOT/"
 # Workspace directories may be private (0700). Never transfer that mode to /usr.
 while IFS= read -r -d '' directory; do
     chmod 755 "$ROOT/${directory#./}"
 done < <(cd /source/overlay && find . -type d -print0)
+while IFS= read -r -d '' file; do
+    chmod 644 "$ROOT/${file#./}"
+done < <(cd /source/overlay && find . -type f -print0)
+chmod 755 "$ROOT/usr/lib/mnos/first-boot" "$ROOT/usr/lib/mnos/wallpaper" \
+    "$ROOT/usr/bin/mnos-center" "$ROOT/usr/bin/mnos-security-check"
+chmod 440 "$ROOT/etc/sudoers.d/50-mnos"
+chmod 644 "$ROOT/usr/share/backgrounds/mnos/default.svg"
 printf '%s\n' "${SOURCE_COMMIT:?}" > "$ROOT/etc/mnos/source-commit"
 grub-file --is-x86-multiboot2 /native/build/mnos.elf
 cp /native/build/mnos.elf "$ISO/boot/mnos.elf"

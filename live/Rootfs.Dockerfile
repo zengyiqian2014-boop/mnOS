@@ -35,6 +35,7 @@ RUN --mount=type=bind,source=packages,target=/tmp/packages \
     && rm -rf /tmp/mnos-wheels /root/.cache/pip \
     && cp -a --no-preserve=ownership /tmp/overlay/. / \
     && (cd /tmp/overlay && find . -type d -print0 | xargs -0 -I{} chmod 755 /{}) \
+    && (cd /tmp/overlay && find . -type f -print0 | xargs -0 -I{} chmod 644 /{}) \
     && MNOS_BUILD_ROOT=1 MNOS_PROFILE="$PROFILE" sh /tmp/mnos-configure \
     && rm /usr/sbin/policy-rc.d && rm -rf /var/lib/apt/lists/* \
     && rm -rf /usr/local/share/ca-certificates/mnos-build && update-ca-certificates --fresh \
