@@ -1,11 +1,22 @@
 # mnOS
 
+[下载双启动预览版](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-desktop-preview.2)
+· [启动与验证记录](live/VALIDATION.md)
+
 **双启动开发版：**同一张 ISO 内提供[自研 mnOS 内核](native/README.md)与
 Debian 13 / Linux LTS 工具环境，分别构建 QEMU 和实体硬件版本。
 自研内核用 C 和汇编编写，已有图形界面、用户态隔离与调度，仍处于早期阶段。
 Firefox、CTF 工具、完整系统管理和常见硬件驱动在 Linux 入口使用。
 参见[构建与使用说明](live/README.md)、[安全与性能设计](live/DESIGN.md)。
 原有的最小 BusyBox 版本仍保留，下面的内容介绍原版构建方式。
+
+自研内核在 QEMU 中独立运行的画面：
+
+![mnOS 自研内核](assets/native-kernel.png)
+
+Linux 工具环境的开发版实测画面：
+
+![mnOS Linux 桌面与系统中心](assets/linux-desktop.png)
 
 [English](README.md) | [中文](README.zh.md)
 

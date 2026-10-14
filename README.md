@@ -2,6 +2,9 @@
 
 [English](README.md) | [中文](README.zh.md)
 
+[Download the dual-boot preview](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-desktop-preview.2)
+· [Boot and validation record](live/VALIDATION.md)
+
 **Dual-boot edition:** the original [mnOS native kernel](native/README.md) and a
 Debian 13 / Linux LTS desktop share one boot menu. The [build guide](live/README.md)
 covers QEMU and hardware ISOs, Firefox, CTF tools and system administration.
@@ -9,6 +12,14 @@ The native kernel is an early freestanding C/assembly implementation; normal
 applications and broad driver support run in the Linux environment.
 [Design notes](live/DESIGN.md) explain the security and hardware boundaries.
 The original minimal BusyBox build is documented below.
+
+Native kernel running directly under QEMU:
+
+![Original mnOS kernel](assets/native-kernel.png)
+
+Separate Linux desktop and system center, captured in a development VM:
+
+![mnOS Linux desktop](assets/linux-desktop.png)
 
 A minimal Linux distribution built from scratch: **Linux 6.13.3 + busybox + GRUB**, a complete FHS tree, shipped as a bootable ISO (BIOS + UEFI) that greets you with a colorful system-info card.
 
