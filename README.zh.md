@@ -22,7 +22,7 @@
 构建后可以直接启动，脚本默认读取仓库上一级目录中的 ISO：
 
 ```bash
-./run.sh                          # 图形模式，1024 MiB 内存
+./run.sh                          # QEMU 显示窗口，1024 MiB 内存
 ./run.sh --serial                  # 终端模式；先按 Ctrl-A，再按 X 退出 QEMU
 ./run.sh --memory 2048 /path/to/mnOS.iso
 ```
@@ -41,6 +41,54 @@ qemu-system-x86_64 -enable-kvm -m 512 -cdrom mnOSv1.7.iso -nographic
 ```
 
 > 内置的 `ai` 模型需要更多内存 —— 运行 `ai` 前请用 `-m 1024` 启动 QEMU。
+
+### 可选桌面
+
+![QEMU 中实际运行的 mnOS 桌面](assets/desktop.png)
+
+```bash
+WITH_DESKTOP=1 DEFAULT_DESKTOP=1 ./build.sh
+./run.sh
+```
+
+桌面直接使用 Linux framebuffer，提供终端入口、实时内存与运行时间、
+快捷键帮助和关机／重启确认。按 **T** 打开终端，输入 `exit` 返回桌面；
+Tab／方向键与 Enter 选择卡片，**S** 查看系统状态，Esc 返回或退出到控制台。
+鼠标需要内核提供 `/dev/input/mice`。原内核可用键盘操作，下面的可选 QEMU
+内核也启用了鼠标支持。
+
+需要 Linux 虚拟终端和至少 640×480 的真彩色 framebuffer。在已运行的 Shell
+里输入 `start-desktop`，可在 tty2 启动桌面。串口终端和 GRUB 原控制台菜单保留；
+不设置 `DEFAULT_DESKTOP=1` 就仍以控制台为默认入口。文件仍保存在内存里。
+
+构建桌面需要 C 编译器及静态 libc 开发文件（Debian 可安装 `gcc libc6-dev`），
+无需显示服务器或额外 GUI 运行库。字体使用随源码附带、保留署名的公有领域位图字体。
+
+### 可选 QEMU 内核
+
+默认仍使用仓库中的 `boot/bzImage`。从 kernel.org 下载并解压 **Linux 6.13.3**
+后，可以另行编译用于 QEMU 的内核：
+
+```bash
+JOBS=4 ./tools/build-qemu-kernel.sh /path/to/linux-6.13.3 /path/to/kernel-build
+KERNEL_IMAGE=/path/to/kernel-build/arch/x86/boot/bzImage \
+  WITH_DESKTOP=1 DEFAULT_DESKTOP=1 ./build.sh
+```
+
+该配置以 `x86_64_defconfig` 为基础，支持最多 8 个虚拟 CPU，启用体积优化，
+去掉音频、无线、媒体和实体显卡驱动，保留 Bochs／virtio 显示与输入驱动，
+补上鼠标设备，并通过 `/proc/config.gz` 导出配置。它面向 QEMU，其他硬件请使用
+默认内核。最终配置也保存在输出目录的 `.config` 中。编译依赖
+`make gcc bc flex bison libelf-dev libssl-dev` 及 libc 开发文件。
+
+开发检查：
+
+```bash
+python3 -m unittest discover -s tests -p 'test_*.py'
+GEN_INIT_CPIO=/path/to/gen_init_cpio ./tests/test-build-mountpoints.sh
+cc -fsanitize=address,undefined -g tests/test_desktop.c -o /tmp/test-desktop
+/tmp/test-desktop
+```
 
 ## 构建
 

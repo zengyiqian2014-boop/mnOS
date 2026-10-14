@@ -1,0 +1,10 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+case " $(cat /proc/cmdline) " in
+    *' mnos.desktop=1 '*)
+        if [ -x /usr/bin/mnos-desktop ]; then
+            /usr/bin/mnos-desktop
+        fi
+        ;;
+esac
+exec /bin/sh -l

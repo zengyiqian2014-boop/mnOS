@@ -22,7 +22,7 @@ A minimal Linux distribution built from scratch: **Linux 6.13.3 + busybox + GRUB
 After building, the launcher finds the ISO next to the repository:
 
 ```bash
-./run.sh                          # graphical mode, 1024 MiB RAM
+./run.sh                          # QEMU window, 1024 MiB RAM
 ./run.sh --serial                  # terminal mode; Ctrl-A then X to quit QEMU
 ./run.sh --memory 2048 /path/to/mnOS.iso
 ```
@@ -41,6 +41,59 @@ qemu-system-x86_64 -enable-kvm -m 512 -cdrom mnOSv1.7.iso -nographic
 ```
 
 > The bundled `ai` model needs more headroom — start QEMU with `-m 1024` before running `ai`.
+
+### Optional desktop
+
+![mnOS framebuffer desktop running in QEMU](assets/desktop.png)
+
+```bash
+WITH_DESKTOP=1 DEFAULT_DESKTOP=1 ./build.sh
+./run.sh
+```
+
+This adds a small framebuffer launcher with a terminal, live memory/uptime view,
+keyboard help, and shutdown/restart confirmation. Press **T** for the terminal;
+type `exit` to return. Tab/arrow keys and Enter select a card, **S** opens system
+information, and Esc goes back or exits to the console. Mouse input is supported
+when the kernel provides `/dev/input/mice`. The bundled kernel can use the
+keyboard; the optional QEMU kernel below also enables mouse input.
+
+The desktop needs a Linux virtual console and a true-color framebuffer of at
+least 640×480. `start-desktop` opens it on tty2 from a running shell. The serial
+console stays available, and the original console entry remains in GRUB. Leave
+out `DEFAULT_DESKTOP=1` to keep that entry as the default. Files still live in RAM.
+
+Building the desktop requires a C compiler and static libc development files
+(for example, `gcc libc6-dev` on Debian). No display server or extra GUI runtime
+is needed. Its public-domain bitmap font is vendored with attribution.
+
+### Optional QEMU kernel
+
+The repository's `boot/bzImage` is kept as the default. To build an alternative,
+unpack the **Linux 6.13.3** release from kernel.org, then run:
+
+```bash
+JOBS=4 ./tools/build-qemu-kernel.sh /path/to/linux-6.13.3 /path/to/kernel-build
+KERNEL_IMAGE=/path/to/kernel-build/arch/x86/boot/bzImage \
+  WITH_DESKTOP=1 DEFAULT_DESKTOP=1 ./build.sh
+```
+
+This profile starts from `x86_64_defconfig`, targets up to 8 virtual CPUs, uses
+size optimization, and leaves out audio, wireless, media and physical GPU drivers.
+It keeps the Bochs/virtio display and input drivers, adds the mouse device, and
+embeds its configuration at `/proc/config.gz`. It is intended for QEMU; use the
+default kernel for other hardware. The resolved configuration is also saved in
+the output directory as `.config`. Building it needs `make gcc bc flex bison
+libelf-dev libssl-dev` and the usual libc development files.
+
+Development checks:
+
+```bash
+python3 -m unittest discover -s tests -p 'test_*.py'
+GEN_INIT_CPIO=/path/to/gen_init_cpio ./tests/test-build-mountpoints.sh
+cc -fsanitize=address,undefined -g tests/test_desktop.c -o /tmp/test-desktop
+/tmp/test-desktop
+```
 
 ## Build
 

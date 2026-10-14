@@ -1,0 +1,7 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+if [ ! -x /usr/bin/mnos-desktop ]; then
+    echo 'Desktop is not installed. Build the ISO with WITH_DESKTOP=1.' >&2
+    exit 1
+fi
+exec /bin/openvt -c 2 -s -w -- /usr/bin/mnos-desktop

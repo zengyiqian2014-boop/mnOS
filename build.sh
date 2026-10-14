@@ -17,11 +17,18 @@ VERSION=1.7
 OUT=${OUT:-$(dirname "$ROOT")/mnOSv${VERSION}.iso}
 KERNEL_SRC=${KERNEL_SRC:-$HOME/kernel/linux-6.13.3}
 GEN_INIT_CPIO=${GEN_INIT_CPIO:-$KERNEL_SRC/usr/gen_init_cpio}
+KERNEL_IMAGE=${KERNEL_IMAGE:-$ROOT/boot/bzImage}
+WITH_DESKTOP=${WITH_DESKTOP:-0}
+DEFAULT_DESKTOP=${DEFAULT_DESKTOP:-0}
+case "$WITH_DESKTOP:$DEFAULT_DESKTOP" in
+    [01]:[01]) ;;
+    *) echo 'error: WITH_DESKTOP and DEFAULT_DESKTOP must be 0 or 1' >&2; exit 1 ;;
+esac
 
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
-for f in "$ROOT/boot/bzImage"; do
+for f in "$KERNEL_IMAGE"; do
 	[ -f "$f" ] || { echo "error: missing $f" >&2; exit 1; }
 done
 [ -x "$GEN_INIT_CPIO" ] || {
@@ -58,17 +65,30 @@ echo "==> root filesystem archive"
 	-path ./.git -prune -o \
 	-path ./assets -prune -o \
 	-path ./tests -prune -o \
+	-path ./desktop -prune -o \
+	-path ./tools -prune -o \
 	-name build.sh -prune -o \
 	-name run.sh -prune -o \
 	-name 'README*' -prune -o \
 	-print | cpio --owner 0:0 -H newc -o --quiet ) > "$WORK/tree.cpio"
 
+: > "$WORK/desktop.cpio"
+if [ "$WITH_DESKTOP" = 1 ]; then
+    echo "==> framebuffer desktop"
+    sh "$ROOT/desktop/build.sh" "$WORK/overlay/usr/bin/mnos-desktop"
+    ( cd "$WORK/overlay"; find . -print | cpio --owner 0:0 -H newc -o --quiet ) > "$WORK/desktop.cpio"
+elif [ "$DEFAULT_DESKTOP" = 1 ]; then
+    echo 'error: DEFAULT_DESKTOP=1 requires WITH_DESKTOP=1' >&2
+    exit 1
+fi
+
 echo "==> initramfs (device cpio + rootfs, concatenated)"
-cat "$WORK/dev.cpio" "$WORK/tree.cpio" | gzip -9 > "$ROOT/boot/initramfs.cpio.gz"
+cat "$WORK/dev.cpio" "$WORK/tree.cpio" "$WORK/desktop.cpio" | gzip -9 > "$ROOT/boot/initramfs.cpio.gz"
 
 echo "==> squash staging tree"
 mkdir -p "$WORK/iso/boot/grub"
-cp "$ROOT/boot/bzImage" "$ROOT/boot/initramfs.cpio.gz" "$WORK/iso/boot/"
+cp "$KERNEL_IMAGE" "$WORK/iso/boot/bzImage"
+cp "$ROOT/boot/initramfs.cpio.gz" "$WORK/iso/boot/"
 cat > "$WORK/iso/boot/grub/grub.cfg" <<EOF
 insmod all_video
 if loadfont unicode; then
@@ -78,13 +98,22 @@ if loadfont unicode; then
 fi
 
 set timeout=5
-set default=0
+set default=$DEFAULT_DESKTOP
 
 menuentry "mnOS v${VERSION}" {
     linux /boot/bzImage video=Virtual-1:1280x720 console=tty0 console=ttyS0,115200
     initrd /boot/initramfs.cpio.gz
 }
 EOF
+if [ "$WITH_DESKTOP" = 1 ]; then
+    cat >> "$WORK/iso/boot/grub/grub.cfg" <<EOF
+
+menuentry "mnOS v${VERSION} desktop" {
+    linux /boot/bzImage video=Virtual-1:1280x720 console=tty0 console=ttyS0,115200 quiet loglevel=3 mnos.desktop=1
+    initrd /boot/initramfs.cpio.gz
+}
+EOF
+fi
 
 echo "==> building ISO"
 grub-mkrescue -o "$OUT" "$WORK/iso"

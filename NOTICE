@@ -43,6 +43,13 @@ relicensed as a single work under the mnOS license above.
   NumPy                 1.17.4        BSD-3-Clause         https://numpy.org/
   regex                 2.5.148       Apache-2.0           https://github.com/mrabarnett/mrab-regex
   MiniMind2 (model)     small         Apache-2.0           https://github.com/jingyaogong/minimind
+  font8x8              basic ASCII  Public domain        https://github.com/dhepper/font8x8
+
+The optional framebuffer desktop uses Daniel Hepper's public-domain font8x8
+basic ASCII data (based on Marcel Sondaar / IBM VGA fonts). Attribution is
+preserved in desktop/font8x8.h. The desktop source is GPL-3.0-or-later.
+The desktop build links the build toolchain's libc statically; its version may
+differ from the bundled 2.31 runtime libraries (tested with Debian 12 glibc 2.36).
 
 The `ai` command and the pure-Python inference engine under `opt/ai/`
 (`minimind2.py`, `gguf_reader.py`) are part of mnOS's own code and are covered
