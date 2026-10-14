@@ -8,6 +8,10 @@ mkdir -p /work/root /work/iso/{live,boot/grub/i386-pc}
 tar --numeric-owner -xf - -C /work/root
 ROOT=/work/root
 ISO=/work/iso
+# Workspace directories may be private (0700). Never transfer that mode to /usr.
+while IFS= read -r -d '' directory; do
+    chmod 755 "$ROOT/${directory#./}"
+done < <(cd /source/overlay && find . -type d -print0)
 printf '%s\n' "${SOURCE_COMMIT:?}" > "$ROOT/etc/mnos/source-commit"
 grub-file --is-x86-multiboot2 /native/build/mnos.elf
 cp /native/build/mnos.elf "$ISO/boot/mnos.elf"
@@ -21,6 +25,7 @@ mkdir -p "$ROOT/usr/src/mnos-native"
 cp -a /native/src /native/include /native/tests /native/tools /native/Makefile /native/linker.ld /native/README.md "$ROOT/usr/src/mnos-native/"
 mkdir -p "$ROOT/usr/src/mnos-native/assets"
 cp /native/assets/font.c /native/assets/FONT-LICENSE.txt "$ROOT/usr/src/mnos-native/assets/"
+find "$ROOT/usr/src/mnos-native" -type d -exec chmod 755 {} +
 printf '127.0.0.1 localhost\n127.0.1.1 mnos-%s\n::1 localhost ip6-localhost ip6-loopback\n' "$PROFILE" > "$ROOT/etc/hosts"
 printf 'mnos-%s\n' "$PROFILE" > "$ROOT/etc/hostname"
 rm -f "$ROOT/etc/resolv.conf" "$ROOT/.dockerenv"
@@ -49,7 +54,7 @@ fi
 set menu_color_normal=light-gray/black
 set menu_color_highlight=black/light-cyan
 menuentry 'mnOS Desktop 2.0 - $PROFILE' {
-    linux /live/vmlinuz boot=live quiet apparmor=1 security=apparmor audit=1 console=tty0 console=ttyS0,115200n8
+    linux /live/vmlinuz boot=live quiet apparmor=1 security=apparmor audit=1 audit_backlog_limit=8192 console=tty0 console=ttyS0,115200n8
     initrd /live/initrd.img
 }
 menuentry 'mnOS native kernel 0.1 - Secure Boot off' {
@@ -57,11 +62,11 @@ menuentry 'mnOS native kernel 0.1 - Secure Boot off' {
     boot
 }
 menuentry 'mnOS Desktop 2.0 - safe graphics' {
-    linux /live/vmlinuz boot=live nomodeset apparmor=1 security=apparmor audit=1 console=tty0 console=ttyS0,115200n8
+    linux /live/vmlinuz boot=live nomodeset apparmor=1 security=apparmor audit=1 audit_backlog_limit=8192 console=tty0 console=ttyS0,115200n8
     initrd /live/initrd.img
 }
 menuentry 'mnOS Desktop 2.0 - boot messages' {
-    linux /live/vmlinuz boot=live apparmor=1 security=apparmor audit=1 console=tty0 console=ttyS0,115200n8
+    linux /live/vmlinuz boot=live apparmor=1 security=apparmor audit=1 audit_backlog_limit=8192 console=tty0 console=ttyS0,115200n8
     initrd /live/initrd.img
 }
 EOF

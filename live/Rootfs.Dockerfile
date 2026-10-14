@@ -34,11 +34,13 @@ RUN --mount=type=bind,source=packages,target=/tmp/packages \
     && ln -s /opt/mnos/mitmproxy/bin/mitmweb /usr/local/bin/mitmweb \
     && rm -rf /tmp/mnos-wheels /root/.cache/pip \
     && cp -a --no-preserve=ownership /tmp/overlay/. / \
+    && (cd /tmp/overlay && find . -type d -print0 | xargs -0 -I{} chmod 755 /{}) \
     && MNOS_BUILD_ROOT=1 MNOS_PROFILE="$PROFILE" sh /tmp/mnos-configure \
     && rm /usr/sbin/policy-rc.d && rm -rf /var/lib/apt/lists/* \
     && rm -rf /usr/local/share/ca-certificates/mnos-build && update-ca-certificates --fresh \
     && rm -f /var/lib/dbus/machine-id /etc/machine-id /etc/ssh/ssh_host_* \
     && touch /etc/machine-id \
+    && ln -s /etc/machine-id /var/lib/dbus/machine-id \
     && rm -f /root/.bash_history /var/lib/systemd/random-seed \
     && find /var/log -type f -exec truncate -s 0 {} +
 CMD ["/sbin/init"]

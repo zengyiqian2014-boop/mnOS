@@ -5,6 +5,7 @@ import importlib.machinery
 import importlib.util
 import shutil
 import sys
+import stat
 from pathlib import Path
 from unittest.mock import patch
 
@@ -23,6 +24,14 @@ for name, button in application.nav:
     while center.Gtk.events_pending():
         center.Gtk.main_iteration_do(False)
 assert len(application.nav) == 6
+for directory in ('/', '/usr', '/usr/bin', '/usr/share', '/etc'):
+    assert stat.S_IMODE(Path(directory).stat().st_mode) & 0o005 == 0o005, directory
+# Enrollment must work against the installed dictionary, not just mocked calls.
+import secrets
+candidate = secrets.token_hex(16)
+quality = center.subprocess.run(['pwscore', 'mnoscheck'], input=candidate + '\n',
+                                text=True, capture_output=True)
+assert quality.returncode == 0, quality.stderr
 for group, entries in center.TOOLS.items():
     for _icon, title, _description, command in entries:
         executable = command[1] if command[0] == '@terminal' else command[0]

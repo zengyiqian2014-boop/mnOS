@@ -11,7 +11,6 @@ firmware-mediatek
 firmware-ath9k-htc
 firmware-carl9170
 firmware-libertas
-firmware-ipw2x00
 firmware-ti-connectivity
 firmware-zd1211
 firmware-bnx2

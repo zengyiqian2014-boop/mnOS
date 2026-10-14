@@ -59,7 +59,9 @@ common Ethernet firmware. Wi-Fi is managed by NetworkManager/wpa_supplicant.
 
 This is broad x86_64 coverage, not a guarantee for every device or USB ID. Some
 Broadcom b43/STA and Realtek USB adapters require additional firmware or out-of-
-tree drivers. NVIDIA proprietary CUDA/OpenCL drivers are not preinstalled;
+tree drivers. The legacy Intel IPW2100/IPW2200 firmware package, which needs a
+separate interactive license acknowledgement, is not bundled; modern Intel
+Wi-Fi uses the included iwlwifi firmware. NVIDIA proprietary CUDA/OpenCL drivers are not preinstalled;
 installing DKMS drivers with Secure Boot may require owner-key enrollment.
 ARM and Apple Silicon are not targets of these ISOs.
 

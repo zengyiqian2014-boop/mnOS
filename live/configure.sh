@@ -24,6 +24,7 @@ printf 'en_US.UTF-8 UTF-8\nzh_CN.UTF-8 UTF-8\n' > /etc/locale.gen
 locale-gen
 ln -snf /usr/share/zoneinfo/Etc/UTC /etc/localtime
 passwd --lock root
+update-cracklib
 chmod 440 /etc/sudoers.d/50-mnos
 chmod 755 /usr/lib/mnos/first-boot /usr/lib/mnos/wallpaper /usr/bin/mnos-center /usr/bin/mnos-security-check
 visudo -cf /etc/sudoers

@@ -12,6 +12,9 @@ apparmor
 apparmor-utils
 auditd
 libpam-pwquality
+libpwquality-tools
+cracklib-runtime
+wamerican
 unattended-upgrades
 ufw
 gufw
