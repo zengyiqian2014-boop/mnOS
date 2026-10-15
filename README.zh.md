@@ -1,10 +1,12 @@
 # mnOS
 
-[下载双启动预览版](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-desktop-preview.5)
+[下载 x86_64 / ARM64 桌面预览版](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-desktop-preview.5)
 · [启动与验证记录](live/VALIDATION.md)
 
 mnOS 将用 C 和汇编编写的 x86_64 自研内核，与独立的 Debian 13 / Linux 6.12
-LTS 桌面放在同一张 ISO 中，提供 QEMU 与通用 PC 硬件两个版本。原生入口用于
+LTS 桌面放在 x86_64 ISO 中。x86_64 与 ARM64 各有 QEMU 和硬件版；ARM64 面向
+通用 UEFI，目前提供 Linux 工具环境，自研内核尚未移植到 ARM64。
+型号与验证范围见[硬件矩阵](live/HARDWARE.md)。原生入口用于
 内核和文件系统开发；Linux 入口用于 Firefox、CTF、Wi-Fi 和日常系统管理。
 
 | 环境 | 当前功能 |
@@ -54,6 +56,8 @@ Linux 系统中心提供显示、壁纸、声音、网络、账号等设置。Py
 Linux 工具环境的开发版实测画面：
 
 ![mnOS Linux 桌面与系统中心](assets/linux-desktop.png)
+
+[普通账号用 VS Code 编辑 C++ 文件的实测画面](assets/linux-vscode.png)。
 
 [English](README.md) | [中文](README.zh.md)
 

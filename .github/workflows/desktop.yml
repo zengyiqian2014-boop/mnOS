@@ -1,7 +1,13 @@
-name: Dual-boot ISO
+name: Multi-architecture desktop ISO
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Optional preview tag to publish after every build and check passes
+        type: string
+        required: false
+        default: ''
   push:
     branches: [feature/live-desktop]
     paths: ['live/**', 'native/**', '.github/workflows/desktop.yml']
@@ -73,7 +79,10 @@ jobs:
         run: |
           python3 -m unittest discover -s live/tests -p 'test_*.py'
           c++ -std=c++17 -O2 -Wall -Wextra live/tests/enrollment-runtime.cpp -lutil -lcrypt -o live/tests/enrollment-runtime
+          docker build -t mnos-enrollment -f live/tests/Enrollment.Dockerfile live
+          docker run --rm --init --network none -v "$PWD/live/tests:/tests:ro" mnos-enrollment /tests/enrollment-runtime
       - name: Build ISO
+        id: iso
         run: ./live/build.sh "${{ matrix.profile }}" "${{ matrix.arch }}"
       - name: Check kernel and desktop tools
         run: |
@@ -89,6 +98,7 @@ jobs:
           docker run --rm --init --network none -v "$PWD/live/tests:/tests:ro" \
             "mnos-live:${{ matrix.profile }}-${{ matrix.arch }}" python3 /tests/development.py
       - name: Boot architecture-specific ISO entries
+        if: ${{ !cancelled() && steps.iso.outcome == 'success' }}
         run: |
           mkdir -p live/out/boot-${{ matrix.profile }}-${{ matrix.arch }}
           docker run --rm --init --network none -v "$PWD/live/tests:/tests:ro" \
@@ -113,7 +123,7 @@ jobs:
           retention-days: 7
 
   release:
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
     needs: [native, build]
     runs-on: ubuntu-24.04
     permissions:
@@ -124,16 +134,26 @@ jobs:
         with:
           path: release
           merge-multiple: true
-      - name: Publish both build variants and native test evidence
+      - name: Publish verified architecture variants and native test evidence
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || inputs.release_tag }}
+          SOURCE_SHA: ${{ github.sha }}
         run: |
-          (cd release && sha256sum --check ./*.iso.sha256)
-          gh release create "$TAG" --draft --prerelease --verify-tag \
-            --title "mnOS dual-boot $TAG" \
-            --notes-file live/RELEASE.md
+          [[ "$TAG" =~ ^v2\.0-desktop-preview\.[0-9]+$ ]] || { echo 'Invalid preview tag.' >&2; exit 2; }
+          bash live/release-assets.sh release
+          if gh api "repos/$GH_REPO/git/ref/tags/$TAG" > /tmp/mnos-release-ref.json 2>/dev/null; then
+            jq -e --arg sha "$SOURCE_SHA" '.object.type == "commit" and .object.sha == $sha' /tmp/mnos-release-ref.json
+          else
+            gh api --method POST "repos/$GH_REPO/git/refs" -f "ref=refs/tags/$TAG" -f "sha=$SOURCE_SHA" >/dev/null
+          fi
+          if gh release view "$TAG" --json isDraft --jq .isDraft > /tmp/mnos-release-state 2>/dev/null; then
+            test "$(cat /tmp/mnos-release-state)" = true || { echo 'Refusing to overwrite an already published release.' >&2; exit 1; }
+          else
+            gh release create "$TAG" --draft --prerelease --verify-tag \
+              --title "mnOS Desktop $TAG" --notes-file live/RELEASE.md
+          fi
           # Logs in subdirectories remain available as workflow artifacts.
-          find release -maxdepth 1 -type f -print0 | xargs -0 -r gh release upload "$TAG"
-          gh release edit "$TAG" --draft=false
+          find release/publish -maxdepth 1 -type f -print0 | xargs -0 -r gh release upload "$TAG" --clobber
+          gh release edit "$TAG" --notes-file live/RELEASE.md --draft=false

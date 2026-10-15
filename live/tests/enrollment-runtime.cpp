@@ -52,7 +52,13 @@ struct Session {
             if (output.find(text, start) != std::string::npos)
                 return;
         }
-        throw std::runtime_error("Enrollment did not reach: " + text);
+        // Classify failures without ever logging captured credential input.
+        std::string reason;
+        for (const char *message : {"Use 12-512 characters", "Password quality", "Setup interrupted",
+                                    "Cannot hide password", "Passwords do not match", "Username [mnos]"})
+            if (output.find(message, start) != std::string::npos)
+                reason += std::string("; observed ") + message;
+        throw std::runtime_error("Enrollment did not reach: " + text + reason);
     }
     void send(const std::string &s) {
         if (write(fd, s.data(), s.size()) != ssize_t(s.size()))
@@ -84,6 +90,8 @@ int main() {
             snprintf(v, sizeof v, "%02x", b);
             secret += v;
         }
+        if (mnos::run({"/usr/bin/pwscore", name}, secret + '\n'))
+            throw std::runtime_error("Generated test password rejected by pwscore before enrollment");
         {
             Session s;
             s.expect("Username [mnos]");

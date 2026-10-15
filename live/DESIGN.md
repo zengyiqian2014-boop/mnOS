@@ -64,15 +64,19 @@ tree drivers. The legacy Intel IPW2100/IPW2200 firmware package, which needs a
 separate interactive license acknowledgement, is not bundled; modern Intel
 Wi-Fi uses the included iwlwifi firmware. NVIDIA proprietary CUDA/OpenCL drivers are not preinstalled;
 installing DKMS drivers with Secure Boot may require owner-key enrollment.
-ARM and Apple Silicon are not targets of these ISOs. Both profiles include Mesa
+ARM64 QEMU and generic UEFI hardware now have separate builds, using Debian's
+ARM64 kernel and ARM64 packages. Model-specific SBC boot firmware remains a
+separate integration; see [HARDWARE.md](HARDWARE.md). Apple Silicon is not a target
+of the generic image. Both profiles include Mesa
 OpenGL/Vulkan and diagnostic tools. The QEMU launcher defaults to software
 rendering; `GPU=virgl` opts into host OpenGL forwarding where supported. Native
 graphics only implements DISPI 2D and the firmware framebuffer.
 
 ## Desktop and CTF tools
 
-Xfce provides real window management, display settings and session locking. The
-The original C++ system center and popup menu use GTK/GIO for rendering and XDG application discovery, and read CPU/memory/disk data without Python.
+Xfce provides real window management, display settings and session locking.
+The original C++ system center and popup menu use GTK/GIO for rendering and XDG
+application discovery, and read CPU/memory/disk data without Python.
 Cockpit runs in its own network namespace via `cockpit-desktop`, on demand, with
 no remote management socket. It uses Polkit for administrative access.
 

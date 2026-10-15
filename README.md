@@ -2,12 +2,14 @@
 
 [English](README.md) | [中文](README.zh.md)
 
-[Download the dual-boot preview](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-desktop-preview.5)
+[Download the x86_64 / ARM64 desktop preview](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-desktop-preview.5)
 · [Boot and validation record](live/VALIDATION.md)
 
 mnOS combines an original x86_64 C/assembly kernel with a separate Debian 13 /
-Linux 6.12 LTS desktop in one bootable ISO. Two builds target QEMU and general
-PC hardware. Choose the native entry to explore the kernel and filesystem, or
+Linux 6.12 LTS desktop in the x86_64 bootable ISO. QEMU and hardware profiles are
+also built for ARM64 UEFI, using the Linux environment; the original kernel is
+currently x86_64 only. See the [architecture and board matrix](live/HARDWARE.md).
+Choose the native entry to explore the kernel and filesystem, or
 Linux for Firefox, CTF tools, Wi-Fi and daily system administration.
 
 | Environment | Current capabilities |
@@ -62,6 +64,8 @@ Native display settings, captured under QEMU/OVMF:
 Separate Linux desktop and system center, captured in a development VM:
 
 ![mnOS Linux desktop](assets/linux-desktop.png)
+
+[VS Code editing a C++ file as an ordinary user](assets/linux-vscode.png).
 
 The top-left **Applications & Tools** button searches installed apps and 122 named CLI tools. CLI entries open terminal help; kernel, display, wallpaper and partition controls share **System settings**. The desktop includes a new landscape wallpaper and outline-rendered text, a 34 px panel and 20 px menu icons.
 

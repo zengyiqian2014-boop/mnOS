@@ -112,7 +112,8 @@ files, and `mnfs format` refuses to overwrite existing files or device nodes.
 
 ## Build
 
-Requires GCC, binutils, make, Docker with BuildKit, an x86_64 build host, network access, 4 CPU threads,
+Requires GCC, binutils, make, Docker with BuildKit, a build host matching the target
+architecture (x86_64 or AArch64), network access, 4 CPU threads,
 at least 8 GiB of host RAM and approximately 25 GiB of free space when using a
 normal overlay Docker storage driver. VFS needs more space for full layer copies.
 Package downloads use signed Debian repositories. Image tools run in containers;
@@ -121,11 +122,18 @@ the scripts do not install packages or start OS services on the host.
 ```sh
 ./live/build.sh qemu
 ./live/build.sh hardware
+# On an ARM64 host:
+./live/build.sh qemu arm64
+./live/build.sh hardware arm64
 ```
 
 Output goes to `live/out/`. Each ISO has its own SHA256 file, package/source
 version manifest and resolved kernel configuration. `OUT=/path` changes the
 output directory. A normal build does not need additional CA certificates.
+Release uploads split only images exceeding GitHub's 2 GiB per-file limit;
+the workflow artifact and local build retain the complete ISO. Download all
+`.iso.partNN` files for one image and follow `READ-SPLIT-ISOS.txt` to reconstruct
+and verify it before booting or writing to USB. Smaller images stay as `.iso`.
 If a build network requires a private CA, set `MNOS_BUILD_CA_BUNDLE` to a PEM
 bundle containing its CA and the normal public roots. BuildKit mounts this bundle
 only during dependency downloads; it is never copied into an image layer.
@@ -151,11 +159,13 @@ The default VirtIO display uses software rendering. `GPU=virgl` requests VirGL;
 it requires a working host OpenGL stack and a QEMU build with GTK/OpenGL. This
 optional accelerated host path has not been validated in the headless build
 environment. The native entry uses only the adapter's DISPI 2D interface.
-Both ISOs have BIOS and UEFI boot paths and an appended EFI partition for USB
-booting. The Linux signed EFI chain uses Debian shim/GRUB/kernel, not mnOS-owned keys.
+The x86_64 ISOs have BIOS and UEFI paths; ARM64 uses UEFI. All have an appended
+EFI partition for USB booting on suitable firmware. The Linux signed EFI chain
+uses Debian shim/GRUB/kernel, not mnOS-owned keys.
 The unsigned **native kernel requires Secure Boot to be off**. Linux is the
 default entry; select the native entry to explore its UI and isolation tests.
-Installed systems retain both entries, with Linux first.
+Installed x86_64 systems retain both entries, with Linux first. ARM64 has no
+original-kernel menu entry yet. See [HARDWARE.md](HARDWARE.md) before using an SBC.
 
 To use an ISO on a physical PC, write it to a spare USB drive with an image
 writer, selecting the correct target. The image writer erases that USB drive.
@@ -171,9 +181,9 @@ considered tested merely because its driver is present.
 
 ```sh
 python3 -m unittest discover -s live/tests -p 'test_*.py'
-python3 live/tests/check_kernel.py live/out/kernel-qemu.config
+python3 live/tests/check_kernel.py live/out/kernel-qemu-amd64.config
 docker run --rm --init --network none -v "$PWD/live/tests:/tests:ro" \
-    mnos-live:qemu timeout 120s xvfb-run -a dbus-run-session -- python3 /tests/gui_smoke.py
+    mnos-live:qemu-amd64 timeout 120s xvfb-run -a dbus-run-session -- python3 /tests/gui_smoke.py
 ```
 
 In a booted guest:
@@ -195,7 +205,7 @@ tests. Hardware driver coverage and actual hardware validation are distinct.
 
 Original integration code is GPL-3.0-or-later. The system includes third-party
 packages with their own licenses; each package retains its
-`/usr/share/doc/<package>/copyright`. `packages-<profile>.tsv` records source package
+`/usr/share/doc/<package>/copyright`. `packages-<profile>-<arch>.tsv` records source package
 names and versions. Enable matching Debian `deb-src` repositories to retrieve
 corresponding sources with `apt-get source source-package=source-version`;
 historical versions can be located at <https://snapshot.debian.org/>.

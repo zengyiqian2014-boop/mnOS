@@ -76,7 +76,9 @@ MNFS 有本地会话访问检查，尚无磁盘 POSIX ACL、加密或成熟修�
 --------
 qemu：包含 VirtIO 内核驱动、QEMU Guest Agent、SPICE 桌面集成。
 hardware：增加 Intel/AMD 微码、常见无线网卡和 GPU 固件、蓝牙工具。
-两者都支持 x86_64 BIOS 与 UEFI，均提供同一个图形安装器。
+x86_64 的两版支持 BIOS 与 UEFI，含自研内核和 Linux 双启动；ARM64 的两版
+使用 UEFI，目前仅含 Linux 环境。四版使用相同图形安装器与自研 C/C++ 工具。
+ARM64 开发板还需要对应型号的启动固件和设备树，通用 ISO 不保证直接启动。
 启动菜单和安装后的菜单均保留两个入口，默认进入 Linux 工具环境。
 自研内核尚未签名，需要关闭 Secure Boot；Linux 入口使用 Debian 签名链。
 ARM、32 位机器及所有具体硬件组合不在本次验证范围内。

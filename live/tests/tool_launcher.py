@@ -4,12 +4,19 @@
 import hashlib
 import json
 from pathlib import Path
+import platform
 import subprocess
 
 def main():
+    machine = {'x86_64': 62, 'aarch64': 183}[platform.machine()]
     for binary in ('/usr/bin/mnos-center', '/usr/bin/mnos-tools', '/usr/lib/mnos/first-boot',
-                   '/usr/lib/mnos/wallpaper', '/usr/sbin/mnos-network-policy'):
-        assert Path(binary).read_bytes()[:4] == b'\x7fELF', binary
+                   '/usr/lib/mnos/wallpaper', '/usr/sbin/mnos-network-policy',
+                   '/usr/bin/kernel', '/usr/sbin/mnos-kernel-admin', '/usr/lib/mnos/net-admin',
+                   '/usr/bin/mnfs'):
+        with Path(binary).open('rb') as executable:
+            header = executable.read(20)
+        assert header[:6] == b'\x7fELF\x02\x01', binary
+        assert int.from_bytes(header[18:20], 'little') == machine, binary
     catalog = json.loads(Path('/usr/share/mnos/tools.json').read_text())
     assert len(catalog) >= 120
     nmap = next(x for x in catalog if x['name'] == 'Nmap')

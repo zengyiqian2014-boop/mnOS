@@ -46,6 +46,8 @@ kernel help -cn
 
 每个 ISO 随附 `.sha256`、软件包清单、Linux 内核配置、设备树清单和源码提交号。x86_64 支持 BIOS/UEFI，ARM64 使用 UEFI；**自研内核需要关闭 Secure Boot**，Linux 入口保留 Debian 签名链。ARM64 Secure Boot 尚未验证。
 
+若完整硬件 ISO 超过 GitHub 单文件 2 GiB 限制，发布页提供 `.iso.partNN` 分片、分片及完整镜像校验文件。按 `READ-SPLIT-ISOS.txt` 合并后再验证和使用；不会为了上传限制删掉硬件固件。未超过限制的版本直接下载 `.iso`。
+
 Linux 第一次启动创建本地管理员，无默认密码。Live 文件、账号和设置在关机后丢失，长期使用需安装或另行保存。原生没有 MNFS 磁盘时账号仅本次启动有效；有磁盘时，登录后可在个人目录持久写入。两套环境的账号和存储相互独立。
 
 发布流程检查原生密码算法、权限与文件持久化、BIOS/UEFI、SMP/隔离、33 TiB 地址、文件系统故障注入、双语帮助和显示设置，并检查 Linux 普通用户/管理权限、网络授权及撤销、多语言程序编译运行、桌面组件和两种 ISO 的 BIOS/UEFI/Secure Boot 启动。详细结果见 `live/VALIDATION.md` 与构建 artifacts。

@@ -34,13 +34,14 @@ The bin command dispatches changes to /usr/sbin/mnos-kernel-admin, which checks
 root credentials itself. Neither executable is setuid or elevates automatically.
 "help cd" still opens Bash's built-in command documentation.
 File editing, applications, project builds and personal desktop settings run as
-your normal user. C/C++, Python/venv, Node.js/npm, Go, Rust/Cargo and Java are included.
+your normal user. C/C++, Node.js/npm, Go, Rust/Cargo and Java are included.
 Installation can optionally authorize your account for NET_ADMIN/NET_RAW via
 mnos-net nmap|tcpdump|ip|tc|iw. The default requires sudo for privileged network
 operations; ordinary networking and nmap -sT do not need root.
 
-The boot menu offers two independent environments: the original experimental
-mnOS kernel and this Linux desktop. Native commands include kernel info, kernel
+On x86_64 the boot menu offers two independent environments: the original
+experimental mnOS kernel and this Linux desktop. ARM64 currently provides the
+Linux desktop; the original kernel has not been ported. Native commands include kernel info, kernel
 memory, kernel cpu, kernel gpu, fs, ls, cat, write and snapshot. The native F7
 page changes supported QEMU display modes and wallpaper. Native accounts are
 created on first boot and saved on an attached MNFS disk (otherwise temporary).
@@ -79,11 +80,12 @@ Firefox、CTF 工具和系统工具可从应用菜单打开。Python 保留，�
 /usr/sbin/mnos-kernel-admin，后者自行检查 root 身份。两者均无 setuid，
 不会自动提权。help cd 仍可查看 Bash 内建命令说明。
 编辑个人文件、启动应用、编译项目和个人桌面设置都以普通用户运行。
-包含 C/C++、Python/venv、Node.js/npm、Go、Rust/Cargo 和 Java 工具链。
+包含 C/C++、Node.js/npm、Go、Rust/Cargo 和 Java 工具链。
 安装时可选通过 mnos-net 向本账号开放 NET_ADMIN/NET_RAW，支持 nmap、tcpdump、
 ip、tc、iw。默认特权网络操作需要 sudo；普通联网和 nmap -sT 不需要 root。
 
-启动菜单中的自研内核和 Linux 桌面是两个独立环境。原生内核支持 kernel info、
+x86_64 启动菜单中的自研内核和 Linux 桌面是两个独立环境；ARM64 目前提供
+Linux 桌面，自研内核尚未移植。原生内核支持 kernel info、
 kernel memory、kernel cpu、kernel gpu，以及 fs、ls、cat、write、snapshot。
 原生首次启动创建普通用户及 root 密码；账号保存在已挂载的 MNFS 磁盘，无磁盘
 时只在本次启动有效。su 切换 root，exit 返回，passwd 改密码，logout 锁定。

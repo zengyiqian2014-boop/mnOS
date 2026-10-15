@@ -1,5 +1,33 @@
 # Validation record
 
+## Current desktop interaction checks
+
+On 2026-10-15, the updated C++ binaries and packaged desktop assets were tested
+inside an x86_64 QEMU development VM at 1920×1080. This was a development image
+with the new components copied in, not a claim about an untested release ISO.
+
+- Ordinary-account login and lock/unlock succeeded.
+- The top-left compiled menu showed themed icons and categorized applications.
+- Typing `nmap` and immediately pressing Enter opened an actual terminal running
+  `/usr/bin/nmap --help`. A delayed search-signal race was fixed and a C++
+  self-test now covers filtering before Enter.
+- Official VS Code 1.141.2 opened as the ordinary account with Electron sandbox
+  enabled. A C++ file was typed into the GUI, saved with Ctrl+S, verified as owned
+  by that user, then compiled with g++ and executed as the same user.
+- The current VS Code package renamed its desktop file to
+  `com.microsoft.VSCode.desktop`; panel, menu favorites and checks now accept
+  that ID as well as the older `code.desktop`.
+- The compiled enrollment PTY test passed cancellation, invalid account names,
+  hidden passwords, password hashing, mode-0600 marker and idempotence. The
+  service disables core dumps to reduce accidental password disclosure.
+- Network capability tests passed ordinary networking, explicit delegation,
+  outsider denial, allowed-tool enforcement and revocation.
+
+The ARM64 build and boot matrix is new. Physical ARM64 boards and ARM Secure
+Boot have not been validated; see `HARDWARE.md`. Workflow artifacts record
+architecture-specific results. A driver configuration check is not a hardware
+compatibility certification.
+
 ## Native kernel
 
 Tested locally under QEMU TCG on 2026-10-15:

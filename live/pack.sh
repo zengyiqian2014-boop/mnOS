@@ -155,6 +155,5 @@ xorriso -as mkisofs -r -J -joliet-long -V "MNOS_${PROFILE^^}" \
     -o "/out/$name.iso" "$ISO"
 cd /out
 sha256sum "$name.iso" > "$name.iso.sha256"
-test "$(stat -c %s "$name.iso")" -lt 2147483648 || { echo 'ISO exceeds the release asset limit.' >&2; exit 1; }
 chown "$BUILD_UID:$BUILD_GID" "$name.iso" "$name.iso.sha256" "packages-$PROFILE-$ARCH.tsv" \
     "kernel-$PROFILE-$ARCH.config" "source-$PROFILE-$ARCH.txt" "device-trees-$PROFILE-$ARCH.txt"
