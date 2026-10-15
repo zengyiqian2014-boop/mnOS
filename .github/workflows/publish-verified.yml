@@ -1,0 +1,59 @@
+name: Publish previously verified desktop artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run:
+        description: Completed desktop workflow run with every build/check job successful
+        type: string
+        required: true
+      release_tag:
+        description: Preview tag matching the artifacts' source commit
+        type: string
+        required: true
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: publish-${{ inputs.release_tag }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify original build results and source identity
+        id: verified
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_RUN: ${{ inputs.source_run }}
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]] || exit 2
+          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN" > /tmp/mnos-source-run.json
+          jq -e --arg repo "$GH_REPO" '.status == "completed" and .head_repository.full_name == $repo and .path == ".github/workflows/desktop.yml"' /tmp/mnos-source-run.json
+          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN/jobs?filter=latest&per_page=100" > /tmp/mnos-source-jobs.json
+          jq -e --argjson names '["native", "build (qemu, amd64)", "build (hardware, amd64)", "build (qemu, arm64)", "build (hardware, arm64)"]' \
+            '.jobs as $jobs | all($names[]; . as $name | any($jobs[]; .name == $name and .conclusion == "success"))' /tmp/mnos-source-jobs.json
+          source_sha=$(jq -r .head_sha /tmp/mnos-source-run.json)
+          [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]] || exit 2
+          echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+          pattern: mnOS-*
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.source_run }}
+      - name: Stage and publish the original checked binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.release_tag }}
+          SOURCE_SHA: ${{ steps.verified.outputs.source_sha }}
+        run: bash live/publish.sh release "$TAG" "$SOURCE_SHA"

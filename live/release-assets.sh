@@ -15,6 +15,16 @@ split_images=0
 for path in "$SOURCE"/*; do
     test -f "$path" || continue
     name=${path##*/}
+    # GitHub rejects zero-byte release assets. An empty device-tree inventory
+    # is normal on ACPI platforms; preserve that meaning in a readable report.
+    if ! test -s "$path"; then
+        case "$name" in
+            device-trees-*.txt)
+                printf '# No device-tree files were packaged in this image.\n' > "$DEST/$name"
+                continue ;;
+            *) echo "Unexpected empty release asset: $name" >&2; exit 1 ;;
+        esac
+    fi
     if [[ "$name" = *.iso ]] && (( $(stat -c %s "$path") > LIMIT )); then
         split -b "$CHUNK" -d -a 2 -- "$path" "$DEST/$name.part"
         (cd "$DEST" && sha256sum -- "$name".part[0-9][0-9]) > "$DEST/$name.parts.sha256"

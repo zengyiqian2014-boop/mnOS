@@ -19,6 +19,7 @@ class ReleaseAssetsTests(unittest.TestCase):
                 (root / name).write_bytes(data)
                 (root / (name + '.sha256')).write_text(hashlib.sha256(data).hexdigest() + '  ' + name + '\n')
             env = {**os.environ, 'MNOS_RELEASE_MAX_BYTES': '128', 'MNOS_RELEASE_CHUNK_BYTES': '100'}
+            (root / 'device-trees-qemu-amd64.txt').touch()
             subprocess.run(['bash', str(SCRIPT), directory], env=env, check=True, capture_output=True)
             output = root / 'publish'
             self.assertFalse((output / 'large.iso').exists())
@@ -26,6 +27,9 @@ class ReleaseAssetsTests(unittest.TestCase):
             self.assertEqual(len(parts), 3)
             self.assertEqual(b''.join(part.read_bytes() for part in parts), bytes(range(256)))
             self.assertEqual((output / 'small.iso').read_bytes(), b'unchanged')
+            self.assertEqual((root / 'device-trees-qemu-amd64.txt').stat().st_size, 0)
+            self.assertIn('No device-tree files', (output / 'device-trees-qemu-amd64.txt').read_text())
+            self.assertTrue(all(path.stat().st_size for path in output.iterdir()))
             subprocess.run(['sha256sum', '--check', 'large.iso.parts.sha256'],
                            cwd=output, check=True, capture_output=True)
             result = subprocess.run(['bash', str(SCRIPT), directory], env=env, capture_output=True)
