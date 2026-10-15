@@ -1,11 +1,19 @@
 # mnOS
 
+新增：[x86_64 / ARM64 自研内核 ISO](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.2-native-preview.1)。
+这两份是 C／汇编内核启动镜像，不含 Python、Linux、Firefox 或 CTF 软件。
+ARM64 支持直启、UEFI + 设备树和 UEFI + ACPI；已实测 GICv2/v3、1/2/4/8 核、
+8 GiB 内存、VirtIO 磁盘／键盘／随机源、GOP 图形界面及断电重启后的文件和账号。
+完整应用仍在单独的 Desktop .5 镜像中；该版 ARM64 桌面 ISO 尚未集成新内核。
+[ARM64 兼容边界与复现方法](native/arch/arm64/README.md)。
+
 [下载 x86_64 / ARM64 桌面预览版](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-desktop-preview.5)
 · [启动与验证记录](live/VALIDATION.md)
 
 mnOS 将用 C 和汇编编写的 x86_64 自研内核，与独立的 Debian 13 / Linux 6.12
 LTS 桌面放在 x86_64 ISO 中。x86_64 与 ARM64 各有 QEMU 和硬件版；ARM64 面向
-通用 UEFI，目前提供 Linux 工具环境，自研内核尚未移植到 ARM64。
+通用 UEFI。Desktop .5 的 ARM64 镜像提供 Linux 工具环境；新移植的 ARM64 自研内核
+通过上方独立启动 ISO 发布。
 型号与验证范围见[硬件矩阵](live/HARDWARE.md)。原生入口用于
 内核和文件系统开发；Linux 入口用于 Firefox、CTF、Wi-Fi 和日常系统管理。
 

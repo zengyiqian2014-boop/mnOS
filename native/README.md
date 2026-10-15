@@ -1,7 +1,10 @@
 # mnOS native kernel
 
-An experimental x86_64 kernel written in freestanding C and assembly. GRUB
-Multiboot2 enters this kernel directly; Linux does not run underneath it.
+An experimental x86_64 and ARM64 kernel written in freestanding C and assembly.
+GRUB Multiboot2 enters the x86 kernel; ARM64 supports direct FDT boot and UEFI
+with FDT or ACPI. Linux does not run underneath either kernel. See the
+[ARM64 build, tests and compatibility limits](arch/arm64/README.md).
+The implemented list below describes x86 unless stated otherwise.
 The GNU toolchain, GRUB and Noto font are external components. Original code is
 GPL-3.0-or-later; the font license is in `assets/FONT-LICENSE.txt`.
 

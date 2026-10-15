@@ -302,3 +302,14 @@ void reboot(void) {
     for (;;)
         __asm__ volatile("hlt");
 }
+
+bool arch_random(uint8_t *out,size_t n) {
+    uint32_t a,b,c,d;cpuid(1,0,&a,&b,&c,&d);if(!(c&(1u<<30)))return false;
+    while(n) {
+        uint64_t value=0;unsigned char ok=0;
+        for(unsigned retry=0;retry<100&&!ok;++retry)__asm__ volatile("rdrand %0; setc %1":"=r"(value),"=qm"(ok));
+        if(!ok)return false;
+        size_t take=n<8?n:8;memcpy(out,&value,take);out+=take;n-=take;
+    }
+    return true;
+}

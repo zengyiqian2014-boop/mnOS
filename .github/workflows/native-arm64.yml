@@ -1,0 +1,41 @@
+name: Original ARM64 kernel
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, feature/native-arm64]
+    paths: ['native/**', '.github/workflows/native-arm64.yml']
+  pull_request:
+    paths: ['native/**', '.github/workflows/native-arm64.yml']
+permissions:
+  contents: read
+jobs:
+  boot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build isolated cross compiler and QEMU environment
+        run: docker build -t mnos-arm-builder -f native/arch/arm64/Builder.Dockerfile .
+      - name: Compile and test original ARM64 kernel without Python
+        run: |
+          docker run --rm --network none -v "$PWD/native:/native" -w /native mnos-arm-builder bash -c '
+            set -euo pipefail
+            make -f arch/arm64/Makefile -j4 all build/arm64/BOOTAA64-TEST.EFI
+            make host-tools
+            sh arch/arm64/pack.sh demo
+            sh arch/arm64/pack.sh test
+            bash tests/arm64_boot.sh
+            g++ -std=c++17 -O2 -Wall -Wextra -Werror tests/arm64_console.cpp -o build/arm64/console-test
+            build/arm64/console-test /native/build/arm64
+            chmod a+r build/arm64/*.log build/arm64/*.ppm
+          '
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mnOS-native-arm64
+          path: |
+            native/build/arm64/*.iso
+            native/build/arm64/*.sha256
+            native/build/arm64/*.log
+            native/build/arm64/*.ppm
+          retention-days: 14

@@ -43,15 +43,15 @@ static bool ram_write(void *context, uint64_t block, const void *p) {
 static bool ram_flush(void *context) { (void)context; return true; }
 static bool disk_read(void *context, uint64_t block, void *p) {
     struct block_device *d = context;
-    return block < d->sectors / 8 && ata_read(d, block * 8, 8, p);
+    return block < d->sectors / 8 && block_read(d, block * 8, 8, p);
 }
 static bool disk_write(void *context, uint64_t block, const void *p) {
     struct block_device *d = context;
-    return block < d->sectors / 8 && ata_write(d, block * 8, 8, p);
+    return block < d->sectors / 8 && block_write(d, block * 8, 8, p);
 }
-static bool disk_flush(void *context) { return ata_flush(context); }
+static bool disk_flush(void *context) { return block_flush(context); }
 void files_init(void) {
-    unsigned count = ata_discover(disks, ARRAY_SIZE(disks));
+    unsigned count = block_discover(disks, ARRAY_SIZE(disks));
     size_t pool = 8u << 20;
     for (unsigned i = 0; i < count; ++i) {
         uint64_t maps = (disks[i].sectors / 8 + 7) / 8 * 2;
@@ -62,7 +62,7 @@ void files_init(void) {
     struct mnfs_io io = {NULL, RAM_BLOCKS, ram_read, ram_write, ram_flush, allocate, release};
     if (mnfs_format(&ram, &io) || mnfs_create(&ram, "/home", true) ||
         mnfs_create(&ram, "/home/readme.txt", false)) panic("RAM filesystem initialization");
-    const char *readme = "mnOS MNFS v1\n/ram is temporary. /disk persists on an existing MNFS ATA image.\n"
+    const char *readme = "mnOS MNFS v1\n/ram is temporary. /disk persists on an existing MNFS block image.\n"
         "64-bit sizes, sparse files, CoW B-tree, CRC32C, two checkpoints and one saved snapshot.\n";
     if (mnfs_write(&ram, "/home/readme.txt", 0, readme, strlen(readme))) panic("RAM filesystem write");
     char probe[16]; size_t got;
@@ -77,7 +77,7 @@ void files_init(void) {
         int error = mnfs_mount(&disk, &io, false);
         if (!error) { disk_present = true; log_write("FILESYSTEM: /disk validated read-only; sign in for authorized writes\n"); }
     }
-    if (!disk_present) log_write("FILESYSTEM: /ram ready; no mountable MNFS ATA disk\n");
+    if (!disk_present) log_write("FILESYSTEM: /ram ready; no mountable MNFS block disk\n");
     accounts_init();
 }
 static int make_directory(struct mnfs *f,const char *path) {
@@ -116,18 +116,8 @@ static int accounts_save(const struct auth_database *db) {
     if(!e)e=mnfs_write(&disk,"/system/accounts.bin",0,db,sizeof *db);
     disk.writable=!disk.poisoned&&(was||!disk_locked);return e?-1:0;
 }
-static bool random_salt(uint8_t *out,size_t n) {
-    uint32_t a,b,c,d;cpuid(1,0,&a,&b,&c,&d);if(!(c&(1u<<30)))return false;
-    while(n) {
-        uint64_t value=0;unsigned char ok=0;
-        for(unsigned retry=0;retry<100&&!ok;++retry)__asm__ volatile("rdrand %0; setc %1":"=r"(value),"=qm"(ok));
-        if(!ok)return false;
-        size_t take=n<8?n:8;memcpy(out,&value,take);out+=take;n-=take;
-    }
-    return true;
-}
 static void accounts_init(void) {
-    struct auth_io io={accounts_load,accounts_save,random_salt,disk_present};auth_init(&io);
+    struct auth_io io={accounts_load,accounts_save,arch_random,disk_present};auth_init(&io);
 }
 void files_session(void) {
     if(!auth_logged_in())return;

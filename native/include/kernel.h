@@ -5,13 +5,22 @@
 #include <stddef.h>
 #include <stdint.h>
 #define PAGE 4096ULL
+#ifdef __aarch64__
+#define MNOS_ARCH "aarch64"
+#define USER_BASE 0x700000000000ULL
+#else
+#define MNOS_ARCH "x86_64"
 #define USER_BASE 0x100000000ULL
+#endif
 #define USER_DATA (USER_BASE + PAGE)
 #define USER_STACK (USER_BASE + 4 * PAGE)
 #define MAX_TASKS 8
 #define SELFTEST_COUNT 8
 #define PIT_HZ 100
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#ifdef __aarch64__
+#include "../arch/arm64/primitives.h"
+#else
 static inline uint64_t spin_lock(unsigned *lock) {
     uint64_t flags;
     __asm__ volatile("pushfq; popq %0; cli" : "=r"(flags) :: "memory");
@@ -50,6 +59,8 @@ static inline void cpuid(uint32_t leaf, uint32_t sub, uint32_t *a, uint32_t *b, 
                          uint32_t *d) {
     __asm__ volatile("cpuid" : "=a"(*a), "=b"(*b), "=c"(*c), "=d"(*d) : "a"(leaf), "c"(sub));
 }
+#endif
+bool arch_random(uint8_t *, size_t);
 void *memset(void *, int, size_t);
 void *memcpy(void *, const void *, size_t);
 int memcmp(const void *, const void *, size_t);
@@ -89,10 +100,14 @@ extern uint64_t kernel_pml4;
 extern char cpu_brand[49];
 extern unsigned pci_count;
 extern bool cpu_smep, cpu_smap;
+#ifdef __aarch64__
+struct irq_frame { uint64_t x[31], sp, pc, psr; };
+#else
 struct irq_frame {
     uint64_t r15, r14, r13, r12, r11, r10, r9, r8, rbp, rdi, rsi, rdx, rcx, rbx, rax;
     uint64_t vector, error, rip, cs, rflags, rsp, ss;
 };
+#endif
 struct task {
     struct irq_frame frame;
     uint64_t cr3, code, data, stack;
@@ -110,6 +125,9 @@ struct tss64 {
 struct cpu {
     struct cpu *self, *next;
     uint32_t apic_id;
+#ifdef __aarch64__
+    uint64_t hardware_id;
+#endif
     uint64_t index;
     volatile unsigned online, completed;
     uint64_t clock_ticks, idle_wakes, probe_counts[2];
@@ -122,7 +140,11 @@ struct cpu {
 };
 static inline struct cpu *cpu_this(void) {
     struct cpu *cpu;
+#ifdef __aarch64__
+    __asm__ volatile("mrs %0,tpidr_el1" : "=r"(cpu));
+#else
     __asm__ volatile("movq %%gs:0,%0" : "=r"(cpu));
+#endif
     return cpu;
 }
 #define ticks (cpu_this()->clock_ticks)

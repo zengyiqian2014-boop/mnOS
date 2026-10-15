@@ -241,7 +241,7 @@ static void kernel_command(const char *cmd) {
     if (!*cmd || streq(cmd, "help")) help(false);
     else if (streq(cmd, "help -cn")) help(true);
     else if (streq(cmd, "info")) {
-        add_line("mnOS native / x86_64 / original C + assembly kernel");
+        add_line("mnOS native / " MNOS_ARCH " / original C + assembly kernel");
         add_line(cpu_brand); add_number("Online CPUs: ", cpu_online_count());
     } else if (streq(cmd, "cpu")) {
         add_line(cpu_brand); add_number("Discovered CPUs: ", cpu_count());
@@ -285,7 +285,7 @@ static void execute(void) {
     else if (streq(command, "kernel")) kernel_command("");
     else if (!strncmp(command, "kernel ", 7)) kernel_command(command + 7);
     else if (streq(command, "uname"))
-        add_line("mnOS native 0.1 / x86_64 / freestanding C + assembly");
+        add_line("mnOS native 0.1 / " MNOS_ARCH " / freestanding C + assembly");
     else if (streq(command, "mem")) {
         add_number("Free physical pages: ", pages_free());
         add_number("Usable physical pages: ", pages_total());
@@ -352,7 +352,7 @@ static void draw(void) {
         text(29, y + 8, names[i], 18, (int)i == page ? ACCENT : MUTED);
     }
     text(25, height - 71, "F1—F7 切换页面", 18, MUTED);
-    text(25, height - 43, "x86_64 / 实验版", 18, MUTED);
+    text(25, height - 43, MNOS_ARCH " / 实验版", 18, MUTED);
     int x = sidebar + 30, w = width - sidebar - 60;
     text(x, 28, names[page], 28, FG);
     text(x, 71, "mnOS 自研内核", 18, MUTED);
@@ -371,7 +371,11 @@ static void draw(void) {
         line(x, 324, w, "处理器", cpu_brand);
         line(x, 368, w, "调度", "多核抢占式 / 每核 100 Hz");
         line(x, 412, w, "内存保护", "用户态隔离 · W^X · NX");
+#ifdef __aarch64__
+        line(x, 456, w, "显示与输入", "GOP / VirtIO / PL011");
+#else
         line(x, 456, w, "显示与输入", "帧缓冲 · PS/2 · 串口");
+#endif
         rounded(x, 527, w, 78, 0x23332f);
         text(x + 18, 541, "这是原生内核的早期版本。", 18, ACCENT);
         text(x + 18, 570, "浏览器、CTF 与 Wi-Fi 在 Linux 工具环境中运行。", 18, MUTED);
@@ -392,7 +396,11 @@ static void draw(void) {
         text(x, 498, "此处显示启动核的两个进程；其他核拥有独立进程和页表。", 18, MUTED);
         text(x, 536, "内核数据不可从用户态读取，代码页不可写入。", 18, MUTED);
     } else if (page == 2) {
+#ifdef __aarch64__
+        text(x, 139, "VirtIO MMIO", 18, FG);
+#else
         text(x, 139, "PCI 设备枚举", 18, FG);
+#endif
         numeric(x + w - 45, 139, pci_count, 18, ACCENT);
         for (unsigned i = 0; i < pci_count && i < 9; ++i) {
             char row[100];
@@ -412,8 +420,12 @@ static void draw(void) {
             text(x + 16, y + 5, checks[i], 18, FG);
             text(x + w - 70, y + 5, test_passed == SELFTEST_COUNT ? "通过" : "自检中", 18, ACCENT);
         }
+#ifdef __aarch64__
+        text(x, 521, "EL0 / EL1 · W^X · PXN / UXN", 18, MUTED);
+#else
         text(x, 521, cpu_smep ? "SMEP 已启用" : "CPU 未提供 SMEP", 18, MUTED);
         text(x + w / 2, 521, cpu_smap ? "SMAP 已启用" : "CPU 未提供 SMAP", 18, MUTED);
+#endif
         text(x, 570, "当前结果仅覆盖启动自检，仍需持续测试与安全审计。", 18, MUTED);
     } else if (page == 4) {
         rounded(x, 135, w, height - 175, 0x10171e);

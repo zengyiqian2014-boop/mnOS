@@ -5,19 +5,22 @@
 [Download the x86_64 / ARM64 desktop preview](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-desktop-preview.5)
 · [Boot and validation record](live/VALIDATION.md)
 
-mnOS combines an original x86_64 C/assembly kernel with a separate Debian 13 /
-Linux 6.12 LTS desktop in the x86_64 bootable ISO. QEMU and hardware profiles are
-also built for ARM64 UEFI, using the Linux environment; the original kernel is
-currently x86_64 only. See the [architecture and board matrix](live/HARDWARE.md).
-Choose the native entry to explore the kernel and filesystem, or
-Linux for Firefox, CTF tools, Wi-Fi and daily system administration.
+mnOS has an original C/assembly kernel for **x86_64 and ARM64**, plus a separate
+Debian 13 / Linux 6.12 LTS desktop for Firefox, CTF tools and common hardware.
+[Download the two native-kernel ISOs](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.2-native-preview.1)
+and see the [ARM64 boot and compatibility record](native/arch/arm64/README.md).
+These small native ISOs contain no Python or Linux environment. Desktop preview
+.5 remains a separate release: its x86 ISO includes the older native entry;
+its ARM64 ISO is Linux-only. The new ARM kernel is supplied by the native release.
 
 | Environment | Current capabilities |
 | --- | --- |
 | [Original native kernel](native/README.md) | Local account authentication, user/root permissions, dynamic SMP, sparse memory up to 64 TiB, MNFS CoW filesystem, graphical console and personal display settings |
 | [Linux desktop](live/README.md) | Xfce, official VS Code, nano, Firefox ESR, C/C++/Node.js/Go/Rust/Java, CTF tools, optional network delegation, system settings and common drivers |
 
-The native kernel has passed 32-vCPU and 33-TiB sparse-memory QEMU tests. It is
+The x86 native kernel has passed 32-vCPU and 33-TiB sparse-memory QEMU tests.
+The ARM64 port has passed 1/2/4/8-CPU, GICv2/v3, direct, UEFI/FDT and UEFI/ACPI
+boots, including an 8-GiB guest with reads/writes above 4 GiB. It is
 experimental: these are addressability and functional checks, not unlimited
 hardware support, production storage guarantees or performance certification.
 See [validation](live/VALIDATION.md), [MNFS format](native/FILESYSTEM.md) and

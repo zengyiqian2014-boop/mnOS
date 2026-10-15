@@ -13,10 +13,10 @@ static bool wait_ready(struct block_device *d, bool data) {
     }
     return false;
 }
-unsigned ata_discover(struct block_device *devices, unsigned capacity) {
+unsigned block_discover(struct block_device *devices, unsigned capacity) {
     unsigned count = 0;
     for (unsigned channel = 0; channel < 2; ++channel) for (unsigned slave = 0; slave < 2; ++slave) {
-        struct block_device d = {channel ? 0x170 : 0x1f0, channel ? 0x376 : 0x3f6, slave, false, 0};
+        struct block_device d = {0, channel ? 0x170 : 0x1f0, channel ? 0x376 : 0x3f6, slave, false, 0};
         outb(d.control, 2); /* Polling only, no IRQ14/15 handler. */
         outb(d.port + 6, 0xa0 | (slave << 4)); settle(&d);
         if (!inb(d.port + 7) || inb(d.port + 7) == 255) continue;
@@ -57,9 +57,9 @@ static bool transfer(struct block_device *d, uint64_t lba, unsigned count, void 
     }
     settle(d); return wait_ready(d, false);
 }
-bool ata_read(struct block_device *d, uint64_t lba, unsigned n, void *p) { return transfer(d, lba, n, p, false); }
-bool ata_write(struct block_device *d, uint64_t lba, unsigned n, const void *p) { return transfer(d, lba, n, (void *)p, true); }
-bool ata_flush(struct block_device *d) {
+bool block_read(struct block_device *d, uint64_t lba, unsigned n, void *p) { return transfer(d, lba, n, p, false); }
+bool block_write(struct block_device *d, uint64_t lba, unsigned n, const void *p) { return transfer(d, lba, n, (void *)p, true); }
+bool block_flush(struct block_device *d) {
     outb(d->port + 6, 0xe0 | (d->drive << 4)); settle(d);
     if (!wait_ready(d, false)) return false;
     outb(d->port + 7, d->lba48 ? 0xea : 0xe7); settle(d);
