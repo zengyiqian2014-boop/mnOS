@@ -18,7 +18,7 @@ while IFS= read -r -d '' file; do
 done < <(cd /source/overlay && find . -type f -print0)
 chmod 755 "$ROOT/usr/lib/mnos/first-boot" "$ROOT/usr/lib/mnos/wallpaper" \
     "$ROOT/usr/bin/mnos-center" "$ROOT/usr/bin/mnos-security-check" "$ROOT/usr/bin/mnos-help" \
-    "$ROOT/usr/bin/mnos-net" "$ROOT/usr/sbin/mnos-network-policy"
+    "$ROOT/usr/bin/mnos-net" "$ROOT/usr/sbin/mnos-network-policy" "$ROOT/usr/bin/mnos-tools"
 chmod 440 "$ROOT/etc/sudoers.d/50-mnos"
 chmod 644 "$ROOT/usr/share/backgrounds/mnos/default.svg"
 printf '%s\n' "${SOURCE_COMMIT:?}" > "$ROOT/etc/mnos/source-commit"

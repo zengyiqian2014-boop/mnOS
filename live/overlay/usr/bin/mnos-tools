@@ -1,0 +1,204 @@
+#!/usr/bin/python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Search installed applications and the curated command-line tool catalog."""
+import json
+from pathlib import Path
+import shlex
+import shutil
+import subprocess
+import sys
+
+import gi
+gi.require_version('Gtk', '3.0')
+gi.require_version('Gdk', '3.0')
+from gi.repository import Gdk, Gio, GLib, Gtk, Pango
+
+CATEGORIES = ('全部', '常用应用', '系统设置', '开发编程', '网络工具',
+              '逆向与调试', 'Web 与密码工具', '取证与文件', '系统工具')
+CATALOG = Path('/usr/share/mnos/tools.json')
+
+
+def installed_tools():
+    entries = []
+    commands = set()
+    for tool in json.loads(CATALOG.read_text()):
+        # Hardware-only tools and locally removed packages are not dead links.
+        executable = shutil.which(tool['command'][0], path='/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin')
+        if executable:
+            entries.append(dict(tool, command=[executable, *tool['command'][1:]], app=None))
+            commands.add(tool['command'][0])
+    for app in Gio.AppInfo.get_all():
+        if not app.should_show() or app.get_id() == 'mnos-tools.desktop':
+            continue
+        if Path(app.get_executable() or '').name in commands:
+            continue
+        categories = set((app.get_categories() or '').split(';')) if isinstance(app, Gio.DesktopAppInfo) else set()
+        name = app.get_display_name()
+        category = ('系统设置' if categories & {'Settings', 'HardwareSettings', 'SystemSettings'}
+                    else '开发编程' if 'Development' in categories else '常用应用')
+        if app.get_id() in ('gparted.desktop', 'org.gnome.DiskUtility.desktop', 'mnos-admin.desktop', 'mnos-center.desktop'):
+            category = '系统设置'
+        entries.append({'name': name, 'category': category, 'icon': app.get_icon(),
+                        'description': app.get_description() or name,
+                        'command': [], 'app': app})
+    return sorted(entries, key=lambda item: (item['category'], item['name'].casefold()))
+
+
+def search_text(tool):
+    extra = ''
+    if tool['app']:
+        extra = ' '.join((tool['app'].get_id() or '', tool['app'].get_executable() or ''))
+    return ' '.join((tool['name'], tool['category'], tool['description'],
+                     ' '.join(tool['command']), extra)).casefold()
+
+
+def matches(tool, category, query):
+    return (category == '全部' or tool['category'] == category) and all(
+        word in search_text(tool) for word in query.casefold().split())
+
+
+class Tools(Gtk.Application):
+    def __init__(self):
+        super().__init__(application_id='org.mnos.Tools')
+        self.window = None
+        self.category = '全部'
+        self.rows = []
+
+    def do_activate(self):
+        if self.window:
+            self.window.present()
+            self.search.grab_focus()
+            return
+        self.window = Gtk.ApplicationWindow(application=self, title='应用与工具')
+        self.window.set_default_size(920, 650)
+        self.window.set_icon_name('edit-find')
+        self.window.move(12, 52)
+        self.window.connect('key-press-event', self.key_press)
+        shell = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        for side in ('top', 'bottom', 'start', 'end'):
+            getattr(shell, 'set_margin_' + side)(18)
+        self.window.add(shell)
+        self.search = Gtk.SearchEntry(placeholder_text='搜索工具名称、命令或功能…')
+        self.search.connect('search-changed', lambda _entry: self.filter_rows())
+        self.search.connect('activate', self.open_first)
+        shell.pack_start(self.search, False, False, 0)
+        body = Gtk.Box(spacing=16)
+        shell.pack_start(body, True, True, 0)
+        sidebar = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE)
+        sidebar.set_size_request(170, -1)
+        for name in CATEGORIES:
+            row = Gtk.ListBoxRow()
+            label = Gtk.Label(label=name, xalign=0)
+            label.set_margin_start(14)
+            label.set_margin_end(14)
+            label.set_margin_top(12)
+            label.set_margin_bottom(12)
+            row.add(label)
+            row.category = name
+            sidebar.add(row)
+        sidebar.connect('row-selected', self.select_category)
+        body.pack_start(sidebar, False, False, 0)
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        body.pack_start(scroll, True, True, 0)
+        self.listbox = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE)
+        self.listbox.set_activate_on_single_click(True)
+        self.listbox.connect('row-activated', lambda _list, row: self.launch(row.tool))
+        scroll.add(self.listbox)
+        self.status = Gtk.Label(xalign=0)
+        self.status.get_style_context().add_class('dim-label')
+        shell.pack_start(self.status, False, False, 0)
+        self.reload()
+        sidebar.select_row(sidebar.get_row_at_index(0))
+        self.monitor = Gio.AppInfoMonitor.get()
+        self.monitor.connect('changed', lambda _monitor: self.reload())
+        self.window.show_all()
+        self.filter_rows()
+        self.search.grab_focus()
+
+    def reload(self):
+        for row in self.rows:
+            self.listbox.remove(row)
+        self.rows = []
+        for tool in installed_tools():
+            row = Gtk.ListBoxRow()
+            row.tool = tool
+            line = Gtk.Box(spacing=14)
+            for side in ('top', 'bottom', 'start', 'end'):
+                getattr(line, 'set_margin_' + side)(12)
+            icon = tool['icon']
+            if not tool['app']:
+                candidates = (Path(tool['command'][0]).name, tool['name'].casefold().replace(' ', '-'), icon)
+                theme = Gtk.IconTheme.get_default()
+                icon = next((name for name in candidates if theme.has_icon(name)), 'application-x-executable')
+            image = (Gtk.Image.new_from_gicon(icon, Gtk.IconSize.DIALOG)
+                     if isinstance(icon, Gio.Icon) else
+                     Gtk.Image.new_from_icon_name(icon or 'application-x-executable', Gtk.IconSize.DIALOG))
+            image.set_pixel_size(32)
+            line.pack_start(image, False, False, 0)
+            labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+            labels.set_hexpand(True)
+            title = Gtk.Label(xalign=0)
+            title.set_markup('<b>' + GLib.markup_escape_text(tool['name']) + '</b>')
+            labels.pack_start(title, False, False, 0)
+            description = Gtk.Label(label=tool['description'], xalign=0)
+            description.set_ellipsize(Pango.EllipsizeMode.END)
+            description.set_max_width_chars(46)
+            description.get_style_context().add_class('dim-label')
+            labels.pack_start(description, False, False, 0)
+            line.pack_start(labels, True, True, 0)
+            action = Gtk.Label(label='打开应用' if tool['app'] else '终端帮助')
+            action.get_style_context().add_class('dim-label')
+            line.pack_end(action, False, False, 0)
+            row.add(line)
+            row.set_tooltip_text(tool['description'] if tool['app'] else shlex.join(tool['command']))
+            self.listbox.add(row)
+            self.rows.append(row)
+        self.listbox.show_all()
+        self.filter_rows()
+
+    def filter_rows(self):
+        query = self.search.get_text()
+        visible = []
+        for row in self.rows:
+            show = matches(row.tool, self.category, query)
+            row.set_visible(show)
+            if show:
+                visible.append(row)
+        self.listbox.select_row(visible[0] if visible else None)
+        self.status.set_text(f'{len(visible)} 项 · 命令行工具显示帮助；应用打开窗口' if visible else '没有匹配的工具。可修改搜索词或选择“全部”。')
+
+    def select_category(self, _listbox, row):
+        if row:
+            self.category = row.category
+            self.filter_rows()
+
+    def open_first(self, _entry):
+        row = self.listbox.get_selected_row()
+        if row and row.get_visible():
+            self.launch(row.tool)
+
+    def key_press(self, _window, event):
+        if event.keyval == Gdk.KEY_Escape:
+            self.window.close()
+            return True
+        return False
+
+    def launch(self, tool):
+        try:
+            if tool['app']:
+                tool['app'].launch([], self.window.get_display().get_app_launch_context())
+            else:
+                subprocess.Popen(['xfce4-terminal', '--hold', '--command', shlex.join(tool['command'])],
+                                 start_new_session=True)
+        except (OSError, GLib.Error) as error:
+            dialog = Gtk.MessageDialog(transient_for=self.window, modal=True,
+                                       message_type=Gtk.MessageType.ERROR,
+                                       buttons=Gtk.ButtonsType.CLOSE, text='无法打开工具')
+            dialog.format_secondary_text(str(error))
+            dialog.run()
+            dialog.destroy()
+
+
+if __name__ == '__main__':
+    raise SystemExit(Tools().run(sys.argv))

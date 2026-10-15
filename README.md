@@ -63,6 +63,8 @@ Separate Linux desktop and system center, captured in a development VM:
 
 ![mnOS Linux desktop](assets/linux-desktop.png)
 
+The top-left **Applications & Tools** button searches installed apps and 127 named CLI tools. CLI entries open terminal help; kernel, display, wallpaper and partition controls share **System settings**. The desktop includes a new landscape wallpaper and larger outline-rendered text.
+
 ## Legacy BusyBox edition
 
 The original build remains available separately: **Linux 6.13.3 + BusyBox + GRUB**,

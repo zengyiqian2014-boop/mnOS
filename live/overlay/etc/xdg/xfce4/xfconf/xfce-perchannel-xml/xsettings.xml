@@ -5,14 +5,15 @@
   <property name="IconThemeName" type="string" value="Papirus-Dark"/>
  </property>
  <property name="Gtk" type="empty">
-  <property name="FontName" type="string" value="Inter 10"/>
-  <property name="MonospaceFontName" type="string" value="JetBrains Mono 10"/>
+  <property name="FontName" type="string" value="Inter 11"/>
+  <property name="MonospaceFontName" type="string" value="JetBrains Mono 11"/>
   <property name="CursorThemeName" type="string" value="Adwaita"/>
   <property name="CursorThemeSize" type="int" value="24"/>
  </property>
  <property name="Xft" type="empty">
   <property name="Antialias" type="int" value="1"/>
+  <property name="Hinting" type="int" value="1"/>
   <property name="HintStyle" type="string" value="hintslight"/>
-  <property name="RGBA" type="string" value="rgb"/>
+  <property name="RGBA" type="string" value="none"/>
  </property>
 </channel>

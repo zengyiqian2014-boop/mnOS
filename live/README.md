@@ -92,7 +92,7 @@ sudo; use a Python venv or project-local dependencies. VS Code extensions are
 installed per user. These applications run in the Linux entry, not directly on
 the experimental native kernel.
 
-The system center's desktop page opens real Xfce display, wallpaper, keyboard,
+The system center's System settings page opens real Xfce display, wallpaper, keyboard,
 mouse, sound and session settings. Mesa OpenGL/Vulkan packages and diagnostic
 tools are included in both profiles. `kernel gpu` reports the bound driver;
 use `glxinfo -B` / `vulkaninfo --summary` to inspect the active renderer. Installed

@@ -79,13 +79,17 @@ TOOLS = {
     ],
 }
 
+# Kernel, display, wallpaper and other desktop preferences share one settings page.
+TOOLS['system'].extend(TOOLS.pop('desktop'))
+TOOLS['system'].insert(0, ('edit-find', '应用与工具', '搜索全部应用、分类工具及终端帮助', ['mnos-tools']))
+
 CSS = b'''
 window.mnos { background: #191e24; color: #e7edf0; font-family: Inter, "Noto Sans CJK SC", sans-serif; }
 .mnos label { color: #e7edf0; }
 .sidebar { background: #13181d; border-right: 1px solid #2a3139; }
 .brand { font-size: 28px; font-weight: 700; letter-spacing: -1px; }
-.caption { font-size: 11px; color: #7d919d; }
-.muted { color: #94a4af; font-size: 12px; }
+.caption { font-size: 12px; color: #9aacb7; }
+.muted { color: #adbdc8; font-size: 13px; }
 .page-title { font-size: 27px; font-weight: 600; }
 .section-title { font-size: 15px; font-weight: 600; }
 .nav { background: transparent; border: 0; box-shadow: none; border-radius: 7px; padding: 12px; }
@@ -97,7 +101,7 @@ window.mnos { background: #191e24; color: #e7edf0; font-family: Inter, "Noto San
 .tool { background: #222a32; border: 1px solid #323c45; box-shadow: none; border-radius: 8px; padding: 14px; }
 .tool:hover { background: #2b3740; border-color: #648b85; }
 .tool:focus { border-color: #77c8b5; }
-.tool-title { font-size: 13px; font-weight: 600; }
+.tool-title { font-size: 14px; font-weight: 600; }
 .notice { background: #233330; border: 1px solid #36554c; border-radius: 8px; padding: 14px; }
 .notice label { color: #bed9d1; }
 .detail { border-bottom: 1px solid #2d363e; padding: 10px 0; }
@@ -173,10 +177,9 @@ class Center(Gtk.Application):
         self.nav = []
         for key, title, icon in [
             ('overview', '概览', 'computer'),
-            ('system', '系统管理', 'preferences-system'),
+            ('system', '系统设置', 'preferences-system'),
             ('network', '网络与安全', 'network-wired'),
             ('ctf', 'CTF 工具', 'applications-development'),
-            ('desktop', '桌面设置', 'preferences-desktop'),
             ('about', '关于与帮助', 'help-about'),
         ]:
             button = styled(Gtk.ToggleButton(), 'nav')

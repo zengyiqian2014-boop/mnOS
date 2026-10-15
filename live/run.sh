@@ -18,8 +18,8 @@ args=(-accel "$ACCEL" -cpu "$CPU" -smp "$CPUS" -m "$MEMORY" -machine q35
       -netdev user,id=net0 -device virtio-net-pci,netdev=net0
       -device virtio-rng-pci -serial mon:stdio)
 case "${GPU:-software}" in
-    software) args+=(-device virtio-vga) ;;
-    virgl) args+=(-device virtio-vga-gl -display gtk,gl=on) ;;
+    software) args+=(-device virtio-vga,xres=1920,yres=1080) ;;
+    virgl) args+=(-device virtio-vga-gl,xres=1920,yres=1080 -display gtk,gl=on) ;;
     *) echo 'GPU must be software or virgl.' >&2; exit 2 ;;
 esac
 if [ -n "${DISK:-}" ]; then

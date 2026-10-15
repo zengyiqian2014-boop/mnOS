@@ -1,6 +1,8 @@
 CC ?= gcc
 LD ?= ld
-CFLAGS = -std=c11 -O2 -g -ffreestanding -fno-builtin -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-unwind-tables -m64 -mno-red-zone -mgeneral-regs-only -Wall -Wextra -Werror -Wno-misleading-indentation -Iinclude
+# A freestanding kernel has no glibc __*_chk runtime. Hosted tests retain the
+# compiler's fortification and sanitizers; only native objects undefine it.
+CFLAGS = -std=c11 -O2 -g -ffreestanding -U_FORTIFY_SOURCE -fno-builtin -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-unwind-tables -m64 -mno-red-zone -mgeneral-regs-only -Wall -Wextra -Werror -Wno-misleading-indentation -Iinclude
 SOURCES = src/core.c src/phys.c src/memory.c src/smp.c src/interrupts.c src/devices.c src/block.c src/mnfs.c src/files.c src/password.c src/auth.c src/ui.c assets/font.c
 OBJECTS = $(patsubst %.c,build/%.o,$(SOURCES)) build/boot.o build/ap.o build/interrupts.o build/user.o
 

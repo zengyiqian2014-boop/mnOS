@@ -17,7 +17,13 @@
   </property>
  </property>
  <property name="plugins" type="empty">
-  <property name="plugin-1" type="string" value="whiskermenu"/>
+  <property name="plugin-1" type="string" value="launcher">
+   <property name="items" type="array">
+    <value type="string" value="/usr/share/applications/mnos-tools.desktop"/>
+   </property>
+   <property name="show-label" type="bool" value="true"/>
+   <property name="disable-tooltips" type="bool" value="false"/>
+  </property>
   <property name="plugin-2" type="string" value="tasklist">
    <property name="show-handle" type="bool" value="false"/>
    <property name="flat-buttons" type="bool" value="true"/>

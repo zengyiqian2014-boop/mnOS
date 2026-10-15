@@ -2,6 +2,8 @@ mnOS 双启动预览版：同一张 ISO 提供自研 C/汇编内核和独立的 
 
 ### 编辑文件与编程
 
+- 左上角“应用与工具”按钮提供搜索、分类和图标列表，收录 127 个命令行工具入口，并自动读取已安装的图形应用。命令行条目打开终端帮助，图形应用直接打开；内核、屏幕、壁纸、磁盘分区等统一归入“系统设置”。
+- 更新桌面与登录壁纸，增大字体、提高文字对比度并使用轮廓字体渲染。QEMU 启动脚本默认请求 1920×1080 显示模式，可在系统设置调整。
 - 加入 **Microsoft 官方 Visual Studio Code**，可从应用菜单或系统中心打开，也可用 `code .` 打开项目。默认关闭遥测与内置 AI 功能；正常以普通用户运行，保留 Electron 沙箱。
 - 提供 `nano`、Mousepad 图形编辑器、Thunar 文件管理器；编辑个人文件、运行桌面应用和编译程序不需要 root。
 - 预装 C/C++、Clang/clangd、GDB、Rust/Cargo、Go、Java JDK、Node.js/npm、Python/venv/pytest，以及 Git、CMake、Ninja、pkg-config、ripgrep 和 ShellCheck。

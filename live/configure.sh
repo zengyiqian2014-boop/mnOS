@@ -27,7 +27,7 @@ passwd --lock root
 update-cracklib
 chmod 440 /etc/sudoers.d/50-mnos
 chmod 755 /usr/lib/mnos/first-boot /usr/lib/mnos/wallpaper /usr/bin/mnos-center /usr/bin/mnos-security-check
-chmod 755 /usr/bin/mnos-help
+chmod 755 /usr/bin/mnos-help /usr/bin/mnos-tools
 ln -sf mnos-help /usr/bin/help
 printf '\n# mnOS help: English by default; -cn selects Chinese.\n. /etc/profile.d/mnos-help.sh\n' >> /etc/bash.bashrc
 chmod 755 /etc/grub.d/41_mnos_native

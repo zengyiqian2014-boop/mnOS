@@ -31,10 +31,12 @@ for name, button in application.nav:
     assert application.stack.get_visible_child_name() == name, name
     while center.Gtk.events_pending():
         center.Gtk.main_iteration_do(False)
-assert len(application.nav) == 6
+assert len(application.nav) == 5
 from gi.repository import GdkPixbuf
 wallpaper = GdkPixbuf.Pixbuf.new_from_file_at_size('/usr/share/backgrounds/mnos/default.svg', 320, 180)
 assert wallpaper.get_width() > 0 and wallpaper.get_height() > 0
+coast = GdkPixbuf.Pixbuf.new_from_file('/usr/share/backgrounds/mnos/coast.png')
+assert coast.get_width() >= 1600 and coast.get_height() >= 900
 panel = ET.parse('/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml')
 for plugin in panel.findall(".//property[@name='plugins']/property"):
     name = plugin.get('value')
@@ -109,4 +111,5 @@ with tempfile.TemporaryDirectory() as temp:
     assert run('mnfs', disk, 'cat', '/hello') == 'original-filesystem'
     run('mnfs', disk, 'check')
 print('Bash help languages and MNFS image access: PASS')
-print('GTK window, all six pages, tool availability and safe argument forwarding: PASS')
+print('GTK window, all five pages, tool availability and safe argument forwarding: PASS')
+subprocess.run([sys.executable, str(Path(__file__).with_name('tool_launcher.py'))], check=True)

@@ -1,0 +1,1269 @@
+[
+  {
+    "name": "GCC",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "gcc",
+      "--help"
+    ],
+    "description": "C 编译器"
+  },
+  {
+    "name": "G++",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "g++",
+      "--help"
+    ],
+    "description": "C++ 编译器"
+  },
+  {
+    "name": "Clang",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "clang",
+      "--help"
+    ],
+    "description": "C / C++ 编译器"
+  },
+  {
+    "name": "clangd",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "clangd",
+      "--help"
+    ],
+    "description": "C / C++ 语言服务器"
+  },
+  {
+    "name": "LLD",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "ld.lld",
+      "--help"
+    ],
+    "description": "LLVM 链接器"
+  },
+  {
+    "name": "Rust",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "rustc",
+      "--help"
+    ],
+    "description": "Rust 编译器"
+  },
+  {
+    "name": "Cargo",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "cargo",
+      "--help"
+    ],
+    "description": "Rust 项目与依赖管理"
+  },
+  {
+    "name": "Go",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "go",
+      "help"
+    ],
+    "description": "Go 语言与构建工具"
+  },
+  {
+    "name": "Java",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "java",
+      "--help"
+    ],
+    "description": "Java 运行环境"
+  },
+  {
+    "name": "Javac",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "javac",
+      "--help"
+    ],
+    "description": "Java 编译器"
+  },
+  {
+    "name": "Node.js",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "node",
+      "--help"
+    ],
+    "description": "JavaScript 运行环境"
+  },
+  {
+    "name": "npm",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "npm",
+      "--help"
+    ],
+    "description": "JavaScript 包与项目管理"
+  },
+  {
+    "name": "Python 3",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "python3",
+      "--help"
+    ],
+    "description": "Python 解释器"
+  },
+  {
+    "name": "Python venv",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "python3",
+      "-m",
+      "venv",
+      "--help"
+    ],
+    "description": "创建独立 Python 开发环境"
+  },
+  {
+    "name": "pip",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "pip3",
+      "--help"
+    ],
+    "description": "Python 包管理"
+  },
+  {
+    "name": "pipx",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "pipx",
+      "--help"
+    ],
+    "description": "隔离安装 Python 命令行应用"
+  },
+  {
+    "name": "pytest",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "pytest",
+      "--help"
+    ],
+    "description": "Python 测试"
+  },
+  {
+    "name": "Git",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "git",
+      "--help"
+    ],
+    "description": "版本管理"
+  },
+  {
+    "name": "Make",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "make",
+      "--help"
+    ],
+    "description": "编译任务"
+  },
+  {
+    "name": "CMake",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "cmake",
+      "--help"
+    ],
+    "description": "项目构建配置"
+  },
+  {
+    "name": "Ninja",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "ninja",
+      "--help"
+    ],
+    "description": "构建任务执行器"
+  },
+  {
+    "name": "pkg-config",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "pkg-config",
+      "--help"
+    ],
+    "description": "查找库的编译参数"
+  },
+  {
+    "name": "ShellCheck",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "shellcheck",
+      "--help"
+    ],
+    "description": "Shell 脚本检查"
+  },
+  {
+    "name": "Nano",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "nano",
+      "--help"
+    ],
+    "description": "终端文件编辑器"
+  },
+  {
+    "name": "Vim",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "vim.tiny",
+      "--help"
+    ],
+    "description": "终端文件编辑器"
+  },
+  {
+    "name": "ripgrep",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "rg",
+      "--help"
+    ],
+    "description": "快速搜索文件内容"
+  },
+  {
+    "name": "fd",
+    "category": "开发编程",
+    "icon": "applications-development",
+    "command": [
+      "fdfind",
+      "--help"
+    ],
+    "description": "按名称查找文件"
+  },
+  {
+    "name": "GDB",
+    "category": "逆向与调试",
+    "icon": "applications-debugging",
+    "command": [
+      "gdb",
+      "--help"
+    ],
+    "description": "程序调试器"
+  },
+  {
+    "name": "GDB Multiarch",
+    "category": "逆向与调试",
+    "icon": "applications-debugging",
+    "command": [
+      "gdb-multiarch",
+      "--help"
+    ],
+    "description": "跨架构调试器"
+  },
+  {
+    "name": "Pwntools",
+    "category": "逆向与调试",
+    "icon": "applications-debugging",
+    "command": [
+      "pwn",
+      "--help"
+    ],
+    "description": "Pwn 与二进制分析工具集"
+  },
+  {
+    "name": "Checksec",
+    "category": "逆向与调试",
+    "icon": "applications-debugging",
+    "command": [
+      "checksec",
+      "--help"
+    ],
+    "description": "ELF 编译保护检查"
+  },
+  {
+    "name": "objdump",
+    "category": "逆向与调试",
+    "icon": "applications-debugging",
+    "command": [
+      "objdump",
+      "--help"
+    ],
+    "description": "反汇编与目标文件信息"
+  },
+  {
+    "name": "readelf",
+    "category": "逆向与调试",
+    "icon": "applications-debugging",
+    "command": [
+      "readelf",
+      "--help"
+    ],
+    "description": "ELF 结构分析"
+  },
+  {
+    "name": "nm",
+    "category": "逆向与调试",
+    "icon": "applications-debugging",
+    "command": [
+      "nm",
+      "--help"
+    ],
+    "description": "符号表"
+  },
+  {
+    "name": "strings",
+    "category": "逆向与调试",
+    "icon": "applications-debugging",
+    "command": [
+      "strings",
+      "--help"
+    ],
+    "description": "提取可读字符串"
+  },
+  {
+    "name": "patchelf",
+    "category": "逆向与调试",
+    "icon": "applications-debugging",
+    "command": [
+      "patchelf",
+      "--help"
+    ],
+    "description": "调整 ELF 解释器和库路径"
+  },
+  {
+    "name": "strace",
+    "category": "逆向与调试",
+    "icon": "applications-debugging",
+    "command": [
+      "strace",
+      "--help"
+    ],
+    "description": "跟踪系统调用"
+  },
+  {
+    "name": "ltrace",
+    "category": "逆向与调试",
+    "icon": "applications-debugging",
+    "command": [
+      "ltrace",
+      "--help"
+    ],
+    "description": "跟踪动态库调用"
+  },
+  {
+    "name": "xxd",
+    "category": "逆向与调试",
+    "icon": "applications-debugging",
+    "command": [
+      "xxd",
+      "-h"
+    ],
+    "description": "十六进制转储"
+  },
+  {
+    "name": "Hexedit",
+    "category": "逆向与调试",
+    "icon": "applications-debugging",
+    "command": [
+      "hexedit",
+      "--help"
+    ],
+    "description": "十六进制文件编辑器"
+  },
+  {
+    "name": "file",
+    "category": "逆向与调试",
+    "icon": "applications-debugging",
+    "command": [
+      "file",
+      "--help"
+    ],
+    "description": "识别文件类型"
+  },
+  {
+    "name": "Nmap",
+    "category": "网络工具",
+    "icon": "network-workgroup",
+    "command": [
+      "nmap",
+      "--help"
+    ],
+    "description": "主机、端口与服务探测"
+  },
+  {
+    "name": "tcpdump",
+    "category": "网络工具",
+    "icon": "network-workgroup",
+    "command": [
+      "tcpdump",
+      "--help"
+    ],
+    "description": "网络抓包"
+  },
+  {
+    "name": "TShark",
+    "category": "网络工具",
+    "icon": "network-workgroup",
+    "command": [
+      "tshark",
+      "--help"
+    ],
+    "description": "命令行报文分析"
+  },
+  {
+    "name": "mnos-net",
+    "category": "网络工具",
+    "icon": "network-workgroup",
+    "command": [
+      "mnos-net",
+      "help"
+    ],
+    "description": "NET_ADMIN / NET_RAW 授权入口"
+  },
+  {
+    "name": "ip",
+    "category": "网络工具",
+    "icon": "network-workgroup",
+    "command": [
+      "ip",
+      "help"
+    ],
+    "description": "网卡、地址和路由"
+  },
+  {
+    "name": "tc",
+    "category": "网络工具",
+    "icon": "network-workgroup",
+    "command": [
+      "tc",
+      "-help"
+    ],
+    "description": "流量控制"
+  },
+  {
+    "name": "iw",
+    "category": "网络工具",
+    "icon": "network-workgroup",
+    "command": [
+      "iw",
+      "help"
+    ],
+    "description": "Wi-Fi 无线设备"
+  },
+  {
+    "name": "nmcli",
+    "category": "网络工具",
+    "icon": "network-workgroup",
+    "command": [
+      "nmcli",
+      "--help"
+    ],
+    "description": "NetworkManager 网络配置"
+  },
+  {
+    "name": "ethtool",
+    "category": "网络工具",
+    "icon": "network-workgroup",
+    "command": [
+      "ethtool",
+      "--help"
+    ],
+    "description": "以太网设备参数"
+  },
+  {
+    "name": "ss",
+    "category": "网络工具",
+    "icon": "network-workgroup",
+    "command": [
+      "ss",
+      "--help"
+    ],
+    "description": "连接与套接字"
+  },
+  {
+    "name": "ping",
+    "category": "网络工具",
+    "icon": "network-workgroup",
+    "command": [
+      "ping",
+      "-h"
+    ],
+    "description": "网络可达性"
+  },
+  {
+    "name": "traceroute",
+    "category": "网络工具",
+    "icon": "network-workgroup",
+    "command": [
+      "traceroute",
+      "--help"
+    ],
+    "description": "网络路径"
+  },
+  {
+    "name": "MTR",
+    "category": "网络工具",
+    "icon": "network-workgroup",
+    "command": [
+      "mtr",
+      "--help"
+    ],
+    "description": "持续路由诊断"
+  },
+  {
+    "name": "dig",
+    "category": "网络工具",
+    "icon": "network-workgroup",
+    "command": [
+      "dig",
+      "-h"
+    ],
+    "description": "DNS 查询"
+  },
+  {
+    "name": "iperf3",
+    "category": "网络工具",
+    "icon": "network-workgroup",
+    "command": [
+      "iperf3",
+      "--help"
+    ],
+    "description": "带宽测试"
+  },
+  {
+    "name": "Netcat",
+    "category": "网络工具",
+    "icon": "network-workgroup",
+    "command": [
+      "nc",
+      "-h"
+    ],
+    "description": "TCP / UDP 命令行工具"
+  },
+  {
+    "name": "socat",
+    "category": "网络工具",
+    "icon": "network-workgroup",
+    "command": [
+      "socat",
+      "-h"
+    ],
+    "description": "数据流与套接字转发"
+  },
+  {
+    "name": "curl",
+    "category": "网络工具",
+    "icon": "network-workgroup",
+    "command": [
+      "curl",
+      "--help",
+      "all"
+    ],
+    "description": "HTTP 与数据传输"
+  },
+  {
+    "name": "wget",
+    "category": "网络工具",
+    "icon": "network-workgroup",
+    "command": [
+      "wget",
+      "--help"
+    ],
+    "description": "下载工具"
+  },
+  {
+    "name": "SSH",
+    "category": "网络工具",
+    "icon": "network-workgroup",
+    "command": [
+      "ssh"
+    ],
+    "description": "SSH 客户端命令帮助"
+  },
+  {
+    "name": "SFTP",
+    "category": "网络工具",
+    "icon": "network-workgroup",
+    "command": [
+      "sftp",
+      "-h"
+    ],
+    "description": "SSH 文件传输"
+  },
+  {
+    "name": "rsync",
+    "category": "网络工具",
+    "icon": "network-workgroup",
+    "command": [
+      "rsync",
+      "--help"
+    ],
+    "description": "文件同步"
+  },
+  {
+    "name": "SQLmap",
+    "category": "Web 与密码工具",
+    "icon": "security-high",
+    "command": [
+      "sqlmap",
+      "-h"
+    ],
+    "description": "Web 数据库测试"
+  },
+  {
+    "name": "ffuf",
+    "category": "Web 与密码工具",
+    "icon": "security-high",
+    "command": [
+      "ffuf",
+      "-h"
+    ],
+    "description": "HTTP 模糊测试"
+  },
+  {
+    "name": "Gobuster",
+    "category": "Web 与密码工具",
+    "icon": "security-high",
+    "command": [
+      "gobuster",
+      "--help"
+    ],
+    "description": "目录、DNS 和服务枚举"
+  },
+  {
+    "name": "dirb",
+    "category": "Web 与密码工具",
+    "icon": "security-high",
+    "command": [
+      "dirb"
+    ],
+    "description": "Web 内容发现"
+  },
+  {
+    "name": "mitmproxy",
+    "category": "Web 与密码工具",
+    "icon": "security-high",
+    "command": [
+      "mitmproxy",
+      "--help"
+    ],
+    "description": "交互式 HTTP 代理"
+  },
+  {
+    "name": "mitmdump",
+    "category": "Web 与密码工具",
+    "icon": "security-high",
+    "command": [
+      "mitmdump",
+      "--help"
+    ],
+    "description": "命令行 HTTP 代理"
+  },
+  {
+    "name": "mitmweb",
+    "category": "Web 与密码工具",
+    "icon": "security-high",
+    "command": [
+      "mitmweb",
+      "--help"
+    ],
+    "description": "Web 界面代理工具"
+  },
+  {
+    "name": "John the Ripper",
+    "category": "Web 与密码工具",
+    "icon": "security-high",
+    "command": [
+      "john"
+    ],
+    "description": "离线密码分析"
+  },
+  {
+    "name": "Hashcat",
+    "category": "Web 与密码工具",
+    "icon": "security-high",
+    "command": [
+      "hashcat",
+      "--help"
+    ],
+    "description": "密码散列分析"
+  },
+  {
+    "name": "Hydra",
+    "category": "Web 与密码工具",
+    "icon": "security-high",
+    "command": [
+      "hydra",
+      "-h"
+    ],
+    "description": "授权认证测试"
+  },
+  {
+    "name": "OpenSSL",
+    "category": "Web 与密码工具",
+    "icon": "security-high",
+    "command": [
+      "openssl",
+      "help"
+    ],
+    "description": "证书、密码算法与 TLS"
+  },
+  {
+    "name": "Binwalk",
+    "category": "取证与文件",
+    "icon": "folder-saved-search",
+    "command": [
+      "binwalk",
+      "--help"
+    ],
+    "description": "固件签名分析"
+  },
+  {
+    "name": "ExifTool",
+    "category": "取证与文件",
+    "icon": "folder-saved-search",
+    "command": [
+      "exiftool"
+    ],
+    "description": "文件元数据"
+  },
+  {
+    "name": "Steghide",
+    "category": "取证与文件",
+    "icon": "folder-saved-search",
+    "command": [
+      "steghide",
+      "--help"
+    ],
+    "description": "隐写文件工具"
+  },
+  {
+    "name": "Foremost",
+    "category": "取证与文件",
+    "icon": "folder-saved-search",
+    "command": [
+      "foremost",
+      "-h"
+    ],
+    "description": "按文件特征恢复数据"
+  },
+  {
+    "name": "YARA",
+    "category": "取证与文件",
+    "icon": "folder-saved-search",
+    "command": [
+      "yara",
+      "--help"
+    ],
+    "description": "文件规则扫描"
+  },
+  {
+    "name": "7-Zip",
+    "category": "取证与文件",
+    "icon": "folder-saved-search",
+    "command": [
+      "7z",
+      "-h"
+    ],
+    "description": "归档与解压"
+  },
+  {
+    "name": "Unzip",
+    "category": "取证与文件",
+    "icon": "folder-saved-search",
+    "command": [
+      "unzip",
+      "-h"
+    ],
+    "description": "ZIP 解压"
+  },
+  {
+    "name": "Zip",
+    "category": "取证与文件",
+    "icon": "folder-saved-search",
+    "command": [
+      "zip",
+      "-h"
+    ],
+    "description": "ZIP 归档"
+  },
+  {
+    "name": "jq",
+    "category": "取证与文件",
+    "icon": "folder-saved-search",
+    "command": [
+      "jq",
+      "--help"
+    ],
+    "description": "JSON 处理"
+  },
+  {
+    "name": "TestDisk",
+    "category": "取证与文件",
+    "icon": "folder-saved-search",
+    "command": [
+      "testdisk",
+      "--help"
+    ],
+    "description": "分区与文件恢复"
+  },
+  {
+    "name": "PhotoRec",
+    "category": "取证与文件",
+    "icon": "folder-saved-search",
+    "command": [
+      "photorec",
+      "--help"
+    ],
+    "description": "文件恢复"
+  },
+  {
+    "name": "MNFS",
+    "category": "取证与文件",
+    "icon": "folder-saved-search",
+    "command": [
+      "mnfs"
+    ],
+    "description": "自研文件系统镜像工具"
+  },
+  {
+    "name": "内核设置",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "kernel",
+      "help"
+    ],
+    "description": "内核、CPU、内存、GPU、模块与性能配置"
+  },
+  {
+    "name": "TuneD",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "tuned-adm",
+      "--help"
+    ],
+    "description": "性能策略配置"
+  },
+  {
+    "name": "sysctl",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "sysctl",
+      "--help"
+    ],
+    "description": "Linux 内核参数"
+  },
+  {
+    "name": "modprobe",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "modprobe",
+      "--help"
+    ],
+    "description": "Linux 内核模块"
+  },
+  {
+    "name": "xrandr",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "xrandr",
+      "--help"
+    ],
+    "description": "显示器、屏幕分辨率和输出"
+  },
+  {
+    "name": "UFW",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "ufw",
+      "--help"
+    ],
+    "description": "防火墙设置"
+  },
+  {
+    "name": "systemctl",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "systemctl",
+      "--help"
+    ],
+    "description": "服务与系统状态"
+  },
+  {
+    "name": "loginctl",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "loginctl",
+      "--help"
+    ],
+    "description": "用户登录会话"
+  },
+  {
+    "name": "timedatectl",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "timedatectl",
+      "--help"
+    ],
+    "description": "日期和时区"
+  },
+  {
+    "name": "localectl",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "localectl",
+      "--help"
+    ],
+    "description": "系统语言和键盘"
+  },
+  {
+    "name": "useradd",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "useradd",
+      "--help"
+    ],
+    "description": "新增本地账号"
+  },
+  {
+    "name": "usermod",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "usermod",
+      "--help"
+    ],
+    "description": "用户组与账号配置"
+  },
+  {
+    "name": "passwd",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "passwd",
+      "--help"
+    ],
+    "description": "账号密码"
+  },
+  {
+    "name": "apt",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "apt",
+      "--help"
+    ],
+    "description": "软件包管理"
+  },
+  {
+    "name": "dpkg",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "dpkg",
+      "--help"
+    ],
+    "description": "Debian 软件包"
+  },
+  {
+    "name": "parted",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "parted",
+      "--help"
+    ],
+    "description": "磁盘分区管理"
+  },
+  {
+    "name": "lsblk",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "lsblk",
+      "--help"
+    ],
+    "description": "磁盘与分区信息"
+  },
+  {
+    "name": "findmnt",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "findmnt",
+      "--help"
+    ],
+    "description": "挂载信息"
+  },
+  {
+    "name": "cryptsetup",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "cryptsetup",
+      "--help"
+    ],
+    "description": "加密卷管理"
+  },
+  {
+    "name": "btrfs",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "btrfs",
+      "--help"
+    ],
+    "description": "Btrfs 文件系统管理"
+  },
+  {
+    "name": "mdadm",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "mdadm",
+      "--help"
+    ],
+    "description": "Linux 软件 RAID"
+  },
+  {
+    "name": "lvm",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "lvm",
+      "help"
+    ],
+    "description": "逻辑卷管理"
+  },
+  {
+    "name": "htop",
+    "category": "系统工具",
+    "icon": "utilities-system-monitor",
+    "command": [
+      "htop",
+      "--help"
+    ],
+    "description": "进程与资源监控"
+  },
+  {
+    "name": "btop",
+    "category": "系统工具",
+    "icon": "utilities-system-monitor",
+    "command": [
+      "btop",
+      "--help"
+    ],
+    "description": "终端资源监控"
+  },
+  {
+    "name": "iostat",
+    "category": "系统工具",
+    "icon": "utilities-system-monitor",
+    "command": [
+      "iostat",
+      "--help"
+    ],
+    "description": "磁盘与 CPU 统计"
+  },
+  {
+    "name": "iotop",
+    "category": "系统工具",
+    "icon": "utilities-system-monitor",
+    "command": [
+      "iotop",
+      "--help"
+    ],
+    "description": "进程磁盘 I/O"
+  },
+  {
+    "name": "smartctl",
+    "category": "系统工具",
+    "icon": "utilities-system-monitor",
+    "command": [
+      "smartctl",
+      "--help"
+    ],
+    "description": "磁盘健康状态"
+  },
+  {
+    "name": "nvme",
+    "category": "系统工具",
+    "icon": "utilities-system-monitor",
+    "command": [
+      "nvme",
+      "help"
+    ],
+    "description": "NVMe 设备管理"
+  },
+  {
+    "name": "lspci",
+    "category": "系统工具",
+    "icon": "utilities-system-monitor",
+    "command": [
+      "lspci",
+      "--help"
+    ],
+    "description": "PCI 设备"
+  },
+  {
+    "name": "lsusb",
+    "category": "系统工具",
+    "icon": "utilities-system-monitor",
+    "command": [
+      "lsusb",
+      "--help"
+    ],
+    "description": "USB 设备"
+  },
+  {
+    "name": "sensors",
+    "category": "系统工具",
+    "icon": "utilities-system-monitor",
+    "command": [
+      "sensors",
+      "--help"
+    ],
+    "description": "温度和电压"
+  },
+  {
+    "name": "journalctl",
+    "category": "系统工具",
+    "icon": "utilities-system-monitor",
+    "command": [
+      "journalctl",
+      "--help"
+    ],
+    "description": "系统日志"
+  },
+  {
+    "name": "stress-ng",
+    "category": "系统工具",
+    "icon": "utilities-system-monitor",
+    "command": [
+      "stress-ng",
+      "--help"
+    ],
+    "description": "硬件压力测试"
+  },
+  {
+    "name": "fio",
+    "category": "系统工具",
+    "icon": "utilities-system-monitor",
+    "command": [
+      "fio",
+      "--help"
+    ],
+    "description": "存储性能测试"
+  },
+  {
+    "name": "glxinfo",
+    "category": "系统工具",
+    "icon": "utilities-system-monitor",
+    "command": [
+      "glxinfo",
+      "-h"
+    ],
+    "description": "OpenGL 显卡信息"
+  },
+  {
+    "name": "vulkaninfo",
+    "category": "系统工具",
+    "icon": "utilities-system-monitor",
+    "command": [
+      "vulkaninfo",
+      "--help"
+    ],
+    "description": "Vulkan 显卡信息"
+  },
+  {
+    "name": "clinfo",
+    "category": "系统工具",
+    "icon": "utilities-system-monitor",
+    "command": [
+      "clinfo",
+      "--help"
+    ],
+    "description": "OpenCL 设备信息"
+  },
+  {
+    "name": "Lynis",
+    "category": "系统工具",
+    "icon": "utilities-system-monitor",
+    "command": [
+      "lynis",
+      "--help"
+    ],
+    "description": "系统配置审计"
+  },
+  {
+    "name": "debsums",
+    "category": "系统工具",
+    "icon": "utilities-system-monitor",
+    "command": [
+      "debsums",
+      "--help"
+    ],
+    "description": "软件包文件校验"
+  },
+  {
+    "name": "debsecan",
+    "category": "系统工具",
+    "icon": "utilities-system-monitor",
+    "command": [
+      "debsecan",
+      "--help"
+    ],
+    "description": "Debian 漏洞状态"
+  },
+  {
+    "name": "mnOS 帮助",
+    "category": "系统工具",
+    "icon": "utilities-system-monitor",
+    "command": [
+      "mnos-help"
+    ],
+    "description": "英文命令帮助；help -cn 查看中文版"
+  }
+]

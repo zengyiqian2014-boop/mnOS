@@ -24,7 +24,7 @@ if not marker.exists():
             for prop in targets:
                 subprocess.run(['xfconf-query', '-c', 'xfce4-desktop', '-p', prop,
                                 '--create', '--type', 'string',
-                                '--set', '/usr/share/backgrounds/mnos/default.svg'], check=True)
+                                '--set', '/usr/share/backgrounds/mnos/coast.png'], check=True)
             marker.parent.mkdir(parents=True, exist_ok=True)
             marker.touch()
             break
