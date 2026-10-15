@@ -68,6 +68,11 @@ printf 'COMPRESS=gzip\n' > /etc/initramfs-tools/conf.d/compression
 printf 'efivarfs\n' >> /etc/initramfs-tools/modules
 printf 'GRUB_TIMEOUT=5\nGRUB_DISTRIBUTOR="mnOS"\nGRUB_CMDLINE_LINUX_DEFAULT="quiet apparmor=1 security=apparmor"\nGRUB_CMDLINE_LINUX=""\n' > /etc/default/grub
 
+# Use the vendor desktop ID shipped by the installed VS Code package.
+if [ -f /usr/share/applications/com.microsoft.VSCode.desktop ]; then
+    sed -i 's/value="code.desktop"/value="com.microsoft.VSCode.desktop"/' /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml
+fi
+
 # Desktop defaults. Users can change these through the normal Xfce settings.
 cp -a /usr/share/backgrounds/mnos/contour.svg /usr/share/backgrounds/mnos/default.svg
 if [ "$MNOS_PROFILE" = qemu ]; then
@@ -84,6 +89,7 @@ cat > /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfwm4.xml <<EOF
   <property name="button_layout" type="string" value="O|HMC"/>
   <property name="use_compositing" type="bool" value="$compositor"/>
   <property name="workspace_count" type="int" value="2"/>
+  <property name="workspace_names" type="array"><value type="string" value="1"/><value type="string" value="2"/></property>
  </property>
 </channel>
 EOF

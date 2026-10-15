@@ -45,7 +45,7 @@ def main():
         run('code', '--list-extensions', '--user-data-dir', temp + '/code-data', '--extensions-dir', temp + '/extensions')
         for command in ('cargo', 'npm', 'cmake', 'ninja', 'clang', 'clangd', 'rg', 'shellcheck'):
             run(command, '--version')
-        assert Path('/usr/share/applications/code.desktop').is_file()
+        assert any(Path('/usr/share/applications', name).is_file() for name in ('code.desktop', 'com.microsoft.VSCode.desktop'))
         assert not any(path.stat().st_uid == 0 for path in directory.iterdir())
     print('Ordinary-user C/C++, Rust, Go, Java, JavaScript, nano and official VS Code CLI: PASS')
 

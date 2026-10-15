@@ -1,0 +1,2 @@
+firmware-qcom-soc
+firmware-samsung

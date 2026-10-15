@@ -1,4 +1,3 @@
-linux-image-amd64
 systemd-sysv
 dbus
 udev
@@ -128,9 +127,6 @@ debsums
 debsecan
 calamares
 calamares-settings-debian
-grub-pc-bin
-grub-efi-amd64-bin
-grub-efi-amd64-signed
 shim-signed
 
 libjson-glib-1.0-0

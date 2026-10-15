@@ -1,4 +1,6 @@
-mnOS 双启动预览版：同一张 ISO 提供自研 C/汇编内核和独立的 Linux 桌面工具环境。下载 `qemu` 版用于虚拟机，`hardware` 版用于 x86_64 PC；后者增加常见 Wi-Fi、GPU、蓝牙和音频固件及 CPU 微码。
+mnOS 桌面预览版提供 `amd64` 和 `arm64`，每种架构分别有 `qemu` 与 `hardware` 镜像。x86_64 镜像双启动自研 C/汇编内核和 Linux 桌面；ARM64 镜像目前提供 Linux 桌面，自研内核尚未移植到 ARM64。硬件版增加常见 Wi-Fi、GPU、蓝牙、音频与平台固件，x86_64 另含 CPU 微码。
+
+ARM64 QEMU 使用 `virt` + AAVMF；硬件版面向通用 UEFI ARM64 电脑/服务器。树莓派、Rockchip 等开发板需要型号对应的启动固件和设备树，不能当成已经验证的通用 SD 卡镜像。覆盖范围和待验证项目见 `live/HARDWARE.md`。
 
 ### 自研组件与依赖
 
@@ -42,7 +44,7 @@ kernel help -cn
 
 ### 下载与验证
 
-每个 ISO 随附 `.sha256`、软件包清单、Linux 内核配置和源码提交号。两版支持 BIOS/UEFI；**自研内核需要关闭 Secure Boot**，Linux 入口保留 Debian 签名链。
+每个 ISO 随附 `.sha256`、软件包清单、Linux 内核配置、设备树清单和源码提交号。x86_64 支持 BIOS/UEFI，ARM64 使用 UEFI；**自研内核需要关闭 Secure Boot**，Linux 入口保留 Debian 签名链。ARM64 Secure Boot 尚未验证。
 
 Linux 第一次启动创建本地管理员，无默认密码。Live 文件、账号和设置在关机后丢失，长期使用需安装或另行保存。原生没有 MNFS 磁盘时账号仅本次启动有效；有磁盘时，登录后可在个人目录持久写入。两套环境的账号和存储相互独立。
 

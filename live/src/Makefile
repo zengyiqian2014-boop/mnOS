@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 CXX ?= c++
 OUT ?= build
-CXXFLAGS += -std=c++17 -O2 -Wall -Wextra -Werror -Wno-misleading-indentation -fstack-protector-strong -D_FORTIFY_SOURCE=3 -fPIE
+CXXFLAGS += -std=c++17 -O2 -Wall -Wextra -Werror -fstack-protector-strong -D_FORTIFY_SOURCE=3 -fPIE
 LDFLAGS += -pie -Wl,-z,relro,-z,now
 all: $(OUT)/mnos-center $(OUT)/first-boot $(OUT)/mnos-network-policy $(OUT)/wallpaper
 $(OUT):

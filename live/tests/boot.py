@@ -15,7 +15,7 @@ import tempfile
 import time
 
 
-def boot(iso, output, mode, target='linux'):
+def boot(iso, output, mode, target='linux', arch='amd64'):
     output.mkdir(parents=True, exist_ok=True)
     serial = output / f'{target}-{mode}.log'
     serial.unlink(missing_ok=True)
@@ -28,7 +28,22 @@ def boot(iso, output, mode, target='linux'):
             '-boot', 'order=d', '-display', 'none', '-monitor', 'none',
             '-serial', f'file:{serial}', '-no-reboot',
         ]
-        if mode != 'bios':
+        if arch == 'arm64':
+            assert target == 'linux' and mode == 'uefi'
+            nvram = Path(temporary) / 'vars.fd'
+            shutil.copyfile('/usr/share/AAVMF/AAVMF_VARS.fd', nvram)
+            command = [
+                'qemu-system-aarch64', '-accel', 'tcg', '-machine', 'virt,gic-version=3',
+                '-cpu', 'max', '-smp', '2', '-m', '3072', '-device', 'virtio-gpu-pci',
+                '-device', 'virtio-rng-pci', '-nic', 'none',
+                '-device', 'virtio-scsi-pci,id=scsi',
+                '-drive', f'file={iso},media=cdrom,if=none,id=cd,format=raw,readonly=on',
+                '-device', 'scsi-cd,drive=cd,bootindex=0',
+                '-drive', 'if=pflash,format=raw,readonly=on,file=/usr/share/AAVMF/AAVMF_CODE.fd',
+                '-drive', f'if=pflash,format=raw,file={nvram}',
+                '-display', 'none', '-monitor', 'none', '-serial', f'file:{serial}', '-no-reboot',
+            ]
+        elif mode != 'bios':
             secure = mode == 'uefi-secure'
             code = 'OVMF_CODE_4M.secboot.fd' if secure else 'OVMF_CODE_4M.fd'
             variables = 'OVMF_VARS_4M.ms.fd' if secure else 'OVMF_VARS_4M.fd'
@@ -41,7 +56,7 @@ def boot(iso, output, mode, target='linux'):
         with (output / f'{target}-{mode}-qemu.log').open('w') as diagnostics:
             process = subprocess.Popen(command, stdout=diagnostics, stderr=diagnostics)
             try:
-                limit = 90 if target == 'native' else 300
+                limit = 90 if target == 'native' else 480
                 deadline = time.monotonic() + limit
                 while time.monotonic() < deadline:
                     text = serial.read_text(errors='replace') if serial.exists() else ''
@@ -95,8 +110,14 @@ if __name__ == '__main__':
     parser.add_argument('iso', type=Path)
     parser.add_argument('--output', type=Path, default=Path('/out/boot-checks'))
     parser.add_argument('--mode', choices=('all', 'bios', 'uefi', 'uefi-secure', 'native'), default='all')
+    parser.add_argument('--arch', choices=('amd64', 'arm64'), default='amd64')
     args = parser.parse_args()
     iso = args.iso.resolve(strict=True)
+    if args.arch == 'arm64':
+        if args.mode not in ('all', 'uefi'):
+            parser.error('ARM64 currently validates Linux UEFI only')
+        boot(iso, args.output.resolve(), 'uefi', arch='arm64')
+        raise SystemExit(0)
     if args.mode != 'native':
         for mode in ('bios', 'uefi', 'uefi-secure') if args.mode == 'all' else (args.mode,):
             boot(iso, args.output.resolve(), mode)

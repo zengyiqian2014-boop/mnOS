@@ -19,7 +19,5 @@ firmware-intel-sound
 firmware-cirrus
 mesa-vulkan-drivers
 mesa-utils
-intel-microcode
-amd64-microcode
 bluez
 blueman

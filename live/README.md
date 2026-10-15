@@ -1,18 +1,23 @@
 # mnOS dual-boot ISO
 
-Each ISO offers two independent environments: the original freestanding
+The x86_64 ISOs offer two independent environments: the original freestanding
 [mnOS native kernel](../native/README.md), and a usable desktop built from
 maintained Debian 13 packages (Linux 6.12 LTS, Xfce, Firefox ESR, system management,
 CTF utilities and Calamares). The native kernel has its own framebuffer UI,
 preemptive scheduler and ring-3 isolation; it does not run Linux applications.
 The original BusyBox build remains available from the repository root.
 
-Two x86_64 profiles are built:
+Both `amd64` and `arm64` have two profiles:
 
 | Profile | Purpose | Extras |
 | --- | --- | --- |
 | `qemu` | Virtual machines | VirtIO, QEMU Guest Agent, SPICE agent; compositor off |
 | `hardware` | General PCs/laptops | Common GPU/network/Wi-Fi/audio firmware, CPU microcode, Bluetooth |
+
+ARM64 targets QEMU `virt` and generic UEFI hardware; its original kernel entry
+has not been ported. CPU microcode packages apply to x86 only. See
+[HARDWARE.md](HARDWARE.md) for the four-image matrix, ARM board boot requirements,
+driver coverage and the distinction between included drivers and tested devices.
 
 See [DESIGN.md](DESIGN.md) for kernel choices, RHEL design references, tuning,
 security boundaries and hardware limitations. There is no default account password.

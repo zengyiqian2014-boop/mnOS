@@ -5,12 +5,12 @@ RUN printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d && chmod 755 /usr/sbi
     && update-ca-certificates \
     && sed -i 's/Components: main/Components: main contrib non-free non-free-firmware/' /etc/apt/sources.list.d/debian.sources \
     && sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources
-COPY packages/common.txt /tmp/common.txt
+COPY packages /tmp/packages
 RUN --mount=type=secret,id=build_ca \
     if [ -r /run/secrets/build_ca ]; then printf 'Acquire::https::CaInfo "/run/secrets/build_ca";\n' > /etc/apt/apt.conf.d/99-mnos-build-ca; fi \
     && printf 'wireshark-common wireshark-common/install-setuid boolean false\niperf3 iperf3/start_daemon boolean false\n' | debconf-set-selections \
-    && apt-get update && xargs -r apt-get install -y --no-install-recommends < /tmp/common.txt \
-    && rm -rf /var/lib/apt/lists/* /tmp/common.txt \
+    && apt-get update && cat /tmp/packages/common.txt "/tmp/packages/$(dpkg --print-architecture).txt" | xargs -r apt-get install -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/* /tmp/packages \
     && rm -f /etc/apt/apt.conf.d/99-mnos-build-ca
 
 # Compile our runtime components separately: development headers stay out of the ISO.
@@ -35,11 +35,12 @@ RUN --mount=type=secret,id=build_ca \
     && if [ -r /run/secrets/build_ca ]; then printf 'Acquire::https::CaInfo "/run/secrets/build_ca";\n' > /etc/apt/apt.conf.d/99-mnos-build-ca; fi \
     && test "$(gpg --show-keys --with-colons /tmp/mnos-keys/microsoft-code.asc 2>/dev/null | awk -F: '$1=="fpr" {print $10; exit}')" = BC528686B50D79E339D3721CEB3E94ADBE1229CF \
     && install -m 644 /tmp/mnos-keys/microsoft-code.asc /usr/share/keyrings/microsoft-code.asc \
-    && printf '%s\n' 'deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-code.asc] https://packages.microsoft.com/repos/code stable main' > /etc/apt/sources.list.d/microsoft-code.list \
+    && printf 'deb [arch=%s signed-by=/usr/share/keyrings/microsoft-code.asc] https://packages.microsoft.com/repos/code stable main\n' "$(dpkg --print-architecture)" > /etc/apt/sources.list.d/microsoft-code.list \
     && printf 'code code/add-microsoft-repo boolean false\n' | debconf-set-selections \
     && apt-get update && apt-get install -y --no-install-recommends \
        gir1.2-webkit2-4.1 tuned dbus-x11 dbus-user-session xdg-user-dirs librsvg2-common \
     && xargs -r apt-get install -y --no-install-recommends < "/tmp/packages/$PROFILE.txt" \
+    && sed '/^#/d; /^$/d' "/tmp/packages/$PROFILE-$(dpkg --print-architecture).txt" | xargs -r apt-get install -y --no-install-recommends \
     && xargs -r apt-get install -y --no-install-recommends < /tmp/packages/ctf.txt \
     && sed '/^#/d; /^$/d' /tmp/packages/development.txt | xargs -r apt-get install -y --no-install-recommends \
     && cc -std=c11 -O2 -Wall -Wextra -Werror -fstack-protector-strong -D_FORTIFY_SOURCE=3 \

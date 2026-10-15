@@ -1,0 +1,1 @@
+# VirtIO GPU uses the common Xorg modesetting driver and Mesa.

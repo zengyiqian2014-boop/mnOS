@@ -1,0 +1,4 @@
+linux-image-amd64
+grub-pc-bin
+grub-efi-amd64-bin
+grub-efi-amd64-signed

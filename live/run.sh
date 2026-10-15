@@ -2,24 +2,38 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 set -euo pipefail
 ROOT=$(cd -- "$(dirname -- "$0")" && pwd)
-ISO=${1:-$ROOT/out/mnOS-2.0-preview-qemu-amd64.iso}
+ARCH=${ARCH:-$(uname -m)}
+case "$ARCH" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; amd64|arm64) ;; *) exit 2 ;; esac
+ISO=${1:-$ROOT/out/mnOS-2.0-preview-qemu-$ARCH.iso}
 MEMORY=${MEMORY:-4096}
 CPUS=${CPUS:-2}
-QEMU=${QEMU:-qemu-system-x86_64}
+if [ "$ARCH" = arm64 ]; then
+    QEMU=${QEMU:-qemu-system-aarch64}; MACHINE=virt,gic-version=max; VIDEO=virtio-gpu-pci
+else
+    QEMU=${QEMU:-qemu-system-x86_64}; MACHINE=q35; VIDEO=virtio-vga
+fi
 for number in "$MEMORY" "$CPUS"; do
     [[ "$number" =~ ^[1-9][0-9]*$ ]] || { echo 'MEMORY and CPUS must be positive integers.' >&2; exit 2; }
 done
 test -f "$ISO" || { echo "ISO not found: $ISO" >&2; exit 1; }
 ACCEL=tcg
 CPU=max
-if [ -r /dev/kvm ] && [ -w /dev/kvm ]; then ACCEL=kvm; CPU=host; fi
-args=(-accel "$ACCEL" -cpu "$CPU" -smp "$CPUS" -m "$MEMORY" -machine q35
-      -cdrom "$ISO" -boot order=d
+if [ -r /dev/kvm ] && [ -w /dev/kvm ]; then
+    case "$(uname -m):$ARCH" in x86_64:amd64|aarch64:arm64) ACCEL=kvm; CPU=host ;; esac
+fi
+args=(-accel "$ACCEL" -cpu "$CPU" -smp "$CPUS" -m "$MEMORY" -machine "$MACHINE"
+      -boot order=d
       -netdev user,id=net0 -device virtio-net-pci,netdev=net0
       -device virtio-rng-pci -serial mon:stdio)
+if [ "$ARCH" = arm64 ]; then
+    args+=(-device virtio-scsi-pci,id=scsi -drive "file=$ISO,media=cdrom,if=none,id=cd,format=raw,readonly=on" -device scsi-cd,drive=cd,bootindex=0)
+else
+    args+=(-cdrom "$ISO")
+fi
 case "${GPU:-software}" in
-    software) args+=(-device virtio-vga,xres=1920,yres=1080) ;;
-    virgl) args+=(-device virtio-vga-gl,xres=1920,yres=1080 -display gtk,gl=on) ;;
+    software) args+=(-device "$VIDEO,xres=1920,yres=1080") ;;
+    virgl) if [ "$ARCH" = arm64 ]; then VIDEO=virtio-gpu-gl-pci; else VIDEO=virtio-vga-gl; fi
+           args+=(-device "$VIDEO,xres=1920,yres=1080" -display gtk,gl=on) ;;
     *) echo 'GPU must be software or virgl.' >&2; exit 2 ;;
 esac
 if [ -n "${DISK:-}" ]; then
@@ -27,10 +41,15 @@ if [ -n "${DISK:-}" ]; then
     test -f "$DISK" || { echo 'DISK must name an existing qcow2 file.' >&2; exit 1; }
     args+=(-drive "file=$DISK,format=qcow2,if=virtio,discard=unmap")
 fi
-if [ "${UEFI:-0}" = 1 ]; then
-    CODE=${OVMF_CODE:-/usr/share/OVMF/OVMF_CODE_4M.fd}
-    VARS_TEMPLATE=${OVMF_VARS:-/usr/share/OVMF/OVMF_VARS_4M.fd}
-    test -r "$CODE" && test -r "$VARS_TEMPLATE" || { echo 'OVMF firmware not found.' >&2; exit 1; }
+if [ "${UEFI:-0}" = 1 ] || [ "$ARCH" = arm64 ]; then
+    if [ "$ARCH" = arm64 ]; then
+        CODE=${AAVMF_CODE:-/usr/share/AAVMF/AAVMF_CODE.fd}
+        VARS_TEMPLATE=${AAVMF_VARS:-/usr/share/AAVMF/AAVMF_VARS.fd}
+    else
+        CODE=${OVMF_CODE:-/usr/share/OVMF/OVMF_CODE_4M.fd}
+        VARS_TEMPLATE=${OVMF_VARS:-/usr/share/OVMF/OVMF_VARS_4M.fd}
+    fi
+    test -r "$CODE" && test -r "$VARS_TEMPLATE" || { echo 'UEFI firmware not found.' >&2; exit 1; }
     NVRAM=$(mktemp)
     trap 'rm -f "$NVRAM"' EXIT
     cp "$VARS_TEMPLATE" "$NVRAM"

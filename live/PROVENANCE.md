@@ -2,6 +2,9 @@
 
 mnOS has two separate boot environments. Selecting the Linux environment does
 not execute the original kernel under Linux or translate its APIs.
+The original kernel currently targets x86_64 only. ARM64 images contain the
+Linux companion and the architecture-native builds of our C/C++ desktop tools;
+they do not label Debian's ARM kernel as an original mnOS kernel.
 
 | Component | Implementation and origin |
 | --- | --- |
