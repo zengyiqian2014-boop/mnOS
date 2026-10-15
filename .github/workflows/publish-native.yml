@@ -1,0 +1,91 @@
+name: Publish tested native kernel ISOs
+on:
+  workflow_dispatch:
+    inputs:
+      arm_run:
+        description: Successful original ARM64 kernel workflow run
+        required: true
+        default: '38748774287'
+      release_tag:
+        description: Existing draft release
+        required: true
+        default: v0.2-native-preview.1
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      ARM_RUN: ${{ inputs.arm_run }}
+      TAG: ${{ inputs.release_tag }}
+    steps:
+      - name: Resolve successful source and verify the draft
+        id: source
+        run: |
+          set -euo pipefail
+          [[ "$ARM_RUN" =~ ^[0-9]+$ ]]
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+-native-preview\.[0-9]+$ ]]
+          gh api "repos/$GH_REPO/actions/runs/$ARM_RUN" > /tmp/native-run.json
+          jq -e --arg repo "$GH_REPO" '.conclusion == "success" and .repository.full_name == $repo and .path == ".github/workflows/native-arm64.yml"' /tmp/native-run.json
+          source_sha=$(jq -r .head_sha /tmp/native-run.json)
+          [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
+          gh release view "$TAG" --json isDraft,targetCommitish > /tmp/native-draft.json
+          jq -e --arg sha "$source_sha" '.isDraft == true and .targetCommitish == $sha' /tmp/native-draft.json
+          printf 'sha=%s\n' "$source_sha" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: mnOS-native-arm64
+          run-id: ${{ inputs.arm_run }}
+          github-token: ${{ github.token }}
+          path: arm-verified
+      - name: Build and boot x86 from the same source
+        run: |
+          set -euo pipefail
+          make -C native -j4 all host-tools
+          make -C native host-tests | tee native/build/native-host-tests.log
+          docker build -t mnos-native-packer -f live/Builder.Dockerfile live
+          docker run --rm --network none -v "$PWD/native:/native:ro" -v "$PWD/native/build:/out" mnos-native-packer bash -c '
+            set -euo pipefail
+            bash /native/pack.sh test
+            for firmware in bios uefi; do
+              args=()
+              if [ "$firmware" = uefi ]; then
+                cp /usr/share/OVMF/OVMF_VARS_4M.fd /tmp/vars.fd
+                args=(-drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd -drive if=pflash,format=raw,file=/tmp/vars.fd)
+              fi
+              set +e
+              timeout 90 qemu-system-x86_64 -accel tcg -cpu max -smp 4 -m 512 -nic none -cdrom /out/native-test.iso -display none -serial stdio -monitor none -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=4 "${args[@]}" > "/out/native-release-$firmware.log" 2>&1
+              status=$?
+              set -e
+              test "$status" = 33
+              grep -q "SMP PASS 4/4" "/out/native-release-$firmware.log"
+              ! grep -q "PANIC:" "/out/native-release-$firmware.log"
+            done
+            bash /native/pack.sh demo
+          '
+      - name: Upload both verified architectures and publish
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          (cd arm-verified && sha256sum -c native-arm64-demo.iso.sha256)
+          mkdir -p release/validation
+          cp arm-verified/native-arm64-demo.iso release/mnOS-native-arm64.iso
+          cp native/build/native-demo.iso release/mnOS-native-x86_64.iso
+          cp arm-verified/*.log release/validation/
+          cp arm-verified/arm64-console-2.ppm release/validation/arm64-gop.ppm
+          cp native/build/native-host-tests.log native/build/native-release-*.log release/validation/
+          printf '%s\n' "$SOURCE_SHA" > release/SOURCE_COMMIT.txt
+          (cd release && sha256sum mnOS-native-*.iso > SHA256SUMS && tar -czf boot-validation.tar.gz validation)
+          for asset in release/*.iso release/SHA256SUMS release/SOURCE_COMMIT.txt release/boot-validation.tar.gz; do
+            gh release upload "$TAG" "$asset" --clobber
+          done
+          gh release view "$TAG" --json assets --jq '.assets[]|[.name,.state,.size]|@tsv'
+          gh release edit "$TAG" --draft=false --prerelease --latest=false

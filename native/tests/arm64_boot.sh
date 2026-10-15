@@ -20,10 +20,10 @@ run() {
     if grep -q 'PANIC:' "$log"; then cat "$log"; return 1; fi
     grep -q "ARM BOOT PASS: $cores CPUs" "$log"
     for ((cpu_id=0;cpu_id<cores;cpu_id++)); do
-        test "$(grep -cx "ARM CPU $cpu_id SELFTEST PASS 8/8" "$log")" = 1
+        test "$(grep -Fc "ARM CPU $cpu_id SELFTEST PASS 8/8" "$log")" = 1
     done
     for probe in 2 3 4 6 7; do
-        test "$(grep -cx "ARM EL0 fault probe PASS $probe" "$log")" = "$cores"
+        test "$(grep -Fc "ARM EL0 fault probe PASS $probe" "$log")" = "$cores"
     done
     test "$(grep -c 'ARM syscall pointer rejection PASS' "$log")" = "$cores"
     test "$(grep -c 'ARM timer preemption PASS' "$log")" = "$cores"
