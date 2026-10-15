@@ -36,7 +36,7 @@ Interactive graphical boot, using QEMU and AAVMF/QEMU_EFI (firmware path varies
 between distributions):
 
 ```sh
-qemu-system-aarch64 -machine virt,gic-version=3,acpi=off -cpu max -smp 4 -m 1G \
+qemu-system-aarch64 -machine virt,gic-version=3,acpi=off -cpu max -smp 4 -m 1G -nic none \
   -bios /usr/share/qemu-efi-aarch64/QEMU_EFI.fd \
   -cdrom native/build/arm64/native-arm64-demo.iso \
   -global virtio-mmio.force-legacy=false \

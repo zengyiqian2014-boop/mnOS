@@ -83,7 +83,7 @@ struct VM {
                      "2",
                      "-m",
                      "1024",
-                     "-display",
+                     "-nic", "none", "-display",
                      "none",
                      "-monitor",
                      "none",

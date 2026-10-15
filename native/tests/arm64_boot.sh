@@ -6,7 +6,7 @@ run() {
     local name=$1 cpu=$2 cores=$3 ram=$4 machine=$5 firmware=$6
     local log="$out/arm64-$name.log"
     local args=(-machine "$machine" -cpu "$cpu" -smp "$cores" -m "$ram"
-        -accel tcg -display none -serial stdio -monitor none -no-reboot
+        -accel tcg -nic none -display none -serial stdio -monitor none -no-reboot
         -global virtio-mmio.force-legacy=false)
     if [ "$firmware" = uefi ]; then
         args+=(-bios /usr/share/qemu-efi-aarch64/QEMU_EFI.fd
