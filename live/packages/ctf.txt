@@ -1,7 +1,5 @@
 python3-pwntools
 python3-venv
-python3-pip
-pipx
 gdb
 gdb-multiarch
 gcc

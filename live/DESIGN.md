@@ -44,8 +44,9 @@ sudo tuned-adm profile mnos-desktop    # hardware default
 sudo tuned-adm profile mnos-virtual    # QEMU default
 ```
 
-LZ4 zram is capped at half of RAM / 4 GiB. SquashFS uses zstd for decompression
-speed. The QEMU launcher uses KVM when available, host CPU features, VirtIO and
+LZ4 zram is capped at half of RAM / 4 GiB. SquashFS uses XZ with x86 filtering
+to reduce download size and fit the release host's 2 GiB per-asset limit.
+This trades additional build time and decompression work for compression. The QEMU launcher uses KVM when available, host CPU features, VirtIO and
 a hardware RNG device. TCG is a functional fallback, not a performance baseline
 for physical hardware. CPU vulnerability mitigations remain enabled.
 
@@ -71,7 +72,7 @@ graphics only implements DISPI 2D and the firmware framebuffer.
 ## Desktop and CTF tools
 
 Xfce provides real window management, display settings and session locking. The
-GTK system center launches installed tools and reads actual CPU/memory/disk data.
+The original C++ system center and popup menu use GTK/GIO for rendering and XDG application discovery, and read CPU/memory/disk data without Python.
 Cockpit runs in its own network namespace via `cockpit-desktop`, on demand, with
 no remote management socket. It uses Polkit for administrative access.
 

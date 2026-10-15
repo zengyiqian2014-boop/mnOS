@@ -85,10 +85,10 @@ its key is scoped to that source and checked against fingerprint
 package manifest. VS Code and its terminal run as the ordinary user, with no
 `--no-sandbox` flag. Telemetry and AI features default off in new user settings.
 
-Included languages: C/C++ (GCC and Clang), Python with venv, Node.js/npm, Go,
+Included languages: C/C++ (GCC and Clang), Node.js/npm, Go,
 Rust/Cargo and Java/JDK. CMake, Ninja, pkg-config, Git, GDB, clangd, ripgrep and
 ShellCheck are available. Build/edit projects in your home directory without
-sudo; use a Python venv or project-local dependencies. VS Code extensions are
+sudo; use project-local dependencies. VS Code extensions are
 installed per user. These applications run in the Linux entry, not directly on
 the experimental native kernel.
 
@@ -201,3 +201,13 @@ Microsoft Visual Studio Code is installed from Microsoft's signed APT repository
 and retains its own distribution terms and bundled license notices. It is a
 third-party binary, distinct from the project's original GPL integration code.
 Subscription documents and build credentials are never part of the distribution.
+
+### Compiled mnOS components and provenance
+
+The system center, compact search menu, first-boot enrollment, wallpaper setup
+and network policy are built from C++17. The native kernel and privileged gates
+are C/assembly. Python development headers, pytest, global pip and pipx are no
+longer requested by the default package lists; Python remains only where selected
+third-party applications require it. See [implementation origins](PROVENANCE.md)
+for the boundary between original code and the Linux compatibility environment.
+The menu uses 20 px icons beside a 34 px panel, with icon-only task buttons.

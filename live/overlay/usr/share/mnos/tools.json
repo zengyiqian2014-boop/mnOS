@@ -120,58 +120,6 @@
     "description": "JavaScript 包与项目管理"
   },
   {
-    "name": "Python 3",
-    "category": "开发编程",
-    "icon": "applications-development",
-    "command": [
-      "python3",
-      "--help"
-    ],
-    "description": "Python 解释器"
-  },
-  {
-    "name": "Python venv",
-    "category": "开发编程",
-    "icon": "applications-development",
-    "command": [
-      "python3",
-      "-m",
-      "venv",
-      "--help"
-    ],
-    "description": "创建独立 Python 开发环境"
-  },
-  {
-    "name": "pip",
-    "category": "开发编程",
-    "icon": "applications-development",
-    "command": [
-      "pip3",
-      "--help"
-    ],
-    "description": "Python 包管理"
-  },
-  {
-    "name": "pipx",
-    "category": "开发编程",
-    "icon": "applications-development",
-    "command": [
-      "pipx",
-      "--help"
-    ],
-    "description": "隔离安装 Python 命令行应用"
-  },
-  {
-    "name": "pytest",
-    "category": "开发编程",
-    "icon": "applications-development",
-    "command": [
-      "pytest",
-      "--help"
-    ],
-    "description": "Python 测试"
-  },
-  {
     "name": "Git",
     "category": "开发编程",
     "icon": "applications-development",

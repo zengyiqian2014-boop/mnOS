@@ -1,0 +1,5 @@
+/* mnOS compact panel. Scoped to the compatibility desktop panel. */
+.xfce4-panel { background: #171c22; color: #dde3e9; }
+.xfce4-panel button { padding: 0 4px; border-radius: 0; border: 0; box-shadow: none; }
+.xfce4-panel .tasklist button:checked { background: #303a42; border-bottom: 2px solid #8fcfbe; }
+.xfce4-panel .tasklist button:hover { background: #2b343c; }

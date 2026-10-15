@@ -108,17 +108,18 @@ Local checks on 2026-10-15 for the next preview passed:
   default denial of raw scanning, opt-in raw SYN scanning on loopback, NET_ADMIN
   loopback MTU changes, denial for a second account, and capability revocation.
   The container receives NET_ADMIN solely to make that test possible.
-- Ten enrollment/installer unit checks, including fail-closed invalid network
-  selection and propagation of target-system setup errors.
+- Compiled C++ enrollment, tested through a real pseudo-terminal: cancellation,
+  invalid username, hidden password input, password hash verification, private
+  setup marker and no second prompt after completion. Network-policy C++
+  runtime passes the capability/delegation/revocation test above.
 
 The workflow additionally validates the installed Calamares page/job order and
 default choice. `development.py` runs small C, C++, Rust, Go, Java, JavaScript
-and Python programs as an ordinary user without networking; it also checks
+programs as an ordinary user without networking; it also checks
 nano, the official VS Code CLI and the remaining build tools. CLI checks alone
 do not prove that the editor's graphical window or every extension works.
-These checks run against both newly built profiles before publishing. The
-installer job is exercised with target-environment mocks; that is not a complete
-partition/install/reboot test.
+These checks run against both newly built profiles before publishing. The installer now uses Calamares' compiled contextualprocess job with a fail-closed fallback and independent
+account validation in the C++ backend. This is not a complete disk install test.
 
 The installer is included, but an end-to-end disk installation, encrypted
 installation and subsequent disk boot have not been validated here. Back up

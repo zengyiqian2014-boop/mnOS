@@ -94,7 +94,13 @@ sed -i 's/^branding: debian/branding: mnos/; s/^prompt-install: false/prompt-ins
 sed -i '/  - sources-media$/d; /  - sources-media-unmount$/d; /  - sources-final$/d' /etc/calamares/settings.conf
 # The chooser records the explicit policy; the job applies it inside the target after users.
 sed -i '/  - summary$/i\  - packagechooser' /etc/calamares/settings.conf
-sed -i '/  - displaymanager$/i\  - mnosnetwork' /etc/calamares/settings.conf
+sed -i '/  - displaymanager$/i\  - contextualprocess@mnosnetwork' /etc/calamares/settings.conf
+cat >> /etc/calamares/settings.conf <<'INSTANCES'
+instances:
+  - id: mnosnetwork
+    module: contextualprocess
+    config: mnosnetwork.conf
+INSTANCES
 sed -i 's/minLength: -1.*/minLength: 12/; s/minlen=0/minlen=12/; s/minclass=0/minclass=2/' /etc/calamares/modules/users.conf
 sed -i -E 's/^doAutologin:.*/doAutologin: false/; s/^setRootPassword:.*/setRootPassword: false/; s/^allowWeakPasswords:.*/allowWeakPasswords: false/' /etc/calamares/modules/users.conf
 rm -f /etc/xdg/autostart/calamares-desktop-icon.desktop

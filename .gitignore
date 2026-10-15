@@ -17,3 +17,6 @@
 /native/assets/*.ttc
 /native/assets/*.ttf
 /native/assets/*.otf
+
+/live/tests/enrollment-runtime
+/live/src/build/

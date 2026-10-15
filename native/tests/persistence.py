@@ -75,7 +75,7 @@ with tempfile.TemporaryDirectory(dir=args.out) as temporary:
                 secret(password, 'AUTH: Signed in as an ordinary user.' if name != 'root' else 'AUTH: Root session:')
 
             wait('SMP PASS 4/4')
-            wait('/disk mounted read-only')
+        wait('/disk validated read-only')
             if phase == 1:
                 secret('demo')
                 secret('ordinarytest491')

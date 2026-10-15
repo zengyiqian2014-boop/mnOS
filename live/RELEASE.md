@@ -1,12 +1,16 @@
 mnOS 双启动预览版：同一张 ISO 提供自研 C/汇编内核和独立的 Linux 桌面工具环境。下载 `qemu` 版用于虚拟机，`hardware` 版用于 x86_64 PC；后者增加常见 Wi-Fi、GPU、蓝牙和音频固件及 CPU 微码。
 
+### 自研组件与依赖
+
+系统中心、左上角搜索菜单、首次建号、壁纸配置和网络授权已改为 C++ 编译程序，自研内核及权限入口使用 C/汇编。默认不再主动安装 Python 开发头文件、pytest、全局 pip 或 pipx；第三方应用需要的 Python 及依赖保留。Linux、Xfce、GTK、驱动和应用的第三方来源见 `live/PROVENANCE.md`，不宣称整套兼容环境已经自研。
+
 ### 编辑文件与编程
 
-- 左上角“应用与工具”按钮提供搜索、分类和图标列表，收录 127 个命令行工具入口，并自动读取已安装的图形应用。命令行条目打开终端帮助，图形应用直接打开；内核、屏幕、壁纸、磁盘分区等统一归入“系统设置”。
-- 更新桌面与登录壁纸，增大字体、提高文字对比度并使用轮廓字体渲染。QEMU 启动脚本默认请求 1920×1080 显示模式，可在系统设置调整。
+- 左上角“应用与工具”按钮提供搜索、分类和图标列表，收录 122 个命令行工具入口，并自动读取已安装的图形应用。命令行条目打开终端帮助，图形应用直接打开；内核、屏幕、壁纸、磁盘分区等统一归入“系统设置”。
+- 更新桌面与登录壁纸，收紧顶栏至 34 像素、菜单图标至 20 像素，提高文字对比度并使用轮廓字体渲染。QEMU 启动脚本默认请求 1920×1080 显示模式，可在系统设置调整。
 - 加入 **Microsoft 官方 Visual Studio Code**，可从应用菜单或系统中心打开，也可用 `code .` 打开项目。默认关闭遥测与内置 AI 功能；正常以普通用户运行，保留 Electron 沙箱。
 - 提供 `nano`、Mousepad 图形编辑器、Thunar 文件管理器；编辑个人文件、运行桌面应用和编译程序不需要 root。
-- 预装 C/C++、Clang/clangd、GDB、Rust/Cargo、Go、Java JDK、Node.js/npm、Python/venv/pytest，以及 Git、CMake、Ninja、pkg-config、ripgrep 和 ShellCheck。
+- 预装 C/C++、Clang/clangd、GDB、Rust/Cargo、Go、Java JDK、Node.js/npm、以及 Git、CMake、Ninja、pkg-config、ripgrep 和 ShellCheck。
 - 保留 Firefox ESR、Pwntools、Wireshark、Nmap、Hashcat 等网络、CTF 和系统管理工具。
 
 ### 账号与权限修正

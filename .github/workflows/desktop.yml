@@ -64,7 +64,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Enrollment checks
-        run: python3 -m unittest discover -s live/tests -p 'test_*.py'
+        run: |
+          python3 -m unittest discover -s live/tests -p 'test_*.py'
+          c++ -std=c++17 -O2 -Wall -Wextra live/tests/enrollment-runtime.cpp -lutil -lcrypt -o live/tests/enrollment-runtime
       - name: Build ISO
         run: ./live/build.sh "${{ matrix.profile }}"
       - name: Check kernel and desktop tools
@@ -73,6 +75,8 @@ jobs:
           docker run --rm --init --network none -v "$PWD/live/tests:/tests:ro" \
             "mnos-live:${{ matrix.profile }}" timeout 120s xvfb-run -a \
             dbus-run-session -- python3 /tests/gui_smoke.py
+          docker run --rm --init --network none -v "$PWD/live/tests:/tests:ro" \
+            "mnos-live:${{ matrix.profile }}" /tests/enrollment-runtime
           docker run --rm --init --network none --cap-add NET_ADMIN \
             -v "$PWD/live/tests:/tests:ro" "mnos-live:${{ matrix.profile }}" \
             python3 /tests/network_permissions.py

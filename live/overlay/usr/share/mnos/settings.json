@@ -1,0 +1,139 @@
+[
+  {
+    "name": "内核管理",
+    "description": "查询内核、CPU、内存和驱动；系统修改需要管理员认证",
+    "category": "系统设置",
+    "icon": "utilities-terminal",
+    "command": [
+      "@terminal",
+      "kernel",
+      "help"
+    ]
+  },
+  {
+    "name": "GPU 驱动",
+    "description": "查看当前显卡及绑定的驱动",
+    "category": "系统设置",
+    "icon": "video-display",
+    "command": [
+      "@terminal",
+      "kernel",
+      "gpu"
+    ]
+  },
+  {
+    "name": "性能配置",
+    "description": "查看 TuneD 当前配置",
+    "category": "系统设置",
+    "icon": "preferences-system-performance",
+    "command": [
+      "@terminal",
+      "tuned-adm",
+      "active"
+    ]
+  },
+  {
+    "name": "系统管理",
+    "description": "服务、账户、日志与更新",
+    "category": "系统设置",
+    "icon": "preferences-system",
+    "command": [
+      "/usr/lib/cockpit/cockpit-desktop",
+      "/"
+    ]
+  },
+  {
+    "name": "系统日志",
+    "description": "按时间和服务查看运行记录",
+    "category": "系统设置",
+    "icon": "text-x-log",
+    "command": [
+      "/usr/lib/cockpit/cockpit-desktop",
+      "system/logs"
+    ]
+  },
+  {
+    "name": "用户账户",
+    "description": "账户、密码与用户组",
+    "category": "系统设置",
+    "icon": "system-users",
+    "command": [
+      "/usr/lib/cockpit/cockpit-desktop",
+      "users"
+    ]
+  },
+  {
+    "name": "软件更新",
+    "description": "检查并安装系统更新",
+    "category": "系统设置",
+    "icon": "system-software-update",
+    "command": [
+      "/usr/lib/cockpit/cockpit-desktop",
+      "updates"
+    ]
+  },
+  {
+    "name": "系统服务",
+    "description": "服务状态、启停与开机设置",
+    "category": "系统设置",
+    "icon": "system-run",
+    "command": [
+      "/usr/lib/cockpit/cockpit-desktop",
+      "system/services"
+    ]
+  },
+  {
+    "name": "中文命令帮助",
+    "description": "help -cn；普通用户可直接查看",
+    "category": "系统设置",
+    "icon": "help-browser",
+    "command": [
+      "@terminal",
+      "mnos-help",
+      "-cn"
+    ]
+  },
+  {
+    "name": "本地使用手册",
+    "description": "启动、安装、安全与故障排查",
+    "category": "系统设置",
+    "icon": "text-x-generic",
+    "command": [
+      "mousepad",
+      "/usr/share/doc/mnos/guide.zh.txt"
+    ]
+  },
+  {
+    "name": "网络权限",
+    "description": "查看本机网络工具的权限模式",
+    "category": "系统设置",
+    "icon": "network-wired",
+    "command": [
+      "@terminal",
+      "mnos-net",
+      "help"
+    ]
+  },
+  {
+    "name": "抓包接口",
+    "description": "按安装时选择的权限列出可抓包接口",
+    "category": "系统设置",
+    "icon": "network-workgroup",
+    "command": [
+      "@network",
+      "tcpdump",
+      "-D"
+    ]
+  },
+  {
+    "name": "安全基线检查",
+    "description": "检查当前安全配置",
+    "category": "系统设置",
+    "icon": "security-high",
+    "command": [
+      "@terminal",
+      "sudo",
+      "mnos-security-check"
+    ]
+  }
+]

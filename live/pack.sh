@@ -35,6 +35,10 @@ cp -a /native/src /native/include /native/tests /native/tools /native/Makefile /
 mkdir -p "$ROOT/usr/src/mnos-admin"
 cp /source/src/kernel.c /source/src/kernel-admin.c /source/src/kernel-common.h "$ROOT/usr/src/mnos-admin/"
 cp /source/src/net-admin.c "$ROOT/usr/src/mnos-admin/"
+mkdir -p "$ROOT/usr/src/mnos-desktop"
+cp /source/src/*.cpp /source/src/*.hpp /source/src/Makefile "$ROOT/usr/src/mnos-desktop/"
+find "$ROOT/usr/src/mnos-desktop" -type d -exec chmod 755 {} +
+find "$ROOT/usr/src/mnos-desktop" -type f -exec chmod 644 {} +
 mkdir -p "$ROOT/usr/src/mnos-native/assets"
 cp /native/assets/font.c /native/assets/FONT-LICENSE.txt "$ROOT/usr/src/mnos-native/assets/"
 find "$ROOT/usr/src/mnos-native" -type d -exec chmod 755 {} +
@@ -52,8 +56,8 @@ cp "$ROOT/boot/initrd.img-$version" "$ISO/live/initrd.img"
 cp "$ROOT/usr/share/doc/mnos/packages.tsv" "/out/packages-$PROFILE.tsv"
 cp "$ROOT/boot/config-$version" "/out/kernel-$PROFILE.config"
 cp "$ROOT/etc/mnos/source-commit" "/out/source-$PROFILE.txt"
-mksquashfs "$ROOT" "$ISO/live/filesystem.squashfs" -noappend -comp zstd \
-    -Xcompression-level 8 -b 1M -processors 4 -no-progress
+mksquashfs "$ROOT" "$ISO/live/filesystem.squashfs" -noappend -comp xz \
+    -Xbcj x86 -b 1M -processors 4 -no-progress
 cp /usr/share/grub/unicode.pf2 "$ISO/boot/grub/unicode.pf2"
 # Debian's signed EFI core does not embed the Multiboot2 loader. Keep modules
 # from the SAME rootfs package version available when Secure Boot is off.

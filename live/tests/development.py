@@ -40,8 +40,6 @@ def main():
         run('javac', 'Hello.java')
         assert run('java', 'Hello').strip() == 'Java ready'
         assert run('node', '-e', 'console.log("JavaScript ready")').strip() == 'JavaScript ready'
-        run('python3', '-m', 'venv', 'venv')
-        assert run('./venv/bin/python', '-c', 'print("Python ready")').strip() == 'Python ready'
         assert 'nano' in run('nano', '--version').lower()
         assert run('code', '--version').strip()
         run('code', '--list-extensions', '--user-data-dir', temp + '/code-data', '--extensions-dir', temp + '/extensions')
@@ -49,7 +47,7 @@ def main():
             run(command, '--version')
         assert Path('/usr/share/applications/code.desktop').is_file()
         assert not any(path.stat().st_uid == 0 for path in directory.iterdir())
-    print('Ordinary-user C/C++, Rust, Go, Java, JavaScript, Python venv, nano and official VS Code CLI: PASS')
+    print('Ordinary-user C/C++, Rust, Go, Java, JavaScript, nano and official VS Code CLI: PASS')
 
 
 if __name__ == '__main__':

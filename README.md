@@ -13,7 +13,7 @@ Linux for Firefox, CTF tools, Wi-Fi and daily system administration.
 | Environment | Current capabilities |
 | --- | --- |
 | [Original native kernel](native/README.md) | Local account authentication, user/root permissions, dynamic SMP, sparse memory up to 64 TiB, MNFS CoW filesystem, graphical console and personal display settings |
-| [Linux desktop](live/README.md) | Xfce, official VS Code, nano, Firefox ESR, C/C++/Python/Node.js/Go/Rust/Java, CTF tools, optional network delegation, system settings and common drivers |
+| [Linux desktop](live/README.md) | Xfce, official VS Code, nano, Firefox ESR, C/C++/Node.js/Go/Rust/Java, CTF tools, optional network delegation, system settings and common drivers |
 
 The native kernel has passed 32-vCPU and 33-TiB sparse-memory QEMU tests. It is
 experimental: these are addressability and functional checks, not unlimited
@@ -63,7 +63,7 @@ Separate Linux desktop and system center, captured in a development VM:
 
 ![mnOS Linux desktop](assets/linux-desktop.png)
 
-The top-left **Applications & Tools** button searches installed apps and 127 named CLI tools. CLI entries open terminal help; kernel, display, wallpaper and partition controls share **System settings**. The desktop includes a new landscape wallpaper and larger outline-rendered text.
+The top-left **Applications & Tools** button searches installed apps and 122 named CLI tools. CLI entries open terminal help; kernel, display, wallpaper and partition controls share **System settings**. The desktop includes a new landscape wallpaper and outline-rendered text, a 34 px panel and 20 px menu icons.
 
 ## Legacy BusyBox edition
 

@@ -13,7 +13,16 @@ RUN --mount=type=secret,id=build_ca \
     && rm -rf /var/lib/apt/lists/* /tmp/common.txt \
     && rm -f /etc/apt/apt.conf.d/99-mnos-build-ca
 
+# Compile our runtime components separately: development headers stay out of the ISO.
+FROM common AS components
+RUN --mount=type=secret,id=build_ca \
+    if [ -r /run/secrets/build_ca ]; then printf 'Acquire::https::CaInfo "/run/secrets/build_ca";\n' > /etc/apt/apt.conf.d/99-mnos-build-ca; fi \
+    && apt-get update && apt-get install -y --no-install-recommends g++ make pkg-config libgtk-3-dev libjson-glib-dev
+COPY src /src
+RUN make -C /src -j4 OUT=/build && make -C /src OUT=/build DESTDIR=/compiled install
+
 FROM common AS final
+COPY --from=components /compiled/ /
 ARG PROFILE
 RUN --mount=type=secret,id=build_ca \
     --mount=type=bind,source=packages,target=/tmp/packages \

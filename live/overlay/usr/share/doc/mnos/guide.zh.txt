@@ -38,10 +38,10 @@ passwd 修改个人密码，logout 锁定；root 可用 useradd 添加账号。�
 nano 文件名：终端编辑器；Mousepad：图形文本编辑器；Thunar：图形文件管理器。
 code 项目目录：官方 Visual Studio Code，支持图形编辑、终端和用户扩展。
 在自己的主目录中新建、修改、删除文件和编译项目都不需要 root。
-预装 GCC/G++、Clang/clangd、Python/venv、Node.js/npm、Go、Rust/Cargo、Java/JDK，
-以及 Git、CMake、Ninja、GDB、ripgrep、ShellCheck。Python 项目使用虚拟环境：
-  python3 -m venv .venv
-  . .venv/bin/activate
+预装 GCC/G++、Clang/clangd、Node.js/npm、Go、Rust/Cargo、Java/JDK，
+以及 Git、CMake、Ninja、GDB、ripgrep、ShellCheck。
+系统中心、工具菜单、首次建号、壁纸配置和网络授权使用 C++ 编译程序；
+Python 仅作为所选第三方应用的依赖保留，默认不主动安装 Python 开发包、pytest、pipx。
 VS Code 使用微软签名的软件源更新。新账号默认关闭遥测和 AI 功能。
 这些应用运行在 Linux 桌面入口；自研内核尚无运行 VS Code 的应用 ABI。
 
@@ -58,7 +58,7 @@ mnos-net ip、mnos-net tc、mnos-net iw，账号 UID 仍非 root。
 
 显示与文件系统
 --------------
-Linux：系统中心“桌面”页可调分辨率、多屏、缩放、壁纸、键鼠、声音等。
+Linux：系统中心“系统设置”页可调分辨率、多屏、缩放、壁纸、键鼠、声音等。
 glxinfo -B 和 vulkaninfo --summary 可查看渲染器，kernel gpu 查看绑定驱动。
 原生：F7 打开显示设置，R 切换分辨率，W 切换壁纸，S 保存到 MNFS 磁盘。
 支持 QEMU/Bochs DISPI 2D；其他显卡保留启动帧缓冲，原生暂不支持 3D 加速。
@@ -69,7 +69,7 @@ MNFS ATA 镜像。校验并登录后可写自己的目录；root 可用 disk loc
 写入，启动不会格式化已有磁盘。原生显示偏好保存在 /disk/home/用户名/display.cfg。
 Linux 安装仍使用成熟的 Linux 文件系统。
 Linux 中 mnfs 工具可操作 MNFS 镜像；format 只创建新文件，不覆盖已有路径。
-MNFS 尚无权限、加密或成熟修复工具，重要数据应另行备份。
+MNFS 有本地会话访问检查，尚无磁盘 POSIX ACL、加密或成熟修复工具。
 原生源码与详细说明位于 /usr/src/mnos-native。
 
 两个镜像
@@ -85,7 +85,7 @@ ARM、32 位机器及所有具体硬件组合不在本次验证范围内。
 --------
 1. 启动后在本机控制台创建用户名与密码，至少 12 个字符。
 2. 在图形登录界面输入刚才创建的密码。
-3. 系统中心提供系统管理、网络与安全、桌面设置入口。
+3. 系统中心提供系统设置、网络与安全入口。
 
 没有默认密码，没有 root 自动登录。管理员通过 sudo / Polkit 提权。
 Live 会话的写入层位于内存。关机后文件、密码、设置和更新都会丢失。
