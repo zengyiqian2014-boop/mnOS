@@ -1,5 +1,32 @@
 # Validation record
 
+## Verified preview.5 build
+
+On 2026-10-15, [workflow run 38730394222](https://github.com/zengyiqian2014-boop/mnOS/actions/runs/38730394222)
+successfully built and checked source commit
+`2f55f09aa2a9983479fa13fc0e3f3297a4a0a4ab` for all four images:
+
+| Image | Linux ISO boot | Original kernel in the same ISO |
+| --- | --- | --- |
+| QEMU x86_64 | BIOS, UEFI and Secure Boot passed | BIOS and UEFI passed 8/8 |
+| Hardware x86_64 | BIOS, UEFI and Secure Boot passed | BIOS and UEFI passed 8/8 |
+| QEMU ARM64 | UEFI passed | Not ported |
+| Hardware ARM64 | UEFI passed | Not ported |
+
+These are actual ISO boots under QEMU, including the hardware-profile images.
+They do not establish physical PC/board compatibility or ARM Secure Boot support.
+Every image also passed kernel configuration checks, compiled desktop/catalog
+checks, **five fresh-container account enrollments**, ordinary/delegated network
+permission tests, and ordinary-user C/C++, Rust, Go, Java and JavaScript builds.
+The editor checks covered nano and the official VS Code CLI. Graphical VS Code
+interaction was separately tested in the x86_64 development VM described below.
+
+The same run passed all original-kernel host and VM tests listed below, including
+32 vCPUs, 33 TiB sparse addressing, account permissions, both display adapters
+and ATA persistence after power loss. ISO checksums are verified again when
+staging release assets. Package manifests, source commit IDs, kernel configs
+and boot logs are retained with the build.
+
 ## Current desktop interaction checks
 
 On 2026-10-15, the updated C++ binaries and packaged desktop assets were tested
@@ -29,8 +56,8 @@ BIOS/UEFI boot checks. Both ARM64 profiles passed installed desktop, enrollment,
 network permission and development-tool checks, but their ISO boot checks
 caught SquashFS XZ decompression failures. The ARM32 BCJ filter was incompatible
 with the ARM64 kernel's enabled decoders; ARM64 packing now uses plain XZ, while
-x86_64 keeps its supported x86 BCJ filter. The workflow must boot the corrected
-images successfully before publishing. ARM QEMU also has explicit USB keyboard
+x86_64 keeps its supported x86 BCJ filter. The corrected images passed the
+preview.5 boot checks above. ARM QEMU also has explicit USB keyboard
 and tablet devices.
 
 Enrollment uses unbuffered terminal input and `posix_spawn` for password and
