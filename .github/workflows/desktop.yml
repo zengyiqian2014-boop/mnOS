@@ -90,11 +90,22 @@ jobs:
           docker run --rm --init --network none -v "$PWD/live/tests:/tests:ro" \
             "mnos-live:${{ matrix.profile }}-${{ matrix.arch }}" timeout 120s xvfb-run -a \
             dbus-run-session -- python3 /tests/gui_smoke.py
-          docker run --rm --init --network none -v "$PWD/live/tests:/tests:ro" \
-            "mnos-live:${{ matrix.profile }}-${{ matrix.arch }}" /tests/enrollment-runtime
+      - name: Repeat first account setup in fresh containers
+        if: ${{ !cancelled() && steps.iso.outcome == 'success' }}
+        run: |
+          for attempt in {1..5}; do
+            docker run --rm --init --network none -v "$PWD/live/tests:/tests:ro" \
+              "mnos-live:${{ matrix.profile }}-${{ matrix.arch }}" /tests/enrollment-runtime
+          done
+      - name: Check ordinary and delegated network permissions
+        if: ${{ !cancelled() && steps.iso.outcome == 'success' }}
+        run: |
           docker run --rm --init --network none --cap-add NET_ADMIN \
             -v "$PWD/live/tests:/tests:ro" "mnos-live:${{ matrix.profile }}-${{ matrix.arch }}" \
             python3 /tests/network_permissions.py
+      - name: Compile and run development tools as an ordinary user
+        if: ${{ !cancelled() && steps.iso.outcome == 'success' }}
+        run: |
           docker run --rm --init --network none -v "$PWD/live/tests:/tests:ro" \
             "mnos-live:${{ matrix.profile }}-${{ matrix.arch }}" python3 /tests/development.py
       - name: Boot architecture-specific ISO entries

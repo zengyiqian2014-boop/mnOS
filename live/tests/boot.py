@@ -39,6 +39,7 @@ def boot(iso, output, mode, target='linux', arch='amd64'):
                 '-device', 'virtio-scsi-pci,id=scsi',
                 '-drive', f'file={iso},media=cdrom,if=none,id=cd,format=raw,readonly=on',
                 '-device', 'scsi-cd,drive=cd,bootindex=0',
+                '-device', 'qemu-xhci', '-device', 'usb-kbd', '-device', 'usb-tablet',
                 '-drive', 'if=pflash,format=raw,readonly=on,file=/usr/share/AAVMF/AAVMF_CODE.fd',
                 '-drive', f'if=pflash,format=raw,file={nvram}',
                 '-display', 'none', '-monitor', 'none', '-serial', f'file:{serial}', '-no-reboot',
@@ -61,7 +62,8 @@ def boot(iso, output, mode, target='linux', arch='amd64'):
                 while time.monotonic() < deadline:
                     text = serial.read_text(errors='replace') if serial.exists() else ''
                     for failure in ('Kernel panic', 'PANIC', 'SELFTEST FAIL', 'Verification failed', 'Emergency mode',
-                                    'prohibited by secure boot policy'):
+                                    'prohibited by secure boot policy', 'SQUASHFS error',
+                                    'You are in emergency mode', 'Failed to execute /init'):
                         if failure in text:
                             raise AssertionError(f'{mode}: {failure}; see {serial}')
                     if target == 'native' and 'SELFTEST PASS 8/8' in text:

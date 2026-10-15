@@ -5,8 +5,10 @@ set -euo pipefail
 test -f /.dockerenv || exit 1
 case "${PROFILE:?}" in qemu|hardware) ;; *) exit 2 ;; esac
 case "${ARCH:-amd64}" in
-    amd64) ARCH=amd64; EFI=x86_64-efi; EFI_SUFFIX=x64; BCJ=x86; CONSOLE=ttyS0 ;;
-    arm64) EFI=arm64-efi; EFI_SUFFIX=aa64; BCJ=arm; CONSOLE=ttyAMA0 ;;
+    amd64) ARCH=amd64; EFI=x86_64-efi; EFI_SUFFIX=x64; BCJ=(-Xbcj x86); CONSOLE=ttyS0 ;;
+    # The packaged squashfs tools do not offer an ARM64 BCJ encoder. ARM32
+    # BCJ is NOT interchangeable: the ARM64 kernel disables that decoder.
+    arm64) EFI=arm64-efi; EFI_SUFFIX=aa64; BCJ=(); CONSOLE=ttyAMA0 ;;
     *) exit 2 ;;
 esac
 mkdir -p /work/root /work/iso/{live,boot/grub/i386-pc}
@@ -68,7 +70,7 @@ cp "$ROOT/boot/config-$version" "/out/kernel-$PROFILE-$ARCH.config"
 cp "$ROOT/etc/mnos/source-commit" "/out/source-$PROFILE-$ARCH.txt"
 find "$ROOT/usr/lib" "$ROOT/boot" -type f -name '*.dtb' -printf '%P\n' | sort > "/out/device-trees-$PROFILE-$ARCH.txt"
 mksquashfs "$ROOT" "$ISO/live/filesystem.squashfs" -noappend -comp xz \
-    -Xbcj "$BCJ" -b 1M -processors 4 -no-progress
+    "${BCJ[@]}" -b 1M -processors 4 -no-progress
 cp /usr/share/grub/unicode.pf2 "$ISO/boot/grub/unicode.pf2"
 # Debian's signed EFI core does not embed the Multiboot2 loader. Keep modules
 # from the SAME rootfs package version available when Secure Boot is off.

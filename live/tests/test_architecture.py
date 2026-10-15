@@ -50,6 +50,8 @@ class LauncherTests(unittest.TestCase):
         self.assertIn('virt,gic-version=max', args)
         self.assertIn('scsi-cd,drive=cd,bootindex=0', args)
         self.assertIn('virtio-gpu-pci,xres=1920,yres=1080', args)
+        self.assertIn('usb-kbd', args)
+        self.assertIn('usb-tablet', args)
         self.assertTrue(any('pflash' in arg for arg in args))
         self.assertNotIn('-cdrom', args)
         if platform.machine() != 'aarch64':

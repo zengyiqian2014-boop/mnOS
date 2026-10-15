@@ -27,6 +27,8 @@ args=(-accel "$ACCEL" -cpu "$CPU" -smp "$CPUS" -m "$MEMORY" -machine "$MACHINE"
       -device virtio-rng-pci -serial mon:stdio)
 if [ "$ARCH" = arm64 ]; then
     args+=(-device virtio-scsi-pci,id=scsi -drive "file=$ISO,media=cdrom,if=none,id=cd,format=raw,readonly=on" -device scsi-cd,drive=cd,bootindex=0)
+    # ARM virt has no built-in PS/2 controller. Supply real guest input devices.
+    args+=(-device qemu-xhci -device usb-kbd -device usb-tablet)
 else
     args+=(-cdrom "$ISO")
 fi

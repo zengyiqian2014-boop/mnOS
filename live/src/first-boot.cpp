@@ -12,6 +12,26 @@ static volatile sig_atomic_t interrupted = 0;
 static void interrupt(int) {
     interrupted = 1;
 }
+static std::string username_line() {
+    // Use the same unbuffered descriptor as password input. A stdio buffer
+    // must not retain input while the terminal switches canonical modes.
+    std::string result;
+    while (!interrupted) {
+        char c;
+        ssize_t n = read(STDIN_FILENO, &c, 1);
+        if (n < 0 && errno == EINTR)
+            continue;
+        if (n != 1)
+            break;
+        if (c == '\n' || c == '\r')
+            return result;
+        // 32 characters are enough to reject an overlong name without
+        // allocating unbounded memory for pasted input.
+        if (result.size() < 32)
+            result += c;
+    }
+    throw std::runtime_error("Setup interrupted");
+}
 static std::string password(const char *prompt) {
     termios old{};
     if (tcgetattr(STDIN_FILENO, &old))
@@ -84,10 +104,8 @@ int main() {
                      "account.\nThis live session runs in RAM. Install to keep changes.\nNo "
                      "default password. Root login stays locked.\n\n";
         while (!interrupted) {
-            std::string name;
             std::cout << "Username [mnos]: " << std::flush;
-            if (!std::getline(std::cin, name))
-                throw std::runtime_error("Setup interrupted");
+            std::string name = username_line();
             if (name.empty())
                 name = "mnos";
             if (!mnos::username(name)) {

@@ -23,10 +23,24 @@ with the new components copied in, not a claim about an untested release ISO.
 - Network capability tests passed ordinary networking, explicit delegation,
   outsider denial, allowed-tool enforcement and revocation.
 
-The ARM64 build and boot matrix is new. Physical ARM64 boards and ARM Secure
-Boot have not been validated; see `HARDWARE.md`. Workflow artifacts record
-architecture-specific results. A driver configuration check is not a hardware
-compatibility certification.
+The four-image workflow now builds on native x86_64 and ARM64 runners. At commit
+`f2676e1`, the x86_64 QEMU image passed Linux BIOS/UEFI/Secure Boot and native
+BIOS/UEFI boot checks. Both ARM64 profiles passed installed desktop, enrollment,
+network permission and development-tool checks, but their ISO boot checks
+caught SquashFS XZ decompression failures. The ARM32 BCJ filter was incompatible
+with the ARM64 kernel's enabled decoders; ARM64 packing now uses plain XZ, while
+x86_64 keeps its supported x86 BCJ filter. The workflow must boot the corrected
+images successfully before publishing. ARM QEMU also has explicit USB keyboard
+and tablet devices.
+
+Enrollment uses unbuffered terminal input and `posix_spawn` for password and
+account helpers. Host checks exercise binary stdin, closed stdin, environment
+isolation and spawn errors. Each final image repeats account setup in five fresh
+containers, independently of GUI, network and compiler checks.
+
+Physical ARM64 boards and ARM Secure Boot have not been validated; see
+`HARDWARE.md`. Workflow artifacts record architecture-specific results. A driver
+configuration check is not a hardware compatibility certification.
 
 ## Native kernel
 
@@ -108,9 +122,10 @@ These were development-build checks. The GUI session was used to find missing
 SVG and power-panel packages; their installation fixes are in the build recipe.
 The boot tests caught a missing optical UEFI configuration and now boot the
 corrected image without editing its menu. The release workflow rebuilds both
-profiles from its tagged source and repeats native tests, package/GTK checks,
-BIOS, UEFI and Secure Boot Linux boots, and combined-ISO native BIOS/UEFI boots
-before publishing either ISO. Linux checks use the unmodified release image;
+profiles for each architecture from the release source and repeats native tests,
+package/GTK checks, x86_64 BIOS/UEFI/Secure Boot Linux boots, ARM64 UEFI Linux
+boots, and combined x86_64 ISO native BIOS/UEFI boots before publishing any ISO.
+Linux checks use the unmodified release image;
 native checks use the menu-selection fixture described above.
 Detailed boot logs are retained in the workflow artifacts.
 
