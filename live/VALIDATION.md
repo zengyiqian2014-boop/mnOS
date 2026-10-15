@@ -13,6 +13,12 @@ successfully built and checked source commit
 | QEMU ARM64 | UEFI passed | Not ported |
 | Hardware ARM64 | UEFI passed | Not ported |
 
+The first upload attempt was rejected because GitHub does not accept empty
+assets. [Publication run 38735643366](https://github.com/zengyiqian2014-boop/mnOS/actions/runs/38735643366)
+rechecked the five successful build/test jobs and source identities, converted
+empty device-tree inventories to explicit "no files" reports, and published the
+same checked ISO binaries. No ISO rebuild or tag change was involved.
+
 These are actual ISO boots under QEMU, including the hardware-profile images.
 They do not establish physical PC/board compatibility or ARM Secure Boot support.
 Every image also passed kernel configuration checks, compiled desktop/catalog
