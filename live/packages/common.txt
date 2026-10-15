@@ -49,6 +49,12 @@ mousepad
 ristretto
 firefox-esr
 firefox-esr-l10n-zh-cn
+mesa-utils
+mesa-vulkan-drivers
+vulkan-tools
+libgl1-mesa-dri
+libegl-mesa0
+libglx-mesa0
 arc-theme
 papirus-icon-theme
 fonts-inter

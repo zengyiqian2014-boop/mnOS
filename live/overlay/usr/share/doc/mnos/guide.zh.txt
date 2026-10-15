@@ -5,9 +5,41 @@ mnOS Desktop 2.0 Preview
 --------
 同一张 ISO 提供两个独立的运行环境：
 mnOS native：用 C 和汇编编写的自研实验内核，提供中文图形界面、
-内存管理、用户态隔离、抢占调度和启动自检。暂不支持 Linux 应用。
+最高 64 TiB 物理地址管理、动态多核调度、用户态隔离、MNFS 文件系统和
+启动自检。已测 32 核和 33 TiB 稀疏 QEMU 内存，暂不支持 Linux 应用。
 Linux 工具环境：Debian 13、Linux 6.12 LTS、Xfce，用于浏览器、CTF、
 系统管理和常见硬件驱动。你现在看到的系统中心属于这个环境。
+Python 保留，供 Pwntools、mitmproxy 和系统工具等使用。
+
+帮助命令
+--------
+help 默认显示英文，help -cn 才显示中文。两种环境都支持：
+  help
+  help -cn
+  kernel help
+  kernel help -cn
+Linux Bash 中 help cd 等内建命令帮助仍保留；脚本也可运行 mnos-help。
+
+内核管理命令格式：kernel <指令> [对象]
+Linux 示例：sudo kernel info、sudo kernel memory、sudo kernel gpu。
+查看帮助不需要 root；其余操作需要 sudo。支持模块加载/卸载、sysctl 参数、
+CPU 热插拔（需要系统和硬件支持）、日志和 TuneD 配置。运行时修改重启后恢复。
+原生内核终端是具有管理权限的本地控制台，尚无账号认证；命令范围见其帮助。
+
+显示与文件系统
+--------------
+Linux：系统中心“桌面”页可调分辨率、多屏、缩放、壁纸、键鼠、声音等。
+glxinfo -B 和 vulkaninfo --summary 可查看渲染器，kernel gpu 查看绑定驱动。
+原生：F7 打开显示设置，R 切换分辨率，W 切换壁纸，S 保存到 MNFS 磁盘。
+支持 QEMU/Bochs DISPI 2D；其他显卡保留启动帧缓冲，原生暂不支持 3D 加速。
+
+MNFS 是自研 CoW 文件系统，有 CRC32C、64 位稀疏文件和一个保存快照，支持
+超过 4 GiB 的文件，使用独立格式，不兼容 APFS。/ram 临时；/disk 是可选的
+MNFS ATA 镜像，默认只读，disk unlock 后可写入，启动不会格式化已有磁盘。
+原生显示偏好保存在 /disk/display.cfg。Linux 安装仍使用成熟的 Linux 文件系统。
+Linux 中 mnfs 工具可操作 MNFS 镜像；format 只创建新文件，不覆盖已有路径。
+MNFS 尚无权限、加密或成熟修复工具，重要数据应另行备份。
+原生源码与详细说明位于 /usr/src/mnos-native。
 
 两个镜像
 --------

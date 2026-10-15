@@ -2,26 +2,58 @@
 
 [English](README.md) | [中文](README.zh.md)
 
-[Download the dual-boot preview](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-desktop-preview.3)
+[Download the dual-boot preview](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-desktop-preview.4)
 · [Boot and validation record](live/VALIDATION.md)
 
-**Dual-boot edition:** the original [mnOS native kernel](native/README.md) and a
-Debian 13 / Linux LTS desktop share one boot menu. The [build guide](live/README.md)
-covers QEMU and hardware ISOs, Firefox, CTF tools and system administration.
-The native kernel is an early freestanding C/assembly implementation; normal
-applications and broad driver support run in the Linux environment.
-[Design notes](live/DESIGN.md) explain the security and hardware boundaries.
-The original minimal BusyBox build is documented below.
+mnOS combines an original x86_64 C/assembly kernel with a separate Debian 13 /
+Linux 6.12 LTS desktop in one bootable ISO. Two builds target QEMU and general
+PC hardware. Choose the native entry to explore the kernel and filesystem, or
+Linux for Firefox, CTF tools, Wi-Fi and daily system administration.
+
+| Environment | Current capabilities |
+| --- | --- |
+| [Original native kernel](native/README.md) | Dynamic SMP, per-CPU isolation and scheduling, sparse physical memory up to 64 TiB, MNFS CoW filesystem, graphical console and display settings |
+| [Linux desktop](live/README.md) | Xfce, Firefox ESR, Python/CTF tools, Cockpit, root-only kernel administration, normal desktop settings and common hardware drivers |
+
+The native kernel has passed 32-vCPU and 33-TiB sparse-memory QEMU tests. It is
+experimental: these are addressability and functional checks, not unlimited
+hardware support, production storage guarantees or performance certification.
+See [validation](live/VALIDATION.md), [MNFS format](native/FILESYSTEM.md) and
+[design notes](live/DESIGN.md) for the exact scope.
+
+**Help defaults to English.** Use `help -cn` for Chinese. Both environments support
+`kernel help` and `kernel help -cn`; Linux administrative commands require root:
+
+```sh
+help                         # English
+help -cn                     # Chinese
+kernel help                  # English kernel command reference
+kernel help -cn               # Chinese kernel command reference
+sudo kernel gpu              # Linux: inspect the bound graphics driver
+```
+
+Native F7 opens resolution/wallpaper settings; an MNFS disk can retain them
+across boots. Linux exposes display, wallpaper, audio, network and account
+settings through the system center. Python remains included for tools that need
+it. First Linux boot creates a local account; there is no default password.
 
 Native kernel running directly under QEMU:
 
 ![Original mnOS kernel](assets/native-kernel.png)
 
+Native display settings, captured under QEMU/OVMF:
+
+![Native display settings](assets/native-settings.png)
+
 Separate Linux desktop and system center, captured in a development VM:
 
 ![mnOS Linux desktop](assets/linux-desktop.png)
 
-A minimal Linux distribution built from scratch: **Linux 6.13.3 + busybox + GRUB**, a complete FHS tree, shipped as a bootable ISO (BIOS + UEFI) that greets you with a colorful system-info card.
+## Legacy BusyBox edition
+
+The original build remains available separately: **Linux 6.13.3 + BusyBox + GRUB**,
+a complete FHS tree and bootable BIOS/UEFI ISO. The instructions below apply to
+that legacy edition; use [live/README.md](live/README.md) for the dual-boot desktop.
 
 ![mnOS boot screen](assets/screenshot.png)
 

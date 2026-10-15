@@ -63,7 +63,10 @@ tree drivers. The legacy Intel IPW2100/IPW2200 firmware package, which needs a
 separate interactive license acknowledgement, is not bundled; modern Intel
 Wi-Fi uses the included iwlwifi firmware. NVIDIA proprietary CUDA/OpenCL drivers are not preinstalled;
 installing DKMS drivers with Secure Boot may require owner-key enrollment.
-ARM and Apple Silicon are not targets of these ISOs.
+ARM and Apple Silicon are not targets of these ISOs. Both profiles include Mesa
+OpenGL/Vulkan and diagnostic tools. The QEMU launcher defaults to software
+rendering; `GPU=virgl` opts into host OpenGL forwarding where supported. Native
+graphics only implements DISPI 2D and the firmware framebuffer.
 
 ## Desktop and CTF tools
 
@@ -77,6 +80,30 @@ Firefox ESR and most tools come from Debian's signed repositories. mitmproxy
 resolved versions/hashes are included under `/usr/share/doc/mnos`. It is not
 updated by APT and requires a new image/build or an explicit isolated-venv update.
 No scanner, password-testing tool or proxy starts automatically.
+
+The compiled `kernel` tool accepts `kernel <instruction> [object]`. It requires
+effective UID 0 for operations, validates command objects and calls fixed
+executables with `execv`, without shell evaluation. It has no setuid bit. The
+two help commands are intentionally unprivileged: `kernel help` is English,
+`kernel help -cn` is Chinese. `help` and `help -cn` expose the broader guide;
+the Bash wrapper preserves built-in documentation such as `help cd`.
+
+## Original memory, SMP and storage
+
+The native implementation uses sparse physical allocation, a high-RAM direct
+map and dynamically allocated CPU records. Its 64 TiB physical-address cap is
+separate from the companion Linux kernel's configuration. There is no fixed
+CPU-count array; firmware topology, APIC identifiers, memory and tested scale
+remain finite. Current tests reach 32 CPUs and a sparse 33 TiB QEMU memory map.
+Scheduling is per CPU; task migration, NUMA optimization and CPU hotplug are
+not yet implemented in the native kernel.
+
+MNFS is original code using CoW, CRC32C and checkpoint-based recovery. These
+general techniques do not imply APFS disk compatibility or Apple support.
+Native ATA disks mount read-only until explicitly unlocked; the Linux helper
+operates on regular image files and refuses existing destinations when formatting.
+See [the format and durability limits](../native/FILESYSTEM.md). Linux's installed
+root filesystem is not MNFS; the two environments retain separate persistence.
 
 ## Installation and persistence
 

@@ -18,6 +18,49 @@ See [DESIGN.md](DESIGN.md) for kernel choices, RHEL design references, tuning,
 security boundaries and hardware limitations. There is no default account password.
 First boot asks you to create a local administrator; root login remains locked.
 
+## Help and administration
+
+**`help` is English by default; `help -cn` selects Chinese.** This applies to the
+native console and the Linux terminal. In Bash, `help cd` and other built-in
+command references remain available. The command guide is also available as
+`mnos-help`, including in non-interactive scripts.
+
+```sh
+help
+help -cn
+kernel help
+kernel help -cn
+sudo kernel info
+sudo kernel memory
+sudo kernel cpu
+sudo kernel gpu
+sudo kernel modules
+sudo kernel sysctl vm.swappiness
+sudo kernel performance balanced
+```
+
+`kernel <instruction> [object]` is a compiled C administration tool. Only help
+is available without root. It invokes fixed programs without shell expansion;
+it is not setuid and does not bypass sudo authentication. It supports module
+load/unload, sysctl read/write, CPU online/offline where Linux permits hotplug,
+logs, PCI/DRM information and the supplied TuneD profiles. Runtime changes reset
+at reboot. The original native console has its own command implementation and
+no login system; its [command reference](../native/README.md) lists the available
+operations.
+
+The system center's desktop page opens real Xfce display, wallpaper, keyboard,
+mouse, sound and session settings. Mesa OpenGL/Vulkan packages and diagnostic
+tools are included in both profiles. `kernel gpu` reports the bound driver;
+use `glxinfo -B` / `vulkaninfo --summary` to inspect the active renderer. Installed
+drivers alone do not establish hardware acceleration. Python is retained for
+Pwntools, mitmproxy, system tools and other dependencies.
+
+The native kernel now includes dynamic SMP, up to 64 TiB physical address
+management and [MNFS](../native/FILESYSTEM.md), an original experimental CoW
+filesystem. Native display settings can persist to an attached MNFS ATA image.
+Linux uses mature Linux filesystems; its `mnfs` utility accesses MNFS image
+files, and `mnfs format` refuses to overwrite existing files or device nodes.
+
 ## Build
 
 Requires GCC, binutils, make, Docker with BuildKit, an x86_64 build host, network access, 4 CPU threads,
@@ -51,9 +94,14 @@ UEFI=1 ./live/run.sh                       # OVMF required
 MEMORY=8192 CPUS=4 ./live/run.sh /path/to/image.iso
 qemu-img create -f qcow2 mnos.qcow2 32G
 DISK="$PWD/mnos.qcow2" ./live/run.sh        # existing disk only
+GPU=virgl ./live/run.sh                    # optional host OpenGL + QEMU GTK support
 ```
 
 KVM is preferred when available; TCG is supported for functional testing.
+The default VirtIO display uses software rendering. `GPU=virgl` requests VirGL;
+it requires a working host OpenGL stack and a QEMU build with GTK/OpenGL. This
+optional accelerated host path has not been validated in the headless build
+environment. The native entry uses only the adapter's DISPI 2D interface.
 Both ISOs have BIOS and UEFI boot paths and an appended EFI partition for USB
 booting. The Linux signed EFI chain uses Debian shim/GRUB/kernel, not mnOS-owned keys.
 The unsigned **native kernel requires Secure Boot to be off**. Linux is the

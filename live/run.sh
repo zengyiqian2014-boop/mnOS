@@ -14,9 +14,14 @@ ACCEL=tcg
 CPU=max
 if [ -r /dev/kvm ] && [ -w /dev/kvm ]; then ACCEL=kvm; CPU=host; fi
 args=(-accel "$ACCEL" -cpu "$CPU" -smp "$CPUS" -m "$MEMORY" -machine q35
-      -cdrom "$ISO" -boot order=d -device virtio-vga
+      -cdrom "$ISO" -boot order=d
       -netdev user,id=net0 -device virtio-net-pci,netdev=net0
       -device virtio-rng-pci -serial mon:stdio)
+case "${GPU:-software}" in
+    software) args+=(-device virtio-vga) ;;
+    virgl) args+=(-device virtio-vga-gl -display gtk,gl=on) ;;
+    *) echo 'GPU must be software or virgl.' >&2; exit 2 ;;
+esac
 if [ -n "${DISK:-}" ]; then
     # Existing disk only. Never create, truncate, or choose a host disk implicitly.
     test -f "$DISK" || { echo 'DISK must name an existing qcow2 file.' >&2; exit 1; }

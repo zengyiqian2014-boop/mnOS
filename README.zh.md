@@ -1,18 +1,43 @@
 # mnOS
 
-[下载双启动预览版](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-desktop-preview.3)
+[下载双启动预览版](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-desktop-preview.4)
 · [启动与验证记录](live/VALIDATION.md)
 
-**双启动开发版：**同一张 ISO 内提供[自研 mnOS 内核](native/README.md)与
-Debian 13 / Linux LTS 工具环境，分别构建 QEMU 和实体硬件版本。
-自研内核用 C 和汇编编写，已有图形界面、用户态隔离与调度，仍处于早期阶段。
-Firefox、CTF 工具、完整系统管理和常见硬件驱动在 Linux 入口使用。
-参见[构建与使用说明](live/README.md)、[安全与性能设计](live/DESIGN.md)。
-原有的最小 BusyBox 版本仍保留，下面的内容介绍原版构建方式。
+mnOS 将用 C 和汇编编写的 x86_64 自研内核，与独立的 Debian 13 / Linux 6.12
+LTS 桌面放在同一张 ISO 中，提供 QEMU 与通用 PC 硬件两个版本。原生入口用于
+内核和文件系统开发；Linux 入口用于 Firefox、CTF、Wi-Fi 和日常系统管理。
+
+| 环境 | 当前功能 |
+| --- | --- |
+| [自研内核](native/README.md) | 动态多核、每核隔离和抢占调度、最高 64 TiB 物理地址管理、MNFS CoW 文件系统、图形终端及显示设置 |
+| [Linux 桌面](live/README.md) | Xfce、Firefox ESR、Python/CTF 工具、Cockpit、root 内核管理命令、常规桌面设置及常见硬件驱动 |
+
+自研内核已完成 32 核和 33 TiB 稀疏 QEMU 内存验证，仍是实验版本。没有固定 CPU
+数组上限，但实际规模受硬件与内存约束；测试结果不等于实体硬件全覆盖或安全认证。
+具体范围见[验证记录](live/VALIDATION.md)、[MNFS 说明](native/FILESYSTEM.md)及
+[安全与性能设计](live/DESIGN.md)。MNFS 使用独立格式，不兼容 APFS。
+
+**`help` 默认英文，`help -cn` 显示中文。** 两个环境都支持以下帮助命令：
+
+```sh
+help                         # 英文帮助
+help -cn                     # 中文帮助
+kernel help                  # 内核命令英文说明
+kernel help -cn               # 内核命令中文说明
+sudo kernel gpu              # Linux：查看绑定的显卡驱动
+```
+
+原生 F7 设置页可调整受支持的 QEMU 分辨率和壁纸，并保存到 MNFS 磁盘。
+Linux 系统中心提供显示、壁纸、声音、网络、账号等设置。Python 保留，供相关
+工具使用。Linux 首次启动创建本地账号，没有默认密码；管理操作通过 sudo 提权。
 
 自研内核在 QEMU 中独立运行的画面：
 
 ![mnOS 自研内核](assets/native-kernel.png)
+
+原生显示设置，截取自 QEMU/OVMF 实际运行画面：
+
+![原生显示设置](assets/native-settings.png)
 
 Linux 工具环境的开发版实测画面：
 
@@ -20,7 +45,10 @@ Linux 工具环境的开发版实测画面：
 
 [English](README.md) | [中文](README.zh.md)
 
-一个从零构建的最小 Linux 发行版：**Linux 6.13.3 + busybox + GRUB**，完整的 FHS 目录树，打包为可直接启动的 ISO（BIOS + UEFI 双引导），开机会显示一张彩色的系统信息卡片。
+## 原版 BusyBox 版本
+
+原版仍单独保留：**Linux 6.13.3 + BusyBox + GRUB**，提供 FHS 目录树和 BIOS/UEFI
+启动 ISO。下文针对这个旧版；双启动桌面版请看 [live/README.md](live/README.md)。
 
 ![mnOS 启动画面](assets/screenshot.png)
 

@@ -40,6 +40,8 @@ TOOLS = {
         ('text-x-log', '系统日志', '按时间与服务查找运行记录', [ADMIN, 'system/logs']),
         ('utilities-system-monitor', '任务管理器', '进程、CPU 和内存使用情况', ['xfce4-taskmanager']),
         ('preferences-system-performance', '性能配置', '查看 TuneD 当前生效的配置', ['@terminal', 'tuned-adm', 'active']),
+        ('utilities-terminal', '内核管理', 'root 内核指令、模块、CPU 与运行参数', ['@terminal', 'kernel', 'help']),
+        ('video-display', 'GPU 驱动', '查看显卡绑定的内核驱动', ['@terminal', 'sudo', 'kernel', 'gpu']),
         ('system-software-install', '软件包管理', '安装、移除与查询 Debian 软件包', ['synaptic-pkexec']),
         ('drive-harddisk', '分区编辑器', '调整分区前请先备份数据', ['gparted']),
         ('utilities-terminal', '终端', 'Bash、sudo 与完整的系统命令', ['xfce4-terminal']),
@@ -65,6 +67,11 @@ TOOLS = {
         ('preferences-system-power', '电源', '电源、休眠与屏幕亮度', ['xfce4-power-manager-settings']),
         ('system-file-manager', '文件', '浏览本机、移动设备和网络文件', ['thunar']),
         ('web-browser', '浏览器', 'Firefox ESR', ['firefox-esr']),
+        ('preferences-desktop-wallpaper', '壁纸与桌面', '更换背景图片、桌面图标与背景样式', ['xfdesktop-settings']),
+        ('preferences-desktop-keyboard', '键盘与快捷键', '按键布局、重复速度与应用快捷键', ['xfce4-keyboard-settings']),
+        ('input-mouse', '鼠标与触摸板', '指针速度、滚动、按键与触摸板', ['xfce4-mouse-settings']),
+        ('video-display', '图形渲染状态', 'OpenGL 渲染器；可区分硬件加速与软件渲染', ['@terminal', 'glxinfo', '-B']),
+        ('video-display', 'Vulkan 设备', '查看驱动暴露的图形与计算设备', ['@terminal', 'vulkaninfo', '--summary']),
     ],
 }
 
@@ -207,7 +214,7 @@ class Center(Gtk.Application):
             'network': '本机诊断与授权网络测试。工具由你选择并启动。',
             'ctf': 'Web、Pwn、逆向与取证。桌面入口打开工具或帮助，不自动运行测试。',
             'desktop': '调整工作环境，让常用的设置更顺手。',
-            'about': 'mnOS Desktop · 基于 Debian 13 的 Linux 桌面系统',
+            'about': 'mnOS 双启动预览版 · 自研原生内核与 Linux 工具环境',
         }
         content.pack_start(label(descriptions[key], 'muted', wrap=True), False, False, 0)
         if key == 'overview':
@@ -290,6 +297,9 @@ class Center(Gtk.Application):
             content.pack_start(row, False, False, 0)
         content.pack_start(label('使用说明', 'section-title'), False, False, 0)
         for text in [
+            '当前运行 Linux 工具环境。启动菜单另提供 C 与汇编编写的原生内核：动态多核、64 TiB 物理地址管理、MNFS 文件系统及独立图形界面。',
+            'help 默认显示英文帮助；help -cn 显示中文。内核管理使用 kernel <指令> [对象]；Linux 中执行操作需要 sudo，查看帮助无需提权。',
+            '显示设置可以调整分辨率、多显示器、缩放及壁纸。Intel、AMD、Nouveau 和 VirtIO 驱动由 Linux 提供；实际加速能力取决于设备、固件和驱动。',
             '系统管理使用 Cockpit 本地模式，在独立网络命名空间内运行，不开放远程管理端口。提权需要当前管理员的密码。',
             '抓包：先在终端用 sudo tcpdump -i 网卡 -w 文件.pcap 保存，再用 Wireshark 打开。Wireshark 图形界面以普通用户运行。',
             '软件安装与更新：使用软件包管理器，或在终端运行 sudo apt update 和 sudo apt full-upgrade。Live 会话中的更新不会写回 ISO。',
@@ -297,6 +307,7 @@ class Center(Gtk.Application):
         ]:
             content.pack_start(label(text, 'muted', wrap=True), False, False, 0)
         content.pack_start(self.tools([
+            ('utilities-terminal', '中文命令帮助', 'help -cn / kernel help -cn', ['@terminal', 'mnos-help', '-cn']),
             ('text-x-generic', '本地手册', '启动、安装、安全与故障排查', ['mousepad', '/usr/share/doc/mnos/guide.zh.txt']),
             ('security-high', '验证安全基线', '逐项检查当前系统设置', ['@terminal', 'sudo', 'mnos-security-check']),
         ]), False, False, 0)

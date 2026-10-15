@@ -68,7 +68,7 @@ void keyboard_event(uint8_t code) {
         extended = false;
         return;
     }
-    if (code >= 59 && code <= 64) {
+    if (code >= 59 && code <= 65) {
         ui_key((char)(0x81 + code - 59));
         return;
     }
@@ -113,7 +113,36 @@ struct pci_device {
     uint16_t vendor, device;
 };
 static struct pci_device devices[128];
+static bool bga_available;
+static uint64_t video_bytes;
 unsigned pci_count;
+static uint16_t dispi_read(uint16_t reg) {
+    uint16_t value;
+    __asm__ volatile("outw %0,%1" :: "a"(reg), "Nd"((uint16_t)0x1ce));
+    __asm__ volatile("inw %1,%0" : "=a"(value) : "Nd"((uint16_t)0x1cf));
+    return value;
+}
+static void dispi_write(uint16_t reg, uint16_t value) {
+    __asm__ volatile("outw %0,%1" :: "a"(reg), "Nd"((uint16_t)0x1ce));
+    __asm__ volatile("outw %0,%1" :: "a"(value), "Nd"((uint16_t)0x1cf));
+}
+bool graphics_available(void) { return bga_available; }
+const char *graphics_driver(void) { return bga_available ? "QEMU / Bochs DISPI 2D" : "UEFI GOP / boot framebuffer"; }
+bool graphics_mode(unsigned width, unsigned height) {
+    if (!bga_available || width < 1024 || height < 720 || width > 2560 || height > 1440 ||
+        (uint64_t)width * height * 4 > video_bytes) return false;
+    uint16_t old_w = dispi_read(1), old_h = dispi_read(2);
+    dispi_write(4, 0); dispi_write(1, width); dispi_write(2, height); dispi_write(3, 32);
+    dispi_write(6, width); dispi_write(8, 0); dispi_write(9, 0); dispi_write(4, 0x41);
+    if (dispi_read(1) != width || dispi_read(2) != height || dispi_read(3) != 32) {
+        dispi_write(4, 0); dispi_write(1, old_w); dispi_write(2, old_h); dispi_write(6, old_w); dispi_write(4, 0x41);
+        return false;
+    }
+    boot.fb.width = width; boot.fb.height = height; boot.fb.pitch = width * 4;
+    boot.fb.red = 16; boot.fb.green = 8; boot.fb.blue = 0;
+    log_write("DISPLAY: "); log_dec(width); log_write("x"); log_dec(height); log_write(" / DISPI\n");
+    return true;
+}
 static uint32_t pci_read(unsigned bus, unsigned slot, unsigned fn, unsigned reg) {
     outl(0xcf8, 0x80000000u | (bus << 16) | (slot << 11) | (fn << 8) | (reg & 0xfc));
     return inl(0xcfc);
@@ -130,6 +159,15 @@ void pci_scan(void) {
                 if ((id & 0xffff) == 0xffff)
                     continue;
                 uint32_t class = pci_read(b, s, f, 8);
+                if ((class >> 24) == 3 && boot.fb.pixels && (id == 0x11111234 || id == 0x10501af4)) {
+                    uint16_t version = dispi_read(0);
+                    if (version >= 0xb0c4 && version <= 0xb0c5) {
+                        video_bytes = (uint64_t)dispi_read(10) * 65536;
+                        if (video_bytes >= (uint64_t)boot.fb.pitch * boot.fb.height &&
+                            video_bytes <= 256u * 1024 * 1024 &&
+                            (uintptr_t)boot.fb.pixels <= (1ULL << 32) - video_bytes) bga_available = true;
+                    }
+                }
                 if (pci_count < ARRAY_SIZE(devices))
                     devices[pci_count++] = (struct pci_device){
                         b, s, f, class >> 24, (class >> 16) & 255, id & 0xffff, id >> 16};
@@ -138,6 +176,7 @@ void pci_scan(void) {
     log_write("PCI: ");
     log_dec(pci_count);
     log_write(" devices enumerated (enumeration is not driver support)\n");
+    log_write("GPU: "); log_write(graphics_driver()); log_write("\n");
 }
 void pci_read_line(unsigned i, char *out, size_t size) {
     if (size < 64 || i >= pci_count) {

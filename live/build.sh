@@ -5,7 +5,10 @@ ROOT=$(cd -- "$(dirname -- "$0")" && pwd)
 PROFILE=${1:-qemu}
 case "$PROFILE" in qemu|hardware) ;; *) echo "Usage: $0 [qemu|hardware]" >&2; exit 2 ;; esac
 command -v docker >/dev/null || { echo 'Docker is required.' >&2; exit 1; }
-make -C "$ROOT/../native" -j"${JOBS:-4}"
+make -C "$ROOT/../native" -j"${JOBS:-4}" all host-tools
+mkdir -p "$ROOT/build/native-src"
+cp "$ROOT/../native/src/mnfs.c" "$ROOT/../native/include/mnfs.h" "$ROOT/build/native-src/"
+cp "$ROOT/../native/tools/mnfs.c" "$ROOT/build/native-src/mnfs-tool.c"
 OUT=${OUT:-$ROOT/out}
 mkdir -p "$OUT"
 OUT=$(cd "$OUT" && pwd)

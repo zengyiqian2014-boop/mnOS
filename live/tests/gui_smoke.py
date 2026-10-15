@@ -6,6 +6,8 @@ import importlib.util
 import shutil
 import sys
 import stat
+import subprocess
+import tempfile
 import traceback
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -65,4 +67,38 @@ with patch.object(center.subprocess, 'Popen') as launch:
     assert not kwargs.get('shell')
 application.window.destroy()
 assert not errors, errors
+def run(*args, status=0):
+    result = subprocess.run(args, capture_output=True, text=True, timeout=20)
+    assert result.returncode == status, (args, result.returncode, result.stdout, result.stderr)
+    return result.stdout
+
+# Test the actual Bash builtin collision in an interactive non-login shell.
+assert 'command guide (English)' in run('bash', '-ic', 'help')
+assert '中文命令帮助' in run('bash', '-ic', 'help -cn')
+assert 'cd:' in run('bash', '-ic', 'help cd')
+assert 'command guide (English)' in run('/usr/bin/help')
+assert 'Root' not in run('kernel', 'help', '-cn')
+assert '内核管理' not in run('kernel', 'help')  # Default output stays English.
+assert 'kernel <instruction> [object]' in run('kernel', 'help')
+assert 'kernel <指令> [对象]' in run('kernel', 'help', '-cn')
+run('runuser', '-u', 'nobody', '--', 'kernel', 'info', status=77)
+assert 'kernel <指令>' in run('runuser', '-u', 'nobody', '--', 'kernel', 'help', '-cn')
+for instruction in ('info', 'memory', 'cpu', 'gpu', 'devices'):
+    run('kernel', instruction)
+if Path('/proc/modules').exists():
+    run('kernel', 'modules')
+assert 'Linux' in run('kernel', 'sysctl', 'kernel.ostype')
+for instruction, obj in [('cpu-offline', '0'), ('load', '--help'),
+                         ('unload', 'x;touch /tmp/mnos-unsafe'), ('set', 'x'),
+                         ('sysctl', '../proc'), ('performance', 'unknown')]:
+    run('kernel', instruction, obj, status=2)
+assert not Path('/tmp/mnos-unsafe').exists()
+with tempfile.TemporaryDirectory() as temp:
+    disk = str(Path(temp) / 'mnfs.img')
+    run('mnfs', 'format', disk, '8')
+    run('mnfs', disk, 'create', '/hello')
+    run('mnfs', disk, 'write', '/hello', 'original-filesystem')
+    assert run('mnfs', disk, 'cat', '/hello') == 'original-filesystem'
+    run('mnfs', disk, 'check')
+print('Bash help languages, root-only kernel commands, argument validation and MNFS image access: PASS')
 print('GTK window, all six pages, tool availability and safe argument forwarding: PASS')

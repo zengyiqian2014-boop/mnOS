@@ -1,72 +1,159 @@
 # mnOS native kernel
 
-An early x86_64 kernel written in freestanding C and assembly. It boots directly
-through GRUB Multiboot2; no Linux kernel, Linux system calls or host OS runs
-underneath it. GRUB, the GNU compiler toolchain and the Noto font are external
-components. This directory is original GPL-3.0-or-later code, subject to the
-repository license; the font has its own license in `assets/FONT-LICENSE.txt`.
+An experimental x86_64 kernel written in freestanding C and assembly. GRUB
+Multiboot2 enters this kernel directly; Linux does not run underneath it.
+The GNU toolchain, GRUB and Noto font are external components. Original code is
+GPL-3.0-or-later; the font license is in `assets/FONT-LICENSE.txt`.
 
-## What runs today
+## Implemented
 
-- 64-bit long mode, physical page allocation, per-process page tables.
-- Supervisor/user separation; read-only code, non-executable data, null and
-  stack guard pages, CR0 write protection, optional SMEP/SMAP.
-- GDT, IDT, TSS, interrupt handling, a 100 Hz PIT preemptive scheduler, bounded
-  system calls and sleep/wakeup. Idle executes HLT instead of spinning.
-- Two ring-3 demonstration processes and six deliberately hostile test processes.
-- A Chinese framebuffer UI, a kernel console, PS/2 keyboard/mouse, COM1 serial,
-  PCI enumeration and basic ACPI S5 power-off.
+- Sparse physical page allocation up to **64 TiB of physical address space**,
+  limited further by the processor's address width. High RAM has a separate
+  direct map; page tables use 1 GiB pages when available and 2 MiB/4 KiB otherwise.
+- Dynamic CPU records discovered through ACPI MADT, including 32-bit x2APIC IDs.
+  There is **no fixed CPU-count array cap**. Each online CPU has its own guarded
+  stacks, TSS, page tables, ring-3 tasks and preemptive timer. Idle uses HLT.
+- Supervisor/user separation, W^X, NX, null/stack guards, CR0 write protection,
+  optional SMEP/SMAP and checked system-call pointers. SWAPGS protects per-CPU
+  context when a user process clears its GS selector.
+- Original [MNFS](FILESYSTEM.md): copy-on-write metadata/data, CRC32C, 64-bit
+  sparse files, directories, rename, truncate, collection and one saved snapshot.
+  `/ram` is temporary; an optional whole MNFS ATA disk is mounted at `/disk`,
+  read-only until explicitly unlocked. Boot never formats an attached disk.
+- Seven-page graphical UI, English/Chinese console help, PS/2 keyboard/mouse,
+  COM1 serial, PCI enumeration and basic ACPI S5 power-off.
+- QEMU/Bochs DISPI 2D mode switching, three wallpapers and MNFS-backed display
+  preferences. Other firmware framebuffers retain their boot-time display mode.
 
-This is a development kernel, not a replacement for RHEL or a security-certified
-system. It is single-core and uses at most 4 GiB of physical memory. It does not
-yet implement a filesystem, USB host controller, network/Wi-Fi driver, audio,
-GPU acceleration, a POSIX/Linux ABI, general program loading, SMP or modern CPU
-speculation mitigations. PCI enumeration alone does not make devices usable.
-Firefox, CTF utilities and normal hardware drivers run in the **separate Linux
-tool environment** supplied on both mnOS ISOs. No performance superiority over
-Linux/RHEL is claimed without comparable benchmarks.
+Memory validation covers allocator boundaries at 64 TiB and an actual QEMU boot
+with **33 TiB of sparse guest RAM**, including reads/writes above 32 TiB. This is
+addressability testing, not a stress test of 33 TiB of physical RAM. SMP tests
+boot 4, 8 and 32 CPUs plus two CPUs with sparse APIC IDs 0 and 256. Dynamic data
+structures do not mean literally unlimited CPUs: firmware, APIC IDs, RAM and
+tested scale still impose limits.
 
-## Build and test
+CPU hotplug, task migration, NUMA placement, native USB/network/Wi-Fi/audio,
+AHCI/NVMe, GPU acceleration, a general executable loader and a POSIX/Linux ABI
+are not implemented. Tasks are fixed demonstration/test programs per CPU.
+The native console is a privileged local console without user authentication;
+it is not the Linux account/`sudo` system. Speculation mitigations and a full
+security audit remain outstanding. No performance advantage over RHEL/Linux or
+security certification is claimed. Firefox, CTF tools and common hardware
+drivers run in the separate Linux entry on both release ISOs.
 
-On x86_64 with GCC, binutils and make:
+## Help and kernel commands
 
-```sh
-make -C native -j4
-docker build -t mnos-live-builder -f live/Builder.Dockerfile live
-docker run --rm --network none -v "$PWD/native:/native:ro" \
-  -v "$PWD/native/build:/out" mnos-live-builder bash /native/pack.sh test
-docker run --rm --network none -v "$PWD/native:/native:ro" \
-  -v "$PWD/native/build:/out" mnos-live-builder \
-  python3 /native/tests/boot.py /out/native-test.iso
+`help` **defaults to English**. `-cn` selects Chinese explicitly in both the
+native console and the Linux terminal:
+
+```text
+help
+help -cn
+kernel help
+kernel help -cn
 ```
 
-The test runs actual BIOS and UEFI boots under QEMU TCG, including a qemu64 CPU
-without SMEP/SMAP and only 128 MiB RAM. Each boot checks allocator/page-table
-invariants, supervisor memory access, NX, a stack guard, invalid syscall
-pointers, read-only user code, forbidden port I/O and timer preemption between
-distinct address spaces. It also checks sleeping tasks wake while the kernel
-uses HLT. Success requires serial `SELFTEST PASS 8/8` **and** QEMU debug-exit 33;
-timeout, panic, unexpected faults or a different exit code fail the test.
+Native command syntax is `kernel <instruction> [object]`:
 
-Use `bash /native/pack.sh demo` instead of `test` for a standalone interactive
-ISO. The demo stays running after its checks. The combined ISO is built with
-`./live/build.sh qemu` or `./live/build.sh hardware`.
+```text
+kernel info
+kernel cpu
+kernel memory
+kernel gpu
+kernel devices
+kernel test
+kernel display 1600x900
+kernel wallpaper 1
+kernel save-settings
+```
 
-Secure Boot must be disabled for this unsigned experimental kernel. The Linux
-entry uses Debian's signed shim, GRUB and Linux packages. Never bypass signature
-verification or enroll a downloaded private signing key to boot this kernel.
+Display modes: 1024×768, 1280×720, 1600×900, 1920×1080 and 2560×1440, subject to
+the supported DISPI adapter and available VRAM.
+The settings selector skips modes that exceed VRAM; QEMU VirtIO VGA's 8 MiB
+legacy framebuffer does not fit 2560×1440 at 32 bpp. Wallpaper IDs: 0 contours,
+1 grid, 2 plain. `kernel save-settings` writes `/disk/display.cfg` only after
+`disk unlock`. Read-only mount still loads saved preferences at the next boot.
 
-## Controls
+File commands: `fs`, `ls [PATH]`, `stat PATH`, `cat PATH [OFFSET]`, `write PATH
+TEXT`, `writeat PATH OFFSET TEXT`, `mkdir PATH`, `rm PATH`, `mv FROM TO`,
+`truncate PATH SIZE`, `gc [/ram|/disk]`, `disk unlock|lock`, and `snapshot
+save|restore|drop [/ram|/disk]`. They also accept the `kernel ` prefix. Unprefixed
+paths select `/ram`; include `/disk/` to access the persistent volume. `cat`
+displays at most 512 bytes per call. The console accepts at most 255 ASCII bytes
+per command; the filesystem API supports 255-byte names and 1024-byte paths.
 
-F1–F6 select the six UI pages; `t` opens the console. The mouse can select sidebar
-pages. Console commands: `help`, `uname`, `mem`, `tasks`, `pci`, `test`, `uptime`,
-`clear`, `reboot`, `shutdown`. `p` opens the power menu outside the console;
-R/S/Escape reboot, shut down or cancel. Serial input uses the same commands.
-Use PS/2 input in QEMU; this kernel does not drive USB tablets.
+Other console commands: `uname`, `mem`, `tasks`, `pci`, `test`, `uptime`, `clear`,
+`reboot`, `shutdown`. F1–F7 select pages; `t` opens the console. F7 shows display
+settings; R/W/S change resolution/wallpaper/save. Outside the console, `p` opens
+the power menu; R/S/Escape reboot, shut down or cancel. Serial input uses the
+same commands. Use PS/2 input, not a USB tablet.
 
-The font atlas is checked in so normal builds do not depend on font-generation
-tools. To change UI text, regenerate it with Pillow and the Simplified Chinese
-face of Noto Sans CJK Regular:
+## Persistent disk example
+
+On the build host (or using the Linux environment's installed `mnfs` tool):
+
+```sh
+make -C native all host-tools
+native/build/mnfs format native/build/data.img 64
+qemu-system-x86_64 -m 512 -smp 4 -cpu max -vga std \
+  -cdrom native/build/native-demo.iso -boot order=d \
+  -drive file=native/build/data.img,format=raw,if=ide,index=0
+```
+
+`format` creates a **new regular file only** and refuses existing paths, symlinks
+and device nodes. Native ATA supports legacy PIO ports and 512-byte sectors; use
+QEMU's default i440fx/IDE machine for this example. The Linux launcher's q35/
+VirtIO disk does not expose this native ATA path. In the native console:
+
+```text
+disk unlock
+mkdir /disk/home
+write /disk/home/note saved-on-disk
+writeat /disk/home/large 4294967294 crosses-4-GiB
+snapshot save /disk
+kernel save-settings
+disk lock
+```
+
+Use a disposable image while testing this early filesystem. Linux accesses MNFS
+images through the `mnfs` utility; MNFS is not the Linux root filesystem and is
+not APFS-compatible. FAT may still be used for the standard EFI boot partition.
+
+## Build and verification
+
+On an x86_64 host with GCC, binutils, make and Docker:
+
+```sh
+make -C native -j4 all host-tools
+make -C native host-tests
+docker build -t mnos-live-builder -f live/Builder.Dockerfile live
+docker run --rm --network none --memory=6g --cpus=4 \
+  -v "$PWD/native:/native:ro" -v "$PWD/native/build:/out" \
+  mnos-live-builder bash -c '
+    set -e
+    bash /native/pack.sh test
+    python3 /native/tests/boot.py /out/native-test.iso
+    python3 /native/tests/smp.py /out/native-test.iso
+    python3 /native/tests/large_memory.py /out/native-test.iso
+    bash /native/pack.sh demo
+    python3 /native/tests/ui.py /out/native-demo.iso
+    python3 /native/tests/ui.py /out/native-demo.iso --gpu virtio --uefi
+    python3 /native/tests/persistence.py /out/native-demo.iso
+  '
+```
+
+Host tests run ASan/UBSan against allocation, large files, B-tree splits,
+snapshots, ENOSPC rollback, damaged data/metadata, torn writes and reordered
+write caches. VM tests require per-CPU `SELFTEST PASS 8/8`, the expected online
+count and debug-exit 33, or explicit UI/filesystem interaction results. They also
+verify ATA writes across a VM power cut, saved display preferences and host
+remount. See [validation record](../live/VALIDATION.md) for coverage and limits.
+
+The standalone demo remains interactive after checks. Full dual-boot ISOs use
+`./live/build.sh qemu` or `./live/build.sh hardware`. Secure Boot must be off for
+the unsigned native kernel; the separate Linux entry retains Debian's signed
+boot chain. The source and font are included in `/usr/src/mnos-native` on both
+full ISOs. Normal builds use the checked-in font atlas. After editing UI text:
 
 ```sh
 python3 native/tools/font.py /path/NotoSansCJK-Regular.ttc native/assets/font.c
@@ -74,8 +161,8 @@ python3 native/tools/font.py /path/NotoSansCJK-Regular.ttc native/assets/font.c
 
 ## System-call ABI
 
-`int 0x80`, RAX = operation, RDI/RSI = arguments, RAX = result. Registers other
-than RAX are preserved. Calls: 0 bounded console write (pointer, length ≤256),
-1 yield, 2 monotonic ticks, 3 exit, 4 boot-probe report (test task only),
-5 sleep (1–1000 ticks). Bad addresses return -14; invalid arguments -22;
-unknown calls -38. Code/data/stack pages are fixed per task in this prototype.
+`int 0x80`: RAX operation, RDI/RSI arguments, RAX result; other registers are
+preserved. Calls: 0 bounded console write (length ≤256), 1 yield, 2 local CPU
+ticks, 3 exit, 4 boot-probe report (test task only), 5 sleep (1–1000 ticks).
+Bad addresses return -14; invalid arguments -22; unknown calls -38. Filesystem
+operations currently run in the kernel console, not through a ring-3 file ABI.

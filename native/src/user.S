@@ -6,6 +6,9 @@
 .global user_nx, user_nx_end, user_guard, user_guard_end, user_pointer, user_pointer_end
 .global user_write_code, user_write_code_end, user_port_io, user_port_io_end
 user_loop:
+ /* An unprivileged GS selector change must not lose the kernel's CPU pointer. */
+ xor %eax, %eax
+ mov %ax, %gs
  movabs $0x100001000, %rbx
 1: incq (%rbx)
  cmpq $0, 8(%rbx)

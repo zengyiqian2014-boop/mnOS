@@ -3,7 +3,6 @@
 struct boot_info boot;
 char cpu_brand[49];
 bool cpu_smep, cpu_smap;
-unsigned test_passed;
 
 void *memset(void *dst, int c, size_t n) {
     uint8_t *d = dst;
@@ -34,12 +33,24 @@ size_t strlen(const char *s) {
         ++n;
     return n;
 }
+int strncmp(const char *a, const char *b, size_t n) {
+    while (n--) {
+        unsigned char x = (unsigned char)*a++, y = (unsigned char)*b++;
+        if (x != y) return x < y ? -1 : 1;
+        if (!x) return 0;
+    }
+    return 0;
+}
 bool streq(const char *a, const char *b) {
     while (*a && *a == *b) {
         ++a;
         ++b;
     }
     return *a == *b;
+}
+int strcmp(const char *a, const char *b) {
+    while (*a && *a == *b) { ++a; ++b; }
+    return (unsigned char)*a - (unsigned char)*b;
 }
 void number(char *s, uint64_t n) {
     char tmp[21];
@@ -62,12 +73,18 @@ static void serial_init(void) {
     outb(0x3fc, 0x0b);
 }
 void log_write(const char *s) {
+    static unsigned lock;
+    uint64_t flags;
+    __asm__ volatile("pushfq; popq %0; cli" : "=r"(flags) :: "memory");
+    while (__atomic_exchange_n(&lock, 1, __ATOMIC_ACQUIRE)) __asm__ volatile("pause");
     while (*s) {
         unsigned wait = 100000;
         while (!(inb(0x3fd) & 0x20) && --wait) {
         }
         outb(0x3f8, (uint8_t)*s++);
     }
+    __atomic_store_n(&lock, 0, __ATOMIC_RELEASE);
+    if (flags & (1ULL << 9)) __asm__ volatile("sti" ::: "memory");
 }
 void log_dec(uint64_t n) {
     char b[21];
@@ -168,6 +185,7 @@ static void parse_boot(uintptr_t address) {
 }
 void kernel_main(uintptr_t address) {
     serial_init();
+    smp_bootstrap();
     log_write("mnOS native 0.1 / x86_64\n");
     parse_boot(address);
     uint32_t a, b, c, d;
@@ -195,8 +213,12 @@ void kernel_main(uintptr_t address) {
     power_init();
     input_init();
     ui_init();
+    files_init();
+    ui_load_settings();
+    smp_prepare();
     tasks_init();
-    log_write("BOOT: entering ring 3; preemptive PIT scheduler at 100 Hz\n");
+    smp_start();
+    log_write("BOOT: entering ring 3; per-CPU preemption (PIT/LAPIC) at 100 Hz\n");
     cr3_set(tasks[0].cr3);
     enter_frame(&tasks[0].frame);
 }

@@ -19,12 +19,19 @@ RUN --mount=type=secret,id=build_ca \
     --mount=type=bind,source=packages,target=/tmp/packages \
     --mount=type=bind,source=overlay,target=/tmp/overlay \
     --mount=type=bind,source=configure.sh,target=/tmp/mnos-configure \
+    --mount=type=bind,source=src,target=/tmp/mnos-src \
+    --mount=type=bind,source=build/native-src,target=/tmp/mnfs-src \
     case "$PROFILE" in hardware|qemu) ;; *) exit 2 ;; esac \
     && if [ -r /run/secrets/build_ca ]; then printf 'Acquire::https::CaInfo "/run/secrets/build_ca";\n' > /etc/apt/apt.conf.d/99-mnos-build-ca; fi \
     && apt-get update && apt-get install -y --no-install-recommends \
        gir1.2-webkit2-4.1 tuned dbus-x11 dbus-user-session xdg-user-dirs librsvg2-common \
     && xargs -r apt-get install -y --no-install-recommends < "/tmp/packages/$PROFILE.txt" \
     && xargs -r apt-get install -y --no-install-recommends < /tmp/packages/ctf.txt \
+    && cc -std=c11 -O2 -Wall -Wextra -Werror -fstack-protector-strong -D_FORTIFY_SOURCE=3 \
+       -Wl,-z,relro,-z,now /tmp/mnos-src/kernel.c -o /usr/bin/kernel \
+    && cc -std=c11 -O2 -Wall -Wextra -Werror -Wno-misleading-indentation \
+       -fstack-protector-strong -D_FORTIFY_SOURCE=3 -Wl,-z,relro,-z,now -I/tmp/mnfs-src \
+       /tmp/mnfs-src/mnfs-tool.c /tmp/mnfs-src/mnfs.c -o /usr/bin/mnfs \
     && python3 -m venv /opt/mnos/mitmproxy \
     && MNOS_PIP_CA=/etc/ssl/certs/ca-certificates.crt \
     && if [ -r /run/secrets/build_ca ]; then MNOS_PIP_CA=/run/secrets/build_ca; fi \

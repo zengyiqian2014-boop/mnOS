@@ -2,17 +2,48 @@
 
 ## Native kernel
 
-Tested locally under QEMU TCG on 2026-10-14:
+Tested locally under QEMU TCG on 2026-10-15:
 
 | Boot | CPU | RAM | Result |
 | --- | --- | --- | --- |
 | BIOS | max (SMEP/SMAP) | 512 MiB | 8/8, sleep/wakeup, HLT idle |
 | BIOS | qemu64 | 128 MiB | 8/8, sleep/wakeup, HLT idle |
 | UEFI / OVMF | max | 512 MiB | 8/8, sleep/wakeup, HLT idle |
+| BIOS, 4 CPUs | max, xAPIC | 512 MiB | All CPUs online; per-CPU isolation/preemption/GS-reset checks passed |
+| BIOS, 8 and 32 CPUs | max, x2APIC | 512 MiB | All CPUs completed 8/8 and HLT/sleep checks |
+| UEFI, 4 CPUs | max, x2APIC | 512 MiB | Per-CPU checks passed |
+| BIOS, APIC IDs 0 and 256 | max, q35 | 512 MiB | Two CPUs online, sparse 32-bit ID preserved |
+| BIOS, 1 GiB pages disabled | max | 8 GiB | 2 MiB fallback and high physical reads/writes passed |
+| BIOS, physical width 46 bits | max, q35 | 33 TiB sparse | Reads/writes above 32 TiB and at last usable page; isolation passed |
 
 PS/2 function keys, mouse page selection, console commands and ACPI power-off
 also passed in a booted VM. Test programs, failure conditions and command lines
 are in `native/tests/`. UEFI validation here uses Secure Boot off.
+
+The 33 TiB run uses non-preallocated, non-reserved virtual memory and touches a
+small subset of pages. It validates address handling, not full-RAM stress or
+physical server performance. Host allocator tests additionally exercise the
+64 TiB boundary, ownership/double-free rejection, exhaustion and randomized maps
+under ASan/UBSan. No fixed CPU-count array is used; tests do not establish
+unbounded CPU scalability or NUMA performance.
+
+MNFS host tests passed >4 GiB writes, >32 TiB sparse offsets, zero holes,
+overflow rejection, tree splits, directories/rename, snapshot/collection,
+read-only remount, ENOSPC rollback and corruption detection. Fault injection
+covers 12 write/flush/torn-write boundaries with write-through storage and 12
+with a reordered volatile cache. Damaged latest metadata falls back to an older
+checkpoint; two damaged roots are rejected. These tests run with ASan/UBSan.
+
+The native ATA VM test wrote persistent files, crossed 4 GiB, saved/restored a
+snapshot and display settings, cut VM power, rebooted read-only and verified
+the same contents with the host MNFS utility. Both the standard VGA BIOS and
+VirtIO VGA OVMF UI tests passed `help`/`help -cn`, `kernel help`/`kernel help -cn`,
+F1–F7, mouse navigation, wallpaper changes and shutdown. Mode cycling covered
+1024×768, 1280×720, 1600×900 and 1920×1080 on both adapters, plus 2560×1440 on
+standard VGA. VirtIO's 8 MiB legacy framebuffer skips the oversized mode rather
+than trapping the resolution selector.
+Screen captures and serial logs are retained as test artifacts. Native GPU
+support here is 2D; physical GPU acceleration is not validated.
 
 The combined desktop ISO's native entry also passed 8/8 through BIOS and OVMF
 after adding the EFI Multiboot2 modules from the same GRUB package version as

@@ -1,5 +1,7 @@
 out
-build
+build/**
+!build/native-src
+!build/native-src/**
 tests
 __pycache__
 build-ca

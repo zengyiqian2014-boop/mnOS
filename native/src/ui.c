@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "kernel.h"
+#include "mnfs.h"
 struct glyph {
     uint32_t code, offset;
     uint16_t width, height, advance, size;
@@ -10,8 +11,12 @@ extern const unsigned char font_pixels[];
 static uint32_t canvas[2560 * 1440] __attribute__((aligned(4096)));
 static int width, height, sidebar, page, cursor_x = 640, cursor_y = 360, old_x = 640, old_y = 360;
 static bool ready, dirty = true, cursor_dirty, left_down, power_dialog;
-static char command[80], history[14][100];
+static char command[256], history[14][100];
 static unsigned command_length, history_count;
+static unsigned wallpaper;
+static char setting_status[100];
+static const unsigned modes[][2] = {{1024, 768}, {1280, 720}, {1600, 900}, {1920, 1080}, {2560, 1440}};
+static const char *wallpapers[] = {"流线", "网格", "纯色"};
 static const uint32_t BG = 0x191f27, PANEL = 0x222b35, FG = 0xe2ebf0, MUTED = 0x92a4b2,
                       ACCENT = 0x83d5bc;
 static uint32_t blend(uint32_t fg, uint32_t bg, unsigned a) {
@@ -130,6 +135,7 @@ static void line(int x, int y, int w, const char *label, const char *value) {
     rect(x, y + 34, w, 1, 0x2c3641);
 }
 static void add_line(const char *s) {
+    log_write("OUT: "); log_write(s); log_write("\n");
     if (history_count == ARRAY_SIZE(history)) {
         for (unsigned i = 1; i < history_count; ++i)
             memcpy(history[i - 1], history[i], sizeof history[i]);
@@ -153,13 +159,128 @@ static void add_number(const char *label, uint64_t n) {
     row[i] = 0;
     add_line(row);
 }
+static void setting_message(const char *s) {
+    size_t n = strlen(s); if (n >= sizeof setting_status) n = sizeof setting_status - 1;
+    memcpy(setting_status, s, n); setting_status[n] = 0; dirty = true;
+}
+static void resolution_text(char *out) {
+    number(out, boot.fb.width); size_t n = strlen(out); out[n++] = 'x';
+    number(out + n, boot.fb.height);
+}
+static bool set_resolution(unsigned w, unsigned h) {
+    if (!graphics_mode(w, h)) {
+        setting_message("当前显卡不支持此模式；可在 Linux 中调整显示。");
+        return false;
+    }
+    ui_init(); setting_message("分辨率已更新。保存后可在下次启动恢复。");
+    return true;
+}
+static void change_resolution(void) {
+    unsigned next = 0;
+    for (unsigned i = 0; i < ARRAY_SIZE(modes); ++i)
+        if (boot.fb.width == modes[i][0] && boot.fb.height == modes[i][1]) next = (i + 1) % ARRAY_SIZE(modes);
+    for (unsigned attempt = 0; attempt < ARRAY_SIZE(modes); ++attempt) {
+        unsigned index = (next + attempt) % ARRAY_SIZE(modes);
+        if (set_resolution(modes[index][0], modes[index][1])) return;
+    }
+}
+static void change_wallpaper(unsigned n) {
+    wallpaper = n;
+    setting_message("壁纸已更新。保存后可在下次启动恢复。");
+    log_write("SETTINGS: wallpaper="); log_dec(wallpaper); log_write("\n");
+}
+static void save_settings(void) {
+    unsigned w = boot.fb.width, h = boot.fb.height;
+    int e = files_settings(&w, &h, &wallpaper, true);
+    setting_message(e == MN_OK ? "显示设置已保存到 /disk/display.cfg。" :
+                    e == MN_RO ? "磁盘为只读。先在内核终端执行 disk unlock。" :
+                    e == MN_NOENT ? "未挂载 MNFS 磁盘；当前设置在重启后重置。" : "保存失败；请检查磁盘状态。");
+    log_write("SETTINGS: "); log_write(e ? mnfs_error(e) : "saved"); log_write("\n");
+}
+void ui_load_settings(void) {
+    unsigned w, h, background;
+    if (files_settings(&w, &h, &background, false) != MN_OK) return;
+    wallpaper = background;
+    if (w == boot.fb.width && h == boot.fb.height) dirty = true;
+    else if (graphics_mode(w, h)) ui_init();
+    setting_message("已读取 MNFS 磁盘上的显示设置。");
+    log_write("SETTINGS: restored wallpaper="); log_dec(wallpaper); log_write("\n");
+}
+static void help(bool chinese) {
+    if (chinese) {
+        add_line("mnOS 中文帮助：help -cn；英文帮助：help");
+        add_line("kernel <指令> [对象]；本地内核控制台具有管理权限。");
+        add_line("info / memory / cpu / gpu / devices / test：查看状态");
+        add_line("kernel display 1600x900：调整受支持的显示模式");
+        add_line("kernel wallpaper 0|1|2：流线、网格、纯色");
+        add_line("kernel save-settings：保存显示设置到 MNFS 磁盘");
+        add_line("fs / ls / stat / cat：文件系统信息、列表及读取");
+        add_line("write 路径 内容；writeat 路径 偏移 内容");
+        add_line("mkdir / rm / mv / truncate：创建、删除、移动、截断");
+        add_line("disk unlock|lock：开启或关闭 /disk 写入");
+        add_line("snapshot save|restore|drop /disk：保存、恢复、删除快照");
+        add_line("/ram 临时；/disk 持久。F7 打开显示设置。");
+    } else {
+        add_line("mnOS command guide (English); help -cn for Chinese.");
+        add_line("kernel <instruction> [object]; privileged local console.");
+        add_line("kernel info|memory|cpu|gpu|devices|test|help");
+        add_line("kernel display WIDTHxHEIGHT / wallpaper 0|1|2 / save-settings");
+        add_line("help  uname  mem  tasks  pci  test  uptime  clear  reboot  shutdown");
+        add_line("fs  ls [PATH]  stat PATH  cat PATH [OFFSET]");
+        add_line("write PATH TEXT / writeat PATH OFFSET TEXT / truncate PATH SIZE");
+        add_line("mkdir PATH / rm PATH / mv FROM TO / gc [/ram|/disk]");
+        add_line("disk unlock|lock; snapshot save|restore|drop [/ram|/disk]");
+        add_line("/ram is temporary; /disk is persistent, read-only until unlocked.");
+        add_line("F1-F7: pages; F7: display settings; kernel help -cn: Chinese.");
+    }
+}
+static void kernel_command(const char *cmd) {
+    if (!*cmd || streq(cmd, "help")) help(false);
+    else if (streq(cmd, "help -cn")) help(true);
+    else if (streq(cmd, "info")) {
+        add_line("mnOS native / x86_64 / original C + assembly kernel");
+        add_line(cpu_brand); add_number("Online CPUs: ", cpu_online_count());
+    } else if (streq(cmd, "cpu")) {
+        add_line(cpu_brand); add_number("Discovered CPUs: ", cpu_count());
+        add_number("Online CPUs: ", cpu_online_count());
+    } else if (streq(cmd, "memory")) {
+        add_number("Free physical pages (4 KiB): ", pages_free());
+        add_number("Usable physical pages (4 KiB): ", pages_total());
+        add_number("Physical address limit (bytes): ", memory_limit());
+    } else if (streq(cmd, "gpu")) add_line(graphics_driver());
+    else if (streq(cmd, "devices")) {
+        for (unsigned i = 0; i < pci_count; ++i) {
+            char row[100]; pci_read_line(i, row, sizeof row); add_line(row);
+        }
+    } else if (streq(cmd, "test")) {
+        add_number("Boot CPU isolation checks: ", test_passed);
+        add_line("Per-CPU results are in the serial log.");
+    } else if (streq(cmd, "display")) {
+        char mode[32]; resolution_text(mode); add_line(mode);
+    } else if (!strncmp(cmd, "display ", 8)) {
+        bool matched = false;
+        for (unsigned i = 0; i < ARRAY_SIZE(modes); ++i) {
+            char mode[32]; number(mode, modes[i][0]); size_t n = strlen(mode);
+            mode[n++] = 'x'; number(mode + n, modes[i][1]);
+            if (streq(cmd + 8, mode)) {
+                matched = true; add_line(set_resolution(modes[i][0], modes[i][1]) ? "Display mode applied." : "Display mode unavailable.");
+                break;
+            }
+        }
+        if (!matched) add_line("Modes: 1024x768 1280x720 1600x900 1920x1080 2560x1440");
+    } else if (!strncmp(cmd, "wallpaper ", 10) && cmd[10] >= '0' && cmd[10] <= '2' && !cmd[11]) {
+        change_wallpaper(cmd[10] - '0'); add_line("Wallpaper applied.");
+    } else if (streq(cmd, "save-settings")) { save_settings(); add_line(setting_status); }
+    else if (!files_command(cmd, add_line)) add_line("Unknown instruction or invalid object. Type kernel help.");
+}
 static void execute(void) {
     command[command_length] = 0;
     add_line(command);
-    if (streq(command, "help")) {
-        add_line("help  uname  mem  tasks  pci  test  uptime");
-        add_line("clear  reboot  shutdown");
-    } else if (streq(command, "uname"))
+    if (streq(command, "help")) help(false);
+    else if (streq(command, "help -cn")) help(true);
+    else if (streq(command, "kernel")) kernel_command("");
+    else if (!strncmp(command, "kernel ", 7)) kernel_command(command + 7);
+    else if (streq(command, "uname"))
         add_line("mnOS native 0.1 / x86_64 / freestanding C + assembly");
     else if (streq(command, "mem")) {
         add_number("Free physical pages: ", pages_free());
@@ -184,6 +305,7 @@ static void execute(void) {
         reboot();
     else if (streq(command, "shutdown"))
         power_dialog = true;
+    else if (files_command(command, add_line)) {}
     else if (command_length)
         add_line("Unknown command. Type help.");
     log_write("CONSOLE: ");
@@ -194,17 +316,27 @@ static void execute(void) {
 }
 static void draw(void) {
     rect(0, 0, width, height, BG);
+    if (wallpaper == 0) {
+        for (int n = 0; n < 18; ++n)
+            for (int x = sidebar; x < width; ++x) {
+                int d = (x - width / 2) / 16;
+                pixel(x, height - 75 - n * 15 + d * d / 16, 0x263c3c);
+            }
+    } else if (wallpaper == 1) {
+        for (int x = sidebar; x < width; x += 40) rect(x, 0, 1, height, 0x25313b);
+        for (int y = 0; y < height; y += 40) rect(sidebar, y, width - sidebar, 1, 0x25313b);
+    }
     rect(0, 0, sidebar, height, 0x131920);
     text(25, 25, "mnOS", 28, FG);
     text(26, 66, "原生内核 · 0.1", 18, MUTED);
-    const char *names[] = {"概览", "内存与进程", "设备", "安全自检", "内核终端", "工具环境"};
-    for (unsigned i = 0; i < 6; ++i) {
+    const char *names[] = {"概览", "内存与进程", "设备", "安全自检", "内核终端", "工具环境", "显示与设置"};
+    for (unsigned i = 0; i < ARRAY_SIZE(names); ++i) {
         int y = 130 + (int)i * 55;
         if ((int)i == page)
             rounded(14, y, sidebar - 28, 44, 0x28463f);
         text(29, y + 8, names[i], 18, (int)i == page ? ACCENT : MUTED);
     }
-    text(25, height - 71, "F1—F6 切换页面", 18, MUTED);
+    text(25, height - 71, "F1—F7 切换页面", 18, MUTED);
     text(25, height - 43, "x86_64 / 实验版", 18, MUTED);
     int x = sidebar + 30, w = width - sidebar - 60;
     text(x, 28, names[page], 28, FG);
@@ -215,19 +347,22 @@ static void draw(void) {
     rect(x, 110, w, 1, 0x2e3943);
     if (page == 0) {
         int cw = (w - 24) / 3;
-        card(x, 135, cw, "用户进程", 2, "独立地址空间");
-        card(x + cw + 12, 135, cw, "可用内存", pages_free() * PAGE / 1048576, "MiB / 物理页管理");
+        card(x, 135, cw, "在线处理器", cpu_online_count(), "每核独立调度");
+        uint64_t bytes = pages_free() * PAGE;
+        uint64_t unit = bytes >= (1ULL << 40) ? (1ULL << 40) : bytes >= (1ULL << 30) ? (1ULL << 30) : (1ULL << 20);
+        card(x + cw + 12, 135, cw, "可用内存", bytes / unit, unit == (1ULL << 40) ? "TiB" : unit == (1ULL << 30) ? "GiB" : "MiB");
         card(x + 2 * cw + 24, 135, cw, "启动自检", test_passed, "项已通过 / 共 8 项");
         text(x, 282, "内核状态", 18, FG);
         line(x, 324, w, "处理器", cpu_brand);
-        line(x, 368, w, "调度", "抢占式 / 单核 / 100 Hz");
+        line(x, 368, w, "调度", "多核抢占式 / 每核 100 Hz");
         line(x, 412, w, "内存保护", "用户态隔离 · W^X · NX");
         line(x, 456, w, "显示与输入", "帧缓冲 · PS/2 · 串口");
         rounded(x, 527, w, 78, 0x23332f);
         text(x + 18, 541, "这是原生内核的早期版本。", 18, ACCENT);
         text(x + 18, 570, "浏览器、CTF 与 Wi-Fi 在 Linux 工具环境中运行。", 18, MUTED);
     } else if (page == 1) {
-        card(x, 135, (w - 12) / 2, "已管理物理内存", pages_total() * PAGE / 1048576, "MiB");
+        uint64_t bytes = pages_total() * PAGE, unit = bytes >= (1ULL << 40) ? (1ULL << 40) : (1ULL << 20);
+        card(x, 135, (w - 12) / 2, "已管理物理内存", bytes / unit, unit == (1ULL << 40) ? "TiB" : "MiB");
         card(x + (w + 12) / 2, 135, (w - 12) / 2, "可分配物理页", pages_free(), "4 KiB / page");
         text(x, 286, "进程", 18, FG);
         text(x + w / 3, 286, "切换次数", 18, MUTED);
@@ -236,10 +371,10 @@ static void draw(void) {
             int y = 334 + (int)i * 64;
             text(x, y, i ? "01  worker-b" : "00  worker-a", 18, FG);
             numeric(x + w / 3, y, tasks[i].switches, 18, ACCENT);
-            numeric(x + 2 * w / 3, y, tasks[i].data ? *(uint64_t *)tasks[i].data : 0, 18, FG);
+            numeric(x + 2 * w / 3, y, tasks[i].data ? *(uint64_t *)phys_pointer(tasks[i].data) : 0, 18, FG);
             rect(x, y + 42, w, 1, 0x2c3641);
         }
-        text(x, 498, "两个进程由时钟中断轮流调度，分别使用自己的页表。", 18, MUTED);
+        text(x, 498, "此处显示启动核的两个进程；其他核拥有独立进程和页表。", 18, MUTED);
         text(x, 536, "内核数据不可从用户态读取，代码页不可写入。", 18, MUTED);
     } else if (page == 2) {
         text(x, 139, "PCI 设备枚举", 18, FG);
@@ -275,7 +410,7 @@ static void draw(void) {
         text(x + 18, cy, ">", 18, ACCENT);
         text(x + 38, cy, command, 18, FG);
         text(x + 38 + (int)command_length * 10, cy, "_", 18, ACCENT);
-    } else {
+    } else if (page == 5) {
         text(x, 146, "Linux 工具环境", 28, FG);
         text(x, 198, "在启动菜单中选择另一个系统入口。", 18, MUTED);
         line(x, 254, w, "浏览器", "Firefox ESR");
@@ -285,6 +420,20 @@ static void draw(void) {
         rounded(x, 476, 280, 52, 0x31584b);
         text(x + 19, 488, "重启并选择工具环境", 18, ACCENT);
         text(x, 562, "原生内核与 Linux 工具环境是两个独立的运行环境。", 18, MUTED);
+    } else {
+        line(x, 140, w, "显示驱动", graphics_driver());
+        char mode[32]; resolution_text(mode);
+        rounded(x, 207, w, 70, PANEL);
+        text(x + 18, 218, "分辨率", 18, MUTED); text(x + 180, 218, mode, 28, FG);
+        text(x + 18, 250, "点击切换 / R", 18, ACCENT);
+        rounded(x, 293, w, 70, PANEL);
+        text(x + 18, 304, "壁纸", 18, MUTED); text(x + 180, 304, wallpapers[wallpaper], 28, FG);
+        text(x + 18, 336, "点击切换 / W", 18, ACCENT);
+        rounded(x, 386, 280, 52, 0x31584b);
+        text(x + 18, 398, "保存到磁盘 / S", 18, ACCENT);
+        text(x, 465, setting_status, 18, FG);
+        text(x, 514, "持久保存需要 MNFS 磁盘；终端执行 disk unlock 开启写入。", 18, MUTED);
+        text(x, 552, "Linux 桌面另提供网络、声音、输入、账号和多屏等完整设置。", 18, MUTED);
     }
     if (power_dialog) {
         int dx = (width - 500) / 2, dy = (height - 220) / 2;
@@ -340,7 +489,7 @@ void ui_key(char key) {
         dirty = true;
         return;
     }
-    if (k >= 0x81 && k <= 0x86) {
+    if (k >= 0x81 && k <= 0x87) {
         select_page(k - 0x81);
         return;
     }
@@ -349,7 +498,10 @@ void ui_key(char key) {
         return;
     }
     if (page != 4) {
-        if (key >= '1' && key <= '6')
+        if (page == 6 && key == 'r') change_resolution();
+        else if (page == 6 && key == 'w') change_wallpaper((wallpaper + 1) % ARRAY_SIZE(wallpapers));
+        else if (page == 6 && key == 's') save_settings();
+        else if (key >= '1' && key <= '7')
             select_page(key - '1');
         else if (key == 't')
             select_page(4);
@@ -375,13 +527,17 @@ void ui_pointer(int x, int y, bool pressed) {
     cursor_y = y;
     cursor_dirty = true;
     if (pressed && !left_down && !power_dialog) {
-        if (x < sidebar && y >= 130 && y < 460) {
+        if (x < sidebar && y >= 130 && y < 515) {
             int n = (y - 130) / 55;
-            if (n < 6)
+            if (n < 7)
                 select_page(n);
         } else if (page == 5 && x >= sidebar + 30 && x < sidebar + 310 && y >= 476 && y < 528) {
             power_dialog = true;
             dirty = true;
+        } else if (page == 6 && x >= sidebar + 30 && x < width - 30) {
+            if (y >= 207 && y < 277) change_resolution();
+            else if (y >= 293 && y < 363) change_wallpaper((wallpaper + 1) % ARRAY_SIZE(wallpapers));
+            else if (x < sidebar + 310 && y >= 386 && y < 438) save_settings();
         }
     }
     left_down = pressed;

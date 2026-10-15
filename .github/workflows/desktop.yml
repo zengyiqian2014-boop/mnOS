@@ -22,19 +22,25 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build original kernel and VM tools
         run: |
-          make -C native -j4
+          make -C native -j4 all host-tools
+          make -C native host-tests | tee native/build/native-host-tests.log
           docker build -t mnos-live-builder -f live/Builder.Dockerfile live
-      - name: BIOS, UEFI, isolation, UI and power tests
+      - name: BIOS, UEFI, SMP, large memory, filesystem, UI and power tests
         run: |
-          docker run --rm --network none -v "$PWD/native:/native:ro" \
+          docker run --rm --network none --memory=6g --cpus=4 -v "$PWD/native:/native:ro" \
             -v "$PWD/native/build:/out" mnos-live-builder bash -c '
               set -e
               bash /native/pack.sh test
               python3 /native/tests/boot.py /out/native-test.iso
+              python3 /native/tests/smp.py /out/native-test.iso
+              python3 /native/tests/large_memory.py /out/native-test.iso
               bash /native/pack.sh demo
               python3 /native/tests/ui.py /out/native-demo.iso
+              python3 /native/tests/ui.py /out/native-demo.iso --gpu virtio --uefi
+              python3 /native/tests/persistence.py /out/native-demo.iso
               chmod a+r /out/*.ppm /out/*.log
             '
+          (cd native/build && sha256sum native-demo.iso > native-demo.iso.sha256)
       - uses: actions/upload-artifact@v4
         with:
           name: mnOS-native-checks
@@ -42,6 +48,7 @@ jobs:
             native/build/native-*.log
             native/build/native-*.ppm
             native/build/native-demo.iso
+            native/build/native-demo.iso.sha256
           retention-days: 14
   build:
     needs: native
@@ -85,6 +92,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           path: release
@@ -98,7 +106,7 @@ jobs:
           (cd release && sha256sum --check ./*.iso.sha256)
           gh release create "$TAG" --draft --prerelease --verify-tag \
             --title "mnOS dual-boot $TAG" \
-            --notes "Two x86_64 ISOs: QEMU and general hardware. Each includes the original experimental mnOS native kernel and a separate Linux 6.12 LTS desktop with Xfce, Firefox, administration and CTF tools. Native kernel requires Secure Boot off. First Linux boot creates a local account; Live writes are temporary. CI checks native isolation and UI, Linux configuration and GTK tools, Linux BIOS/UEFI/Secure Boot, and both combined-ISO native BIOS/UEFI entries. See native/README.md, live/README.md and live/VALIDATION.md for exact implementation, boot validation and hardware limits."
+            --notes-file live/RELEASE.md
           # Logs in subdirectories remain available as workflow artifacts.
           find release -maxdepth 1 -type f -print0 | xargs -0 -r gh release upload "$TAG"
           gh release edit "$TAG" --draft=false
