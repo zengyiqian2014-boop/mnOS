@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Use the actual ATA driver and console, then remount the same image after power loss."""
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import socket
@@ -61,31 +62,59 @@ with tempfile.TemporaryDirectory(dir=args.out) as temporary:
                     wait('FS: ' + expected)
                     assert 'FS: ' + expected in output[start:], output[start:]
 
+            def secret(text, expected=None):
+                # Password input must never enter the console history or retained log.
+                for character in (text + '\n').encode():
+                    connection.sendall(bytes([character]))
+                    time.sleep(.015)
+                if expected:
+                    wait(expected, timeout=180)
+
+            def login(name, password):
+                secret(name)
+                secret(password, 'AUTH: Signed in as an ordinary user.' if name != 'root' else 'AUTH: Root session:')
+
             wait('SMP PASS 4/4')
             wait('/disk mounted read-only')
-            if phase == 2:
+            if phase == 1:
+                secret('demo')
+                secret('ordinarytest491')
+                secret('ordinarytest491', 'Set a separate password for root')
+                secret('rootadmintest785')
+                secret('rootadmintest785', 'Accounts created. Signed in as the ordinary user.')
+            else:
+                login('demo', 'ordinarytest491')
                 wait('SETTINGS: restored wallpaper=1')
                 wait('DISPLAY: 1600x900 / DISPI')
             connection.sendall(b't')
             wait('UI: page 4')
             command('cat /disk/readme', 'pre-existing-file')
             if phase == 1:
+                command('write /disk/outside-home blocked', 'Permission denied')
+                command('disk unlock', 'Permission denied')
+                command('mkdir /disk/home/demo/work')
+                command('write /disk/home/demo/message persisted-data', 'written and flushed')
+                command('writeat /disk/home/demo/large 4294967294 cross4g', 'written and flushed')
+                command('su')
+                secret('rootadmintest785', 'AUTH: Root session:')
+                command('disk lock', '/disk read-only')
                 command('write /disk/forbidden blocked', 'read-only')
                 command('disk unlock', '/disk writes enabled')
-                command('mkdir /disk/home')
-                command('write /disk/home/message persisted-data', 'written and flushed')
-                command('writeat /disk/home/large 4294967294 cross4g', 'written and flushed')
+                command('write /disk/root/secret administrator-only', 'written and flushed')
                 command('snapshot save /disk', 'snapshot committed')
-                command('write /disk/home/message overwritten', 'written and flushed')
+                command('write /disk/home/demo/message overwritten', 'written and flushed')
                 command('snapshot restore /disk', 'snapshot committed')
+                login('demo', 'ordinarytest491')
                 command('kernel display 1600x900')
                 wait('DISPLAY: 1600x900 / DISPI')
                 command('kernel wallpaper 1')
                 command('kernel save-settings')
                 wait('SETTINGS: saved')
-            command('cat /disk/home/message', 'persisted-data')
-            command('cat /disk/home/large 4294967294', 'cross4g')
-            command('stat /disk/home/large', 'Size: 4294967301')
+            command('cat /disk/root/secret', 'Permission denied')
+            command('cat /disk/system/accounts.bin', 'Permission denied')
+            command('cat /disk/home/demo/message', 'persisted-data')
+            command('cat /disk/home/demo/large 4294967294', 'cross4g')
+            command('stat /disk/home/demo/large', 'Size: 4294967301')
             # QMP quit cuts power without a guest shutdown; completed writes must persist.
             control = socket.socket(socket.AF_UNIX)
             control.connect(str(qmp))
@@ -104,11 +133,18 @@ with tempfile.TemporaryDirectory(dir=args.out) as temporary:
                 vm.terminate()
                 vm.wait(timeout=5)
             (args.out / f'native-files-phase{phase}.log').write_text(output)
-    result = subprocess.run([str(tool), str(disk), 'cat', '/home/message'], capture_output=True, check=True)
+            assert 'ordinarytest491' not in output and 'rootadmintest785' not in output
+    result = subprocess.run([str(tool), str(disk), 'cat', '/home/demo/message'], capture_output=True, check=True)
     assert result.stdout == b'persisted-data'
-    settings = subprocess.run([str(tool), str(disk), 'cat', '/display.cfg'], capture_output=True, check=True)
+    settings = subprocess.run([str(tool), str(disk), 'cat', '/home/demo/display.cfg'], capture_output=True, check=True)
     assert settings.stdout == b'1600 900 1\n'
     denied = subprocess.run([str(tool), str(disk), 'stat', '/forbidden'], capture_output=True)
     assert denied.returncode != 0
+    accounts = subprocess.check_output([str(tool), str(disk), 'cat', '/system/accounts.bin'])
+    assert len(accounts) == 1360
+    for index, password in enumerate((b'rootadmintest785', b'ordinarytest491')):
+        record = accounts[16 + index * 84:16 + (index + 1) * 84]
+        assert hashlib.pbkdf2_hmac('sha256', password, record[36:52], 600000) == record[52:84]
+        assert password not in accounts
     subprocess.run([str(tool), str(disk), 'check'], check=True)
-print('PASS native ATA: read-only gate, writes, >4 GiB file, snapshot, power loss and host remount')
+print('PASS native ATA: account persistence, ordinary-user writes, root permissions, protected credentials, >4 GiB file, snapshot reauthentication, display preferences and power loss')

@@ -20,15 +20,28 @@ RUN --mount=type=secret,id=build_ca \
     --mount=type=bind,source=overlay,target=/tmp/overlay \
     --mount=type=bind,source=configure.sh,target=/tmp/mnos-configure \
     --mount=type=bind,source=src,target=/tmp/mnos-src \
+    --mount=type=bind,source=keys,target=/tmp/mnos-keys \
     --mount=type=bind,source=build/native-src,target=/tmp/mnfs-src \
     case "$PROFILE" in hardware|qemu) ;; *) exit 2 ;; esac \
     && if [ -r /run/secrets/build_ca ]; then printf 'Acquire::https::CaInfo "/run/secrets/build_ca";\n' > /etc/apt/apt.conf.d/99-mnos-build-ca; fi \
+    && test "$(gpg --show-keys --with-colons /tmp/mnos-keys/microsoft-code.asc 2>/dev/null | awk -F: '$1=="fpr" {print $10; exit}')" = BC528686B50D79E339D3721CEB3E94ADBE1229CF \
+    && install -m 644 /tmp/mnos-keys/microsoft-code.asc /usr/share/keyrings/microsoft-code.asc \
+    && printf '%s\n' 'deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-code.asc] https://packages.microsoft.com/repos/code stable main' > /etc/apt/sources.list.d/microsoft-code.list \
+    && printf 'code code/add-microsoft-repo boolean false\n' | debconf-set-selections \
     && apt-get update && apt-get install -y --no-install-recommends \
        gir1.2-webkit2-4.1 tuned dbus-x11 dbus-user-session xdg-user-dirs librsvg2-common \
     && xargs -r apt-get install -y --no-install-recommends < "/tmp/packages/$PROFILE.txt" \
     && xargs -r apt-get install -y --no-install-recommends < /tmp/packages/ctf.txt \
+    && sed '/^#/d; /^$/d' /tmp/packages/development.txt | xargs -r apt-get install -y --no-install-recommends \
     && cc -std=c11 -O2 -Wall -Wextra -Werror -fstack-protector-strong -D_FORTIFY_SOURCE=3 \
        -Wl,-z,relro,-z,now /tmp/mnos-src/kernel.c -o /usr/bin/kernel \
+    && cc -std=c11 -O2 -Wall -Wextra -Werror -fstack-protector-strong -D_FORTIFY_SOURCE=3 \
+       -Wl,-z,relro,-z,now /tmp/mnos-src/kernel-admin.c -o /usr/sbin/mnos-kernel-admin \
+    && chown root:root /usr/bin/kernel /usr/sbin/mnos-kernel-admin \
+    && chmod 755 /usr/bin/kernel /usr/sbin/mnos-kernel-admin \
+    && mkdir -p /usr/lib/mnos \
+    && cc -std=c11 -O2 -Wall -Wextra -Werror -fstack-protector-strong -D_FORTIFY_SOURCE=3 \
+       -Wl,-z,relro,-z,now /tmp/mnos-src/net-admin.c -o /usr/lib/mnos/net-admin \
     && cc -std=c11 -O2 -Wall -Wextra -Werror -Wno-misleading-indentation \
        -fstack-protector-strong -D_FORTIFY_SOURCE=3 -Wl,-z,relro,-z,now -I/tmp/mnfs-src \
        /tmp/mnfs-src/mnfs-tool.c /tmp/mnfs-src/mnfs.c -o /usr/bin/mnfs \

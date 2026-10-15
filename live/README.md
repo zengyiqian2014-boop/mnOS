@@ -30,23 +30,67 @@ help
 help -cn
 kernel help
 kernel help -cn
-sudo kernel info
-sudo kernel memory
-sudo kernel cpu
-sudo kernel gpu
-sudo kernel modules
-sudo kernel sysctl vm.swappiness
+kernel info
+kernel memory
+kernel cpu
+kernel gpu
+kernel modules
+kernel sysctl vm.swappiness
 sudo kernel performance balanced
 ```
 
-`kernel <instruction> [object]` is a compiled C administration tool. Only help
-is available without root. It invokes fixed programs without shell expansion;
-it is not setuid and does not bypass sudo authentication. It supports module
-load/unload, sysctl read/write, CPU online/offline where Linux permits hotplug,
-logs, PCI/DRM information and the supplied TuneD profiles. Runtime changes reset
-at reboot. The original native console has its own command implementation and
-no login system; its [command reference](../native/README.md) lists the available
-operations.
+`kernel <instruction> [object]` separates ordinary queries from administration:
+
+| Instructions | Permissions |
+| --- | --- |
+| `help`, `info`, `memory`, `cpu`, `modules`, `devices`, `gpu` | Ordinary user |
+| `irq`, `log`, `sysctl KEY` | Current user's Linux access rights; protected data may require sudo |
+| `load`, `unload`, `set`, `cpu-online`, `cpu-offline`, `performance` | Root through an authorized sudo session |
+
+The compiled `/usr/bin/kernel` handles queries and forwards mutations to
+`/usr/sbin/mnos-kernel-admin`. The backend independently requires real and
+effective UID 0, including when called directly. Both executables are owned by
+root, mode 0755, without setuid or file capabilities. Their directory locations
+describe their purpose; credentials and Linux access checks enforce permissions.
+They use fixed executable paths without shell expansion or automatic elevation.
+Runtime sysctl/CPU changes reset at reboot; TuneD profile selection persists.
+The original native console has separate account authentication and home-directory
+permissions; its [command reference](../native/README.md) describes the scope.
+
+### Network permission choice
+
+Calamares presents a **Network permissions** page after account creation. The
+default keeps privileged network operations behind sudo. The optional mode adds
+only the created account to `mnos-netadmin` and enables `CAP_NET_ADMIN` plus
+`CAP_NET_RAW` on a root-owned, group-executable helper. Run `mnos-net nmap ...`,
+`mnos-net tcpdump ...`, or `mnos-net ip|tc|iw ...`; the process keeps the user's
+UID. No setuid-root bit, broad sudo exemption or unrestricted shell is supplied.
+The capabilities also permit network configuration and raw packet operations;
+they are broader than read-only scanning and may be inherited by tool subprocesses.
+
+Ordinary HTTP requests, TCP-connect scans (`nmap -sT`), file editing and desktop
+settings need neither this delegation nor root. Wireshark's GUI continues to run
+as an ordinary user; open captures made with tcpdump. After installation, root
+can authorize another account with `mnos-network-policy netadmin USER` or disable
+delegation with `mnos-network-policy root`. A new login refreshes group membership;
+already running privileged network tools must exit to lose inherited capabilities.
+The initial Live session retains the default policy until explicitly changed.
+
+### Editors and programming
+
+The graphical desktop includes official Microsoft **Visual Studio Code**, nano,
+Mousepad and Thunar. VS Code is installed from Microsoft's signed APT repository;
+its key is scoped to that source and checked against fingerprint
+`BC528686B50D79E339D3721CEB3E94ADBE1229CF`. Versions are recorded in each ISO's
+package manifest. VS Code and its terminal run as the ordinary user, with no
+`--no-sandbox` flag. Telemetry and AI features default off in new user settings.
+
+Included languages: C/C++ (GCC and Clang), Python with venv, Node.js/npm, Go,
+Rust/Cargo and Java/JDK. CMake, Ninja, pkg-config, Git, GDB, clangd, ripgrep and
+ShellCheck are available. Build/edit projects in your home directory without
+sudo; use a Python venv or project-local dependencies. VS Code extensions are
+installed per user. These applications run in the Linux entry, not directly on
+the experimental native kernel.
 
 The system center's desktop page opens real Xfce display, wallpaper, keyboard,
 mouse, sound and session settings. Mesa OpenGL/Vulkan packages and diagnostic
@@ -153,4 +197,7 @@ historical versions can be located at <https://snapshot.debian.org/>.
 The Linux kernel source is the Debian `linux` source package, including Debian
 patches. mitmproxy wheels and resolved versions are listed under
 `/usr/share/doc/mnos/`; its sources are available from PyPI and the upstream project.
+Microsoft Visual Studio Code is installed from Microsoft's signed APT repository
+and retains its own distribution terms and bundled license notices. It is a
+third-party binary, distinct from the project's original GPL integration code.
 Subscription documents and build credentials are never part of the distribution.

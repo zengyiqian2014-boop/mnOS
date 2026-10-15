@@ -5,8 +5,11 @@ udev
 live-boot
 initramfs-tools
 sudo
+libcap2-bin
+iw
 locales
 ca-certificates
+gnupg
 debian-archive-keyring
 apparmor
 apparmor-utils

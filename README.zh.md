@@ -1,6 +1,6 @@
 # mnOS
 
-[下载双启动预览版](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-desktop-preview.4)
+[下载双启动预览版](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-desktop-preview.5)
 · [启动与验证记录](live/VALIDATION.md)
 
 mnOS 将用 C 和汇编编写的 x86_64 自研内核，与独立的 Debian 13 / Linux 6.12
@@ -9,8 +9,8 @@ LTS 桌面放在同一张 ISO 中，提供 QEMU 与通用 PC 硬件两个版本�
 
 | 环境 | 当前功能 |
 | --- | --- |
-| [自研内核](native/README.md) | 动态多核、每核隔离和抢占调度、最高 64 TiB 物理地址管理、MNFS CoW 文件系统、图形终端及显示设置 |
-| [Linux 桌面](live/README.md) | Xfce、Firefox ESR、Python/CTF 工具、Cockpit、root 内核管理命令、常规桌面设置及常见硬件驱动 |
+| [自研内核](native/README.md) | 本地账号认证、普通用户/root 权限、动态多核、最高 64 TiB 物理地址管理、MNFS CoW 文件系统、图形终端及个人显示设置 |
+| [Linux 桌面](live/README.md) | Xfce、官方 VS Code、nano、Firefox ESR、C/C++/Python/Node.js/Go/Rust/Java、CTF 工具、可选网络授权、系统设置及常见硬件驱动 |
 
 自研内核已完成 32 核和 33 TiB 稀疏 QEMU 内存验证，仍是实验版本。没有固定 CPU
 数组上限，但实际规模受硬件与内存约束；测试结果不等于实体硬件全覆盖或安全认证。
@@ -24,12 +24,24 @@ help                         # 英文帮助
 help -cn                     # 中文帮助
 kernel help                  # 内核命令英文说明
 kernel help -cn               # 内核命令中文说明
-sudo kernel gpu              # Linux：查看绑定的显卡驱动
+kernel gpu                   # Linux：普通用户查看绑定的显卡驱动
+sudo kernel performance balanced  # Linux：管理员切换 TuneD 配置
 ```
 
 原生 F7 设置页可调整受支持的 QEMU 分辨率和壁纸，并保存到 MNFS 磁盘。
 Linux 系统中心提供显示、壁纸、声音、网络、账号等设置。Python 保留，供相关
-工具使用。Linux 首次启动创建本地账号，没有默认密码；管理操作通过 sudo 提权。
+工具使用。Linux 首次启动创建具有 sudo 授权的普通账号；root 登录锁定，没有默认
+密码。/usr/bin/kernel 负责查询，/usr/sbin/mnos-kernel-admin 检查 root 身份后执行
+修改操作。受限制的日志和参数仍遵循 Linux 权限。
+
+自研内核有独立的账号认证：首次创建普通用户及 root 密码，`su` 切换管理员，
+个人文件读写和显示设置无需 root。有 MNFS 磁盘时保存账号；无磁盘时只在本次
+启动有效。原生账号与 Linux 账号不共用。
+
+安装时可选网络工具权限：默认特权操作需要 sudo；也可向本次创建的账号开放
+`CAP_NET_ADMIN` 和 `CAP_NET_RAW`，例如通过 `mnos-net nmap ...` 免 sudo 使用
+网络特权，账号仍保持普通 UID。其他账号不会自动获得授权。普通联网、TCP 连接
+扫描、编辑个人文件、使用 VS Code 和编译项目都不需要 root。
 
 自研内核在 QEMU 中独立运行的画面：
 

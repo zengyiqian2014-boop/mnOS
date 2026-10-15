@@ -1,0 +1,14 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+case "${1-}" in
+  ''|help|--help)
+    printf '%s\n' 'mnos-net <nmap|tcpdump|ip|tc|iw> [arguments]' \
+      'Runs as your ordinary UID with NET_ADMIN/NET_RAW only when explicitly authorized.' \
+      'Default policy: use sudo with the original tool for privileged operations.'
+    exit 0 ;;
+esac
+if [ ! -x /usr/lib/mnos/net-admin ]; then
+    printf '%s\n' 'This account has no network delegation. Use sudo with the original tool.' >&2
+    exit 77
+fi
+exec /usr/lib/mnos/net-admin "$@"

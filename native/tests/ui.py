@@ -73,6 +73,18 @@ with tempfile.TemporaryDirectory() as tmp:
             return path
 
         request("qmp_capabilities")
+        screenshot("login")
+        def type_line(value):
+            for character in value:
+                key(character)
+            key("ret")
+        type_line("demo")
+        type_line("ordinarytest491")
+        type_line("ordinarytest491")
+        wait_log("Set a separate password for root", timeout=180)
+        type_line("rootadmintest785")
+        type_line("rootadmintest785")
+        wait_log("Accounts created. Signed in as the ordinary user.", timeout=180)
         screenshot("overview")
         key("f4")
         wait_log("UI: page 3")
@@ -119,7 +131,8 @@ with tempfile.TemporaryDirectory() as tmp:
         output = serial.read_text()
         assert vm.returncode == 0 and "POWER: shutdown requested" in output
         assert "PANIC:" not in output and "S5 unavailable" not in output
-        print("PASS native UI: F1-F7, mouse, bilingual help, resolution, wallpaper, ACPI shutdown")
+        assert 'ordinarytest491' not in output and 'rootadmintest785' not in output
+        print("PASS native UI: account enrollment, hidden passwords, ordinary-user F1-F7, mouse, bilingual help, resolution, wallpaper, ACPI shutdown")
     finally:
         if vm.poll() is None:
             vm.terminate()

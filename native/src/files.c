@@ -2,12 +2,15 @@
 #include "kernel.h"
 #include "block.h"
 #include "mnfs.h"
+#include "auth.h"
 struct chunk { size_t size; struct chunk *next; bool free; } __attribute__((aligned(16)));
 static struct chunk *heap;
 static struct mnfs ram, disk;
 static struct block_device disks[4];
 static uint8_t *ram_data;
 static bool disk_present;
+static bool disk_locked;
+static void accounts_init(void);
 #define RAM_BLOCKS 2048
 static void *allocate(size_t bytes) {
     if (!bytes || bytes > SIZE_MAX - 15) return NULL;
@@ -72,9 +75,66 @@ void files_init(void) {
     for (unsigned i = 0; i < count && !disk_present; ++i) {
         io = (struct mnfs_io){&disks[i], disks[i].sectors / 8, disk_read, disk_write, disk_flush, allocate, release};
         int error = mnfs_mount(&disk, &io, false);
-        if (!error) { disk_present = true; log_write("FILESYSTEM: /disk mounted read-only; use disk unlock for writes\n"); }
+        if (!error) { disk_present = true; log_write("FILESYSTEM: /disk validated read-only; sign in for authorized writes\n"); }
     }
     if (!disk_present) log_write("FILESYSTEM: /ram ready; no mountable MNFS ATA disk\n");
+    accounts_init();
+}
+static int make_directory(struct mnfs *f,const char *path) {
+    struct mnfs_stat st;int e=mnfs_stat(f,path,&st);
+    if(e==MN_NOENT)return mnfs_create(f,path,true);
+    return e?e:st.directory?MN_OK:MN_NOTDIR;
+}
+static int homes(struct mnfs *f,const struct auth_database *db) {
+    int e=make_directory(f,"/home");if(e)return e;
+    e=make_directory(f,"/root");if(e)return e;
+    for(unsigned i=1;i<db->count&&i<AUTH_USERS;++i) {
+        char path[40]="/home/";size_t n=0;while(n<32&&db->users[i].name[n])++n;
+        if(n==32)return MN_INVALID;
+        memcpy(path+6,db->users[i].name,n+1);e=make_directory(f,path);if(e)return e;
+    }
+    return MN_OK;
+}
+static int accounts_load(struct auth_database *db) {
+    if(!disk_present)return 1;
+    struct mnfs_stat st;int e=mnfs_stat(&disk,"/system/accounts.bin",&st);
+    if(e==MN_NOENT)return 1;
+    if(e||st.directory||st.size!=sizeof *db)return -1;
+    size_t got;e=mnfs_read(&disk,"/system/accounts.bin",0,db,sizeof *db,&got);
+    return e||got!=sizeof *db?-1:0;
+}
+static int accounts_save(const struct auth_database *db) {
+    if(homes(&ram,db))return -1;
+    if(!disk_present)return 0;
+    if(disk.poisoned)return -1;
+    bool was=disk.writable;disk.writable=true;
+    int e=homes(&disk,db);
+    if(!e)e=make_directory(&disk,"/system");
+    struct mnfs_stat st;
+    if(!e) {e=mnfs_stat(&disk,"/system/accounts.bin",&st);if(e==MN_NOENT)e=mnfs_create(&disk,"/system/accounts.bin",false);}
+    /* The fixed-size credential record fits in one CoW data block. */
+    if(!e)e=mnfs_write(&disk,"/system/accounts.bin",0,db,sizeof *db);
+    disk.writable=!disk.poisoned&&(was||!disk_locked);return e?-1:0;
+}
+static bool random_salt(uint8_t *out,size_t n) {
+    uint32_t a,b,c,d;cpuid(1,0,&a,&b,&c,&d);if(!(c&(1u<<30)))return false;
+    while(n) {
+        uint64_t value=0;unsigned char ok=0;
+        for(unsigned retry=0;retry<100&&!ok;++retry)__asm__ volatile("rdrand %0; setc %1":"=r"(value),"=qm"(ok));
+        if(!ok)return false;
+        size_t take=n<8?n:8;memcpy(out,&value,take);out+=take;n-=take;
+    }
+    return true;
+}
+static void accounts_init(void) {
+    struct auth_io io={accounts_load,accounts_save,random_salt,disk_present};auth_init(&io);
+}
+void files_session(void) {
+    if(!auth_logged_in())return;
+    /* RAM is new at every boot. Provision only the authenticated user's home. */
+    char path[40]="/home/";size_t n=strlen(auth_name());memcpy(path+6,auth_name(),n+1);
+    make_directory(&ram,auth_admin()?"/root":path);
+    if(disk_present&&!disk_locked&&!disk.poisoned)disk.writable=true;
 }
 static struct mnfs *volume(const char **path) {
     const char *p = *path;
@@ -94,8 +154,12 @@ static bool decimal(const char *p, uint64_t *out) {
     *out = value; return true;
 }
 int files_settings(unsigned *width, unsigned *height, unsigned *wallpaper, bool save) {
+    if(!auth_logged_in())return MN_RO;
     if (!disk_present) return MN_NOENT;
-    const char *path = "/display.cfg";
+    char path[64]="/home/";
+    if(auth_admin())memcpy(path,"/root/display.cfg",18);
+    else {size_t n=strlen(auth_name());memcpy(path+6,auth_name(),n);memcpy(path+6+n,"/display.cfg",13);}
+    if(!auth_path(path,save))return MN_RO;
     if (save) {
         if (!disk.writable) return MN_RO;
         char buffer[80], number_text[24]; size_t at = 0;
@@ -155,14 +219,25 @@ bool files_command(const char *command, void (*print)(const char *)) {
     const char *p = *arg ? arg : "/ram";
     struct mnfs *f = volume(&p); int error = MN_OK;
     output = print;
+    bool recognized=streq(cmd,"fs")||streq(cmd,"disk")||streq(cmd,"ls")||streq(cmd,"stat")||streq(cmd,"cat")||
+        streq(cmd,"write")||streq(cmd,"writeat")||streq(cmd,"mkdir")||streq(cmd,"rm")||streq(cmd,"truncate")||
+        streq(cmd,"mv")||streq(cmd,"snapshot")||streq(cmd,"gc");
+    if(!recognized)return false;
+    if(!auth_logged_in()) {emit("Permission denied: sign in first");return true;}
+    if(streq(cmd,"disk")||streq(cmd,"snapshot")||streq(cmd,"gc")) {
+        if(!auth_admin()) {emit("Permission denied: root required for volume administration");return true;}
+    } else if(!streq(cmd,"fs")) {
+        bool write=!(streq(cmd,"ls")||streq(cmd,"stat")||streq(cmd,"cat"));
+        if(!auth_path(p,write)) {emit("Permission denied: outside your home or protected system data");return true;}
+    }
     if (streq(cmd, "fs")) {
         emit("MNFS v1 / 64-bit files / CoW / CRC32C / saved snapshot");
         emit(disk_present ? "/ram temporary; /disk present" : "/ram temporary; /disk absent");
         value("RAM free blocks: ", ram.free_blocks);
         if (disk_present) { value("Disk free blocks: ", disk.free_blocks); emit(disk.writable ? "/disk writable" : "/disk read-only"); }
     } else if (streq(cmd, "disk")) {
-        if (streq(arg, "unlock") && disk_present) { disk.writable = true; emit("/disk writes enabled"); }
-        else if (streq(arg, "lock") && disk_present) { disk.writable = false; emit("/disk read-only"); }
+        if (streq(arg, "unlock") && disk_present && !disk.poisoned) { disk_locked=false;disk.writable = true; emit("/disk writes enabled"); }
+        else if (streq(arg, "lock") && disk_present) { disk_locked=true;disk.writable = false; emit("/disk read-only"); }
         else emit("disk unlock | disk lock; only a mounted MNFS image is writable");
     } else if (streq(cmd, "ls")) error = f ? mnfs_list(f, p, entry, NULL) : MN_NOENT;
     else if (streq(cmd, "stat")) {
@@ -201,13 +276,14 @@ bool files_command(const char *command, void (*print)(const char *)) {
             f ? mnfs_truncate(f, p, size) : MN_NOENT;
     } else if (streq(cmd, "mv")) {
         const char *dest = word(&cursor); struct mnfs *other = volume(&dest);
+        if(!auth_path(dest,true)) {emit("Permission denied: destination is protected");return true;}
         error = !*dest || !f || f != other ? MN_INVALID : mnfs_rename(f, p, dest);
     } else if (streq(cmd, "snapshot")) {
         const char *target = word(&cursor); if (!*target) target = "/ram";
         f = volume(&target);
         unsigned action = streq(arg, "save") ? 0 : streq(arg, "restore") ? 1 : streq(arg, "drop") ? 2 : 3;
         error = f ? mnfs_snapshot(f, action) : MN_NOENT;
-        if (!error) emit("snapshot committed");
+        if (!error) {emit("snapshot committed");if(action==1&&f==&disk) {accounts_init();emit("Sign in again after restoring account data");}}
     } else if (streq(cmd, "gc")) error = f ? mnfs_collect(f) : MN_NOENT;
     else return false;
     if (error) emit(mnfs_error(error));

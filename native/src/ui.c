@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "kernel.h"
 #include "mnfs.h"
+#include "auth.h"
 struct glyph {
     uint32_t code, offset;
     uint16_t width, height, advance, size;
@@ -192,8 +193,8 @@ static void change_wallpaper(unsigned n) {
 static void save_settings(void) {
     unsigned w = boot.fb.width, h = boot.fb.height;
     int e = files_settings(&w, &h, &wallpaper, true);
-    setting_message(e == MN_OK ? "显示设置已保存到 /disk/display.cfg。" :
-                    e == MN_RO ? "磁盘为只读。先在内核终端执行 disk unlock。" :
+    setting_message(e == MN_OK ? "显示设置已保存到个人目录。" :
+                    e == MN_RO ? "磁盘为只读。需要 root 解锁后再保存。" :
                     e == MN_NOENT ? "未挂载 MNFS 磁盘；当前设置在重启后重置。" : "保存失败；请检查磁盘状态。");
     log_write("SETTINGS: "); log_write(e ? mnfs_error(e) : "saved"); log_write("\n");
 }
@@ -209,7 +210,8 @@ void ui_load_settings(void) {
 static void help(bool chinese) {
     if (chinese) {
         add_line("mnOS 中文帮助：help -cn；英文帮助：help");
-        add_line("kernel <指令> [对象]；本地内核控制台具有管理权限。");
+        add_line("普通用户：查询、个人目录读写、显示设置；管理卷需要 root。");
+        add_line("whoami / passwd / su / exit / logout；root 可用 useradd 用户名。");
         add_line("info / memory / cpu / gpu / devices / test：查看状态");
         add_line("kernel display 1600x900：调整受支持的显示模式");
         add_line("kernel wallpaper 0|1|2：流线、网格、纯色");
@@ -217,12 +219,13 @@ static void help(bool chinese) {
         add_line("fs / ls / stat / cat：文件系统信息、列表及读取");
         add_line("write 路径 内容；writeat 路径 偏移 内容");
         add_line("mkdir / rm / mv / truncate：创建、删除、移动、截断");
-        add_line("disk unlock|lock：开启或关闭 /disk 写入");
+        add_line("disk unlock|lock：root 开启或关闭 /disk 写入");
         add_line("snapshot save|restore|drop /disk：保存、恢复、删除快照");
         add_line("/ram 临时；/disk 持久。F7 打开显示设置。");
     } else {
         add_line("mnOS command guide (English); help -cn for Chinese.");
-        add_line("kernel <instruction> [object]; privileged local console.");
+        add_line("Users: queries, own-home files and display settings. Volume administration: root.");
+        add_line("whoami / passwd / su / exit / logout; root: useradd NAME, passwd NAME");
         add_line("kernel info|memory|cpu|gpu|devices|test|help");
         add_line("kernel display WIDTHxHEIGHT / wallpaper 0|1|2 / save-settings");
         add_line("help  uname  mem  tasks  pci  test  uptime  clear  reboot  shutdown");
@@ -230,7 +233,7 @@ static void help(bool chinese) {
         add_line("write PATH TEXT / writeat PATH OFFSET TEXT / truncate PATH SIZE");
         add_line("mkdir PATH / rm PATH / mv FROM TO / gc [/ram|/disk]");
         add_line("disk unlock|lock; snapshot save|restore|drop [/ram|/disk]");
-        add_line("/ram is temporary; /disk is persistent, read-only until unlocked.");
+        add_line("/ram is temporary; /disk is persistent. Sign in to write your own files.");
         add_line("F1-F7: pages; F7: display settings; kernel help -cn: Chinese.");
     }
 }
@@ -276,7 +279,8 @@ static void kernel_command(const char *cmd) {
 static void execute(void) {
     command[command_length] = 0;
     add_line(command);
-    if (streq(command, "help")) help(false);
+    if(auth_command(command,add_line)) {}
+    else if (streq(command, "help")) help(false);
     else if (streq(command, "help -cn")) help(true);
     else if (streq(command, "kernel")) kernel_command("");
     else if (!strncmp(command, "kernel ", 7)) kernel_command(command + 7);
@@ -316,6 +320,17 @@ static void execute(void) {
 }
 static void draw(void) {
     rect(0, 0, width, height, BG);
+    if(auth_prompting()) {
+        int x=width/2-390,y=height/2-175;
+        rounded(x,y,780,350,PANEL);
+        text(x+28,y+22,"mnOS / Account authentication",28,FG);
+        text(x+28,y+82,auth_status(),18,MUTED);
+        text(x+28,y+136,auth_prompt(),18,ACCENT);
+        rounded(x+28,y+185,724,52,0x10171e);
+        text(x+42,y+197,auth_input(),18,FG);
+        text(x+28,y+264,"Enter: continue    Esc: cancel or return to sign in",18,MUTED);
+        display_rect(0,0,width,height);dirty=false;return;
+    }
     if (wallpaper == 0) {
         for (int n = 0; n < 18; ++n)
             for (int x = sidebar; x < width; ++x) {
@@ -403,6 +418,7 @@ static void draw(void) {
     } else if (page == 4) {
         rounded(x, 135, w, height - 175, 0x10171e);
         text(x + 18, 149, "mnOS kernel console / help 查看命令", 18, ACCENT);
+        text(x+w-180,149,auth_name(),18,MUTED);
         unsigned max = (height - 265) / 28, start = history_count > max ? history_count - max : 0;
         for (unsigned i = start; i < history_count; ++i)
             text(x + 18, 190 + (int)(i - start) * 28, history[i], 18, FG);
@@ -432,7 +448,7 @@ static void draw(void) {
         rounded(x, 386, 280, 52, 0x31584b);
         text(x + 18, 398, "保存到磁盘 / S", 18, ACCENT);
         text(x, 465, setting_status, 18, FG);
-        text(x, 514, "持久保存需要 MNFS 磁盘；终端执行 disk unlock 开启写入。", 18, MUTED);
+        text(x, 514, "持久保存需要 MNFS 磁盘；登录后可保存个人设置。", 18, MUTED);
         text(x, 552, "Linux 桌面另提供网络、声音、输入、账号和多屏等完整设置。", 18, MUTED);
     }
     if (power_dialog) {
@@ -461,6 +477,18 @@ void ui_init(void) {
 void ui_tick(void) {
     if (!ready)
         return;
+    auth_tick(ticks/PIT_HZ);
+    static uint32_t last_user=UINT32_MAX;
+    if(auth_uid()!=last_user) {
+        last_user=auth_uid();history_count=0;auth_wipe(command,sizeof command);command_length=0;
+        wallpaper=0;power_dialog=false;dirty=true;
+        if(auth_logged_in()) {files_session();ui_load_settings();}
+    }
+    static const char *last_prompt,*last_status;
+    if(last_prompt!=auth_prompt()||last_status!=auth_status()) {
+        last_prompt=auth_prompt();last_status=auth_status();dirty=true;
+        log_write("AUTH: ");log_write(last_status);log_write("\nAUTH PROMPT: ");log_write(last_prompt);log_write("\n");
+    }
     if (ticks % PIT_HZ == 0)
         dirty = true;
     if (dirty && ticks % 5 == 0)
@@ -478,6 +506,7 @@ static void select_page(int n) {
     log_write("\n");
 }
 void ui_key(char key) {
+    if(auth_prompting()) {auth_key(key);dirty=true;return;}
     unsigned char k = (unsigned char)key;
     if (power_dialog) {
         if (key == 'r' || key == 'R')
@@ -523,6 +552,7 @@ void ui_key(char key) {
     dirty = true;
 }
 void ui_pointer(int x, int y, bool pressed) {
+    if(auth_prompting()) {left_down=pressed;return;}
     cursor_x = x;
     cursor_y = y;
     cursor_dirty = true;

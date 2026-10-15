@@ -2,7 +2,7 @@
 
 [English](README.md) | [中文](README.zh.md)
 
-[Download the dual-boot preview](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-desktop-preview.4)
+[Download the dual-boot preview](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-desktop-preview.5)
 · [Boot and validation record](live/VALIDATION.md)
 
 mnOS combines an original x86_64 C/assembly kernel with a separate Debian 13 /
@@ -12,8 +12,8 @@ Linux for Firefox, CTF tools, Wi-Fi and daily system administration.
 
 | Environment | Current capabilities |
 | --- | --- |
-| [Original native kernel](native/README.md) | Dynamic SMP, per-CPU isolation and scheduling, sparse physical memory up to 64 TiB, MNFS CoW filesystem, graphical console and display settings |
-| [Linux desktop](live/README.md) | Xfce, Firefox ESR, Python/CTF tools, Cockpit, root-only kernel administration, normal desktop settings and common hardware drivers |
+| [Original native kernel](native/README.md) | Local account authentication, user/root permissions, dynamic SMP, sparse memory up to 64 TiB, MNFS CoW filesystem, graphical console and personal display settings |
+| [Linux desktop](live/README.md) | Xfce, official VS Code, nano, Firefox ESR, C/C++/Python/Node.js/Go/Rust/Java, CTF tools, optional network delegation, system settings and common drivers |
 
 The native kernel has passed 32-vCPU and 33-TiB sparse-memory QEMU tests. It is
 experimental: these are addressability and functional checks, not unlimited
@@ -22,20 +22,34 @@ See [validation](live/VALIDATION.md), [MNFS format](native/FILESYSTEM.md) and
 [design notes](live/DESIGN.md) for the exact scope.
 
 **Help defaults to English.** Use `help -cn` for Chinese. Both environments support
-`kernel help` and `kernel help -cn`; Linux administrative commands require root:
+`kernel help` and `kernel help -cn`. Linux queries use your normal account;
+changes to system state require an authorized administrator:
 
 ```sh
 help                         # English
 help -cn                     # Chinese
 kernel help                  # English kernel command reference
 kernel help -cn               # Chinese kernel command reference
-sudo kernel gpu              # Linux: inspect the bound graphics driver
+kernel gpu                   # Linux: inspect the bound graphics driver
+sudo kernel performance balanced  # Linux: change the TuneD profile
 ```
 
 Native F7 opens resolution/wallpaper settings; an MNFS disk can retain them
 across boots. Linux exposes display, wallpaper, audio, network and account
 settings through the system center. Python remains included for tools that need
-it. First Linux boot creates a local account; there is no default password.
+it. First Linux boot creates a normal local account with sudo authorization;
+root login is locked and there is no default password. `/usr/bin/kernel` handles
+queries; `/usr/sbin/mnos-kernel-admin` checks root credentials for mutations.
+Restricted logs/parameters still obey Linux permissions. Native accounts are
+separate: create user/root passwords on first boot, use `su` for volume/account
+administration, and edit your home files or display settings as an ordinary user.
+An attached MNFS disk persists native accounts; without one they last one boot.
+
+The installer lets you require sudo for privileged network tools (default), or
+authorize the installed account for `mnos-net` with `CAP_NET_ADMIN` and
+`CAP_NET_RAW`. For example, `mnos-net nmap ...` runs with network capabilities,
+not UID 0. Other accounts are not automatically authorized. Ordinary networking,
+TCP-connect scans, file editing, VS Code and project builds need no root.
 
 Native kernel running directly under QEMU:
 

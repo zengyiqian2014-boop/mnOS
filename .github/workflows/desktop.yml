@@ -17,7 +17,7 @@ concurrency:
 jobs:
   native:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - name: Build original kernel and VM tools
@@ -70,6 +70,11 @@ jobs:
           docker run --rm --init --network none -v "$PWD/live/tests:/tests:ro" \
             "mnos-live:${{ matrix.profile }}" timeout 120s xvfb-run -a \
             dbus-run-session -- python3 /tests/gui_smoke.py
+          docker run --rm --init --network none --cap-add NET_ADMIN \
+            -v "$PWD/live/tests:/tests:ro" "mnos-live:${{ matrix.profile }}" \
+            python3 /tests/network_permissions.py
+          docker run --rm --init --network none -v "$PWD/live/tests:/tests:ro" \
+            "mnos-live:${{ matrix.profile }}" python3 /tests/development.py
       - name: Boot Linux and native ISO entries through BIOS and UEFI
         run: |
           mkdir -p live/out/boot-${{ matrix.profile }}

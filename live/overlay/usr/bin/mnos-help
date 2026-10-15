@@ -10,11 +10,15 @@ mnOS — command guide (English)
   help -cn                  Show the Chinese guide
   kernel help               Kernel administration commands in English
   kernel help -cn            Kernel administration commands in Chinese
-  sudo kernel info          Show kernel version and online CPUs
-  sudo kernel memory        Show physical memory information
-  sudo kernel gpu           Show the bound graphics driver
-  sudo kernel sysctl KEY     Read a Linux kernel parameter
+  kernel info               Show kernel version and online CPUs
+  kernel memory             Show physical memory information
+  kernel gpu                Show the bound graphics driver
+  kernel sysctl KEY         Read a Linux kernel parameter
   sudo kernel set KEY=VALUE  Change a runtime Linux kernel parameter
+  nano FILE                 Edit a personal file in the terminal
+  code DIRECTORY            Open a project in official Visual Studio Code
+  thunar                    Open the graphical file manager
+  mnos-net help             Network capabilities and supported tools
   mnos-center               Open the system and tools center
   xfce4-settings-manager    Open desktop settings
   xfce4-display-settings    Change resolution, scaling and displays
@@ -23,13 +27,25 @@ mnOS — command guide (English)
   mnfs                      Show the MNFS disk-image command guide
 
 Use the application menu for Firefox, CTF tools and system utilities.
-Python is included for tools that need it. Kernel administration requires root;
-help does not. "help cd" still opens Bash's built-in command documentation.
+Python is included for tools that need it. Read-only kernel queries run as your
+normal account. Changes to modules, parameters, CPU state and TuneD profiles
+require sudo. Restricted logs/parameters retain Linux access checks.
+The bin command dispatches changes to /usr/sbin/mnos-kernel-admin, which checks
+root credentials itself. Neither executable is setuid or elevates automatically.
+"help cd" still opens Bash's built-in command documentation.
+File editing, applications, project builds and personal desktop settings run as
+your normal user. C/C++, Python/venv, Node.js/npm, Go, Rust/Cargo and Java are included.
+Installation can optionally authorize your account for NET_ADMIN/NET_RAW via
+mnos-net nmap|tcpdump|ip|tc|iw. The default requires sudo for privileged network
+operations; ordinary networking and nmap -sT do not need root.
 
 The boot menu offers two independent environments: the original experimental
 mnOS kernel and this Linux desktop. Native commands include kernel info, kernel
 memory, kernel cpu, kernel gpu, fs, ls, cat, write and snapshot. The native F7
-page changes supported QEMU display modes and wallpaper. See native/README.md
+page changes supported QEMU display modes and wallpaper. Native accounts are
+created on first boot and saved on an attached MNFS disk (otherwise temporary).
+Use su for root, exit to return, passwd to change your password and logout to
+lock. Own-home files and display settings do not require root. See README.md
 and native/FILESYSTEM.md in /usr/src/mnos-native for exact limits.
 EOF
     ;;
@@ -41,11 +57,15 @@ mnOS — 中文命令帮助
   help -cn                  中文帮助
   kernel help               内核管理命令的英文说明
   kernel help -cn            内核管理命令的中文说明
-  sudo kernel info          查看内核版本和在线 CPU
-  sudo kernel memory        查看物理内存信息
-  sudo kernel gpu           查看绑定的显卡驱动
-  sudo kernel sysctl 参数名  读取 Linux 内核参数
+  kernel info               查看内核版本和在线 CPU
+  kernel memory             查看物理内存信息
+  kernel gpu                查看绑定的显卡驱动
+  kernel sysctl 参数名       读取 Linux 内核参数
   sudo kernel set 参数名=值  修改运行时 Linux 内核参数
+  nano 文件                 在终端编辑个人文件
+  code 项目目录             打开官方 Visual Studio Code 图形编辑器
+  thunar                    打开图形文件管理器
+  mnos-net help             网络授权模式与工具用法
   mnos-center               打开系统与工具中心
   xfce4-settings-manager    打开桌面设置
   xfce4-display-settings    调整分辨率、缩放和多显示器
@@ -54,11 +74,20 @@ mnOS — 中文命令帮助
   mnfs                      查看 MNFS 磁盘镜像工具用法
 
 Firefox、CTF 工具和系统工具可从应用菜单打开。Python 保留，供相关工具使用。
-内核管理需要 root；查看帮助无需提权。help cd 仍可查看 Bash 内建命令说明。
+查询以普通用户运行；修改模块、参数、CPU 状态和 TuneD 配置时才需要 sudo。
+受限制的日志和参数仍遵循 Linux 权限。/usr/bin/kernel 把管理操作交给
+/usr/sbin/mnos-kernel-admin，后者自行检查 root 身份。两者均无 setuid，
+不会自动提权。help cd 仍可查看 Bash 内建命令说明。
+编辑个人文件、启动应用、编译项目和个人桌面设置都以普通用户运行。
+包含 C/C++、Python/venv、Node.js/npm、Go、Rust/Cargo 和 Java 工具链。
+安装时可选通过 mnos-net 向本账号开放 NET_ADMIN/NET_RAW，支持 nmap、tcpdump、
+ip、tc、iw。默认特权网络操作需要 sudo；普通联网和 nmap -sT 不需要 root。
 
 启动菜单中的自研内核和 Linux 桌面是两个独立环境。原生内核支持 kernel info、
 kernel memory、kernel cpu、kernel gpu，以及 fs、ls、cat、write、snapshot。
-原生 F7 设置页可调整受支持的 QEMU 分辨率和壁纸。具体能力与限制请查阅
+原生首次启动创建普通用户及 root 密码；账号保存在已挂载的 MNFS 磁盘，无磁盘
+时只在本次启动有效。su 切换 root，exit 返回，passwd 改密码，logout 锁定。
+个人目录读写、F7 分辨率和壁纸设置无需 root。具体能力与限制请查阅
 /usr/src/mnos-native 下的 README.md 和 FILESYSTEM.md。
 EOF
     ;;

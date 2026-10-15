@@ -1,0 +1,5 @@
+---
+type: job
+name: mnosnetwork
+interface: python
+script: main.py

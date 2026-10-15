@@ -17,7 +17,8 @@ while IFS= read -r -d '' file; do
     chmod 644 "$ROOT/${file#./}"
 done < <(cd /source/overlay && find . -type f -print0)
 chmod 755 "$ROOT/usr/lib/mnos/first-boot" "$ROOT/usr/lib/mnos/wallpaper" \
-    "$ROOT/usr/bin/mnos-center" "$ROOT/usr/bin/mnos-security-check" "$ROOT/usr/bin/mnos-help"
+    "$ROOT/usr/bin/mnos-center" "$ROOT/usr/bin/mnos-security-check" "$ROOT/usr/bin/mnos-help" \
+    "$ROOT/usr/bin/mnos-net" "$ROOT/usr/sbin/mnos-network-policy"
 chmod 440 "$ROOT/etc/sudoers.d/50-mnos"
 chmod 644 "$ROOT/usr/share/backgrounds/mnos/default.svg"
 printf '%s\n' "${SOURCE_COMMIT:?}" > "$ROOT/etc/mnos/source-commit"
@@ -32,7 +33,8 @@ cp /source/overlay/usr/share/doc/mnos/guide.zh.txt "$ROOT/usr/share/doc/mnos/gui
 mkdir -p "$ROOT/usr/src/mnos-native"
 cp -a /native/src /native/include /native/tests /native/tools /native/Makefile /native/linker.ld /native/README.md /native/FILESYSTEM.md "$ROOT/usr/src/mnos-native/"
 mkdir -p "$ROOT/usr/src/mnos-admin"
-cp /source/src/kernel.c "$ROOT/usr/src/mnos-admin/"
+cp /source/src/kernel.c /source/src/kernel-admin.c /source/src/kernel-common.h "$ROOT/usr/src/mnos-admin/"
+cp /source/src/net-admin.c "$ROOT/usr/src/mnos-admin/"
 mkdir -p "$ROOT/usr/src/mnos-native/assets"
 cp /native/assets/font.c /native/assets/FONT-LICENSE.txt "$ROOT/usr/src/mnos-native/assets/"
 find "$ROOT/usr/src/mnos-native" -type d -exec chmod 755 {} +

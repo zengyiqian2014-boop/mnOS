@@ -1,0 +1,22 @@
+# General programming, editing and build tools; package versions are in each ISO manifest.
+code
+nodejs
+npm
+golang-go
+rustc
+cargo
+default-jdk
+clang
+clangd
+lld
+cmake
+ninja-build
+pkg-config
+python3-dev
+python3-pytest
+python3-venv
+git
+nano
+ripgrep
+fd-find
+shellcheck

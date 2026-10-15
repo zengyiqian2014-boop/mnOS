@@ -21,10 +21,40 @@ help 默认显示英文，help -cn 才显示中文。两种环境都支持：
 Linux Bash 中 help cd 等内建命令帮助仍保留；脚本也可运行 mnos-help。
 
 内核管理命令格式：kernel <指令> [对象]
-Linux 示例：sudo kernel info、sudo kernel memory、sudo kernel gpu。
-查看帮助不需要 root；其余操作需要 sudo。支持模块加载/卸载、sysctl 参数、
-CPU 热插拔（需要系统和硬件支持）、日志和 TuneD 配置。运行时修改重启后恢复。
-原生内核终端是具有管理权限的本地控制台，尚无账号认证；命令范围见其帮助。
+Linux 普通用户查询：kernel info、kernel memory、kernel cpu、kernel gpu、
+kernel modules、kernel devices、kernel irq、kernel log、kernel sysctl 参数名。
+受限制的日志和参数仍由 Linux 检查访问权限，必要时由授权管理员通过 sudo 查询。
+管理操作才需要 sudo：load、unload、set、cpu-online、cpu-offline、performance。
+例如 sudo kernel performance balanced。CPU 热插拔还需要系统和硬件支持。
+/usr/bin/kernel 是用户入口；/usr/sbin/mnos-kernel-admin 执行管理操作并检查
+真实及有效 UID 均为 0。目录位置不授予权限，两者均无 setuid，不会自动提权。
+运行时 sysctl 参数和 CPU 状态重启后恢复；TuneD 配置选择会保留。
+原生内核首次创建普通用户及 root 密码，之后需要登录。su 切换 root，exit 返回，
+passwd 修改个人密码，logout 锁定；root 可用 useradd 添加账号。个人目录可自由
+读写，账号管理和整卷管理需要 root。账号与 Linux 分开，有 MNFS 磁盘才会持久保存。
+
+编辑文件和开发
+--------------
+nano 文件名：终端编辑器；Mousepad：图形文本编辑器；Thunar：图形文件管理器。
+code 项目目录：官方 Visual Studio Code，支持图形编辑、终端和用户扩展。
+在自己的主目录中新建、修改、删除文件和编译项目都不需要 root。
+预装 GCC/G++、Clang/clangd、Python/venv、Node.js/npm、Go、Rust/Cargo、Java/JDK，
+以及 Git、CMake、Ninja、GDB、ripgrep、ShellCheck。Python 项目使用虚拟环境：
+  python3 -m venv .venv
+  . .venv/bin/activate
+VS Code 使用微软签名的软件源更新。新账号默认关闭遥测和 AI 功能。
+这些应用运行在 Linux 桌面入口；自研内核尚无运行 VS Code 的应用 ABI。
+
+网络工具权限
+------------
+安装器的“网络工具权限”页可选择：默认特权操作需要 sudo，或向本次创建的普通
+账号开放 NET_ADMIN/NET_RAW。开放后使用 mnos-net nmap、mnos-net tcpdump、
+mnos-net ip、mnos-net tc、mnos-net iw，账号 UID 仍非 root。
+这种权限可以抓包、发送原始报文和修改网卡/路由，不只限于扫描。工具启动的子进程
+可能继承网络能力。其他账号不会自动获得权限，Wireshark 图形界面仍以普通用户运行。
+普通联网、HTTP 请求和 nmap -sT 本来就不需要 root。
+安装后管理员可配置：sudo mnos-network-policy netadmin 用户名；重新登录后生效。
+关闭授权：sudo mnos-network-policy root；已有网络工具进程也需要退出。
 
 显示与文件系统
 --------------
@@ -35,8 +65,9 @@ glxinfo -B 和 vulkaninfo --summary 可查看渲染器，kernel gpu 查看绑定
 
 MNFS 是自研 CoW 文件系统，有 CRC32C、64 位稀疏文件和一个保存快照，支持
 超过 4 GiB 的文件，使用独立格式，不兼容 APFS。/ram 临时；/disk 是可选的
-MNFS ATA 镜像，默认只读，disk unlock 后可写入，启动不会格式化已有磁盘。
-原生显示偏好保存在 /disk/display.cfg。Linux 安装仍使用成熟的 Linux 文件系统。
+MNFS ATA 镜像。校验并登录后可写自己的目录；root 可用 disk lock/unlock 控制整卷
+写入，启动不会格式化已有磁盘。原生显示偏好保存在 /disk/home/用户名/display.cfg。
+Linux 安装仍使用成熟的 Linux 文件系统。
 Linux 中 mnfs 工具可操作 MNFS 镜像；format 只创建新文件，不覆盖已有路径。
 MNFS 尚无权限、加密或成熟修复工具，重要数据应另行备份。
 原生源码与详细说明位于 /usr/src/mnos-native。

@@ -160,6 +160,7 @@ void mouse_event(uint8_t);
 void input_init(void);
 void ui_init(void);
 void files_init(void);
+void files_session(void);
 bool files_command(const char *, void (*)(const char *));
 void ui_tick(void);
 void ui_key(char);

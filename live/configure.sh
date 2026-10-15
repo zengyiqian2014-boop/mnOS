@@ -32,6 +32,11 @@ ln -sf mnos-help /usr/bin/help
 printf '\n# mnOS help: English by default; -cn selects Chinese.\n. /etc/profile.d/mnos-help.sh\n' >> /etc/bash.bashrc
 chmod 755 /etc/grub.d/41_mnos_native
 visudo -cf /etc/sudoers
+groupadd --system --force mnos-netadmin
+chown root:mnos-netadmin /usr/lib/mnos/net-admin
+chmod 750 /usr/lib/mnos/net-admin
+chmod 755 /usr/bin/mnos-net /usr/sbin/mnos-network-policy
+/usr/sbin/mnos-network-policy root
 
 sed -i 's/^ENABLED=.*/ENABLED=yes/' /etc/ufw/ufw.conf
 sed -i 's/^DEFAULT_INPUT_POLICY=.*/DEFAULT_INPUT_POLICY="DROP"/' /etc/default/ufw
@@ -87,6 +92,9 @@ EOF
 sed -i 's/^branding: debian/branding: mnos/; s/^prompt-install: false/prompt-install: true/' /etc/calamares/settings.conf
 # The rootfs already has signed HTTPS repositories. No temporary CD apt source.
 sed -i '/  - sources-media$/d; /  - sources-media-unmount$/d; /  - sources-final$/d' /etc/calamares/settings.conf
+# The chooser records the explicit policy; the job applies it inside the target after users.
+sed -i '/  - summary$/i\  - packagechooser' /etc/calamares/settings.conf
+sed -i '/  - displaymanager$/i\  - mnosnetwork' /etc/calamares/settings.conf
 sed -i 's/minLength: -1.*/minLength: 12/; s/minlen=0/minlen=12/; s/minclass=0/minclass=2/' /etc/calamares/modules/users.conf
 sed -i -E 's/^doAutologin:.*/doAutologin: false/; s/^setRootPassword:.*/setRootPassword: false/; s/^allowWeakPasswords:.*/allowWeakPasswords: false/' /etc/calamares/modules/users.conf
 rm -f /etc/xdg/autostart/calamares-desktop-icon.desktop

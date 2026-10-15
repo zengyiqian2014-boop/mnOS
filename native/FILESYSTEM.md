@@ -66,7 +66,8 @@ The native kernel creates an 8 MiB temporary `/ram` volume. Its optional `/disk`
 volume uses original ATA PIO code on legacy primary/secondary ports, LBA28 or
 LBA48, 512-byte sectors and cache flushes. It recognizes a whole-device MNFS
 image, not a GPT/MBR partition containing MNFS. The first valid MNFS device is
-mounted read-only. `disk unlock` enables writes; `disk lock` disables them.
+opened read-only. Login enables permitted home-directory writes. Root may use
+`disk lock` to disable volume writes and `disk unlock` to enable them again.
 Neither boot nor either command formats a disk.
 
 `mnfs format NEW_IMAGE SIZE_MiB` uses exclusive creation and accepts regular files
@@ -74,9 +75,10 @@ only. Existing images are opened without following symlinks; device nodes are
 rejected. The host utility and native kernel share the same filesystem code.
 Do not open one image for writes from the host and a VM simultaneously.
 
-No permissions/ACLs, encryption, compression, hard links, symlinks, multiple
+No on-disk POSIX permissions/ACLs, encryption, compression, hard links, symlinks, multiple
 writers, repair tool, Linux mount driver, native AHCI/NVMe or filesystem system
-calls are implemented. The native console is already privileged. Keep important
+calls are implemented. The native console enforces authenticated user/root
+sessions and home-directory permissions at its filesystem entry points. Keep important
 files on a backed-up mature filesystem while this implementation is developed.
 
 ## Evidence

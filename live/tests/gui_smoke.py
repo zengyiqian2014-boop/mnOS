@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 import traceback
 import xml.etree.ElementTree as ET
+import yaml
 from pathlib import Path
 from unittest.mock import patch
 
@@ -56,17 +57,35 @@ quality = center.subprocess.run(['pwscore', 'mnoscheck'], input=candidate + '\n'
 assert quality.returncode == 0, quality.stderr
 for group, entries in center.TOOLS.items():
     for _icon, title, _description, command in entries:
-        executable = command[1] if command[0] == '@terminal' else command[0]
+        executable = command[1] if command[0] in ('@terminal', '@network') else command[0]
         assert shutil.which(executable), (group, title, executable)
-        if executable == 'mousepad':
+        if executable == 'mousepad' and len(command) > 1:
             assert Path(command[1]).is_file(), command[1]
 with patch.object(center.subprocess, 'Popen') as launch:
     application.launch(['@terminal', 'python3', '-c', 'print("$HOME; do not execute")'])
     args, kwargs = launch.call_args
     assert args[0][0] == 'xfce4-terminal'
     assert not kwargs.get('shell')
+    with patch.object(center.Path, 'is_file', return_value=True), \
+         patch.object(center.Path, 'read_text', return_value='netadmin\n'), \
+         patch.object(center.os, 'access', return_value=True):
+        application.launch(['@network', 'tcpdump', '-D'])
+        assert launch.call_args.args[0][-1] == 'mnos-net tcpdump -D'
+    with patch.object(center.Path, 'is_file', return_value=True), \
+         patch.object(center.Path, 'read_text', return_value='root\n'):
+        application.launch(['@network', 'tcpdump', '-D'])
+        assert launch.call_args.args[0][-1] == 'sudo tcpdump -D'
 application.window.destroy()
 assert not errors, errors
+installer = yaml.safe_load(Path('/etc/calamares/settings.conf').read_text())
+chooser = yaml.safe_load(Path('/etc/calamares/modules/packagechooser.conf').read_text())
+show = installer['sequence'][0]['show']
+jobs = installer['sequence'][1]['exec']
+assert show.index('users') < show.index('packagechooser') < show.index('summary')
+assert jobs.index('users') < jobs.index('mnosnetwork') < jobs.index('umount')
+assert chooser['default'] == 'root' and chooser['mode'] == 'required'
+assert {item['id'] for item in chooser['items']} == {'root', 'netadmin'}
+assert Path('/usr/lib/calamares/modules/mnosnetwork/main.py').is_file()
 def run(*args, status=0):
     result = subprocess.run(args, capture_output=True, text=True, timeout=20)
     assert result.returncode == status, (args, result.returncode, result.stdout, result.stderr)
@@ -81,18 +100,7 @@ assert 'Root' not in run('kernel', 'help', '-cn')
 assert '内核管理' not in run('kernel', 'help')  # Default output stays English.
 assert 'kernel <instruction> [object]' in run('kernel', 'help')
 assert 'kernel <指令> [对象]' in run('kernel', 'help', '-cn')
-run('runuser', '-u', 'nobody', '--', 'kernel', 'info', status=77)
-assert 'kernel <指令>' in run('runuser', '-u', 'nobody', '--', 'kernel', 'help', '-cn')
-for instruction in ('info', 'memory', 'cpu', 'gpu', 'devices'):
-    run('kernel', instruction)
-if Path('/proc/modules').exists():
-    run('kernel', 'modules')
-assert 'Linux' in run('kernel', 'sysctl', 'kernel.ostype')
-for instruction, obj in [('cpu-offline', '0'), ('load', '--help'),
-                         ('unload', 'x;touch /tmp/mnos-unsafe'), ('set', 'x'),
-                         ('sysctl', '../proc'), ('performance', 'unknown')]:
-    run('kernel', instruction, obj, status=2)
-assert not Path('/tmp/mnos-unsafe').exists()
+subprocess.run([sys.executable, str(Path(__file__).with_name('kernel_permissions.py'))], check=True)
 with tempfile.TemporaryDirectory() as temp:
     disk = str(Path(temp) / 'mnfs.img')
     run('mnfs', 'format', disk, '8')
@@ -100,5 +108,5 @@ with tempfile.TemporaryDirectory() as temp:
     run('mnfs', disk, 'write', '/hello', 'original-filesystem')
     assert run('mnfs', disk, 'cat', '/hello') == 'original-filesystem'
     run('mnfs', disk, 'check')
-print('Bash help languages, root-only kernel commands, argument validation and MNFS image access: PASS')
+print('Bash help languages and MNFS image access: PASS')
 print('GTK window, all six pages, tool availability and safe argument forwarding: PASS')

@@ -35,7 +35,7 @@ with a reordered volatile cache. Damaged latest metadata falls back to an older
 checkpoint; two damaged roots are rejected. These tests run with ASan/UBSan.
 
 The native ATA VM test wrote persistent files, crossed 4 GiB, saved/restored a
-snapshot and display settings, cut VM power, rebooted read-only and verified
+snapshot and display settings, cut VM power, rebooted and authenticated, and verified
 the same contents with the host MNFS utility. Both the standard VGA BIOS and
 VirtIO VGA OVMF UI tests passed `help`/`help -cn`, `kernel help`/`kernel help -cn`,
 F1–F7, mouse navigation, wallpaper changes and shutdown. Mode cycling covered
@@ -85,6 +85,40 @@ BIOS, UEFI and Secure Boot Linux boots, and combined-ISO native BIOS/UEFI boots
 before publishing either ISO. Linux checks use the unmodified release image;
 native checks use the menu-selection fixture described above.
 Detailed boot logs are retained in the workflow artifacts.
+
+## Accounts, network permissions and development tools
+
+Local checks on 2026-10-15 for the next preview passed:
+
+- Native SHA-256/PBKDF2 vectors and account state/permission tests under
+  ASan/UBSan: enrollment, hidden passwords, retry delays, ordinary/root roles,
+  password changes, additional accounts, root expiry, damaged-record rejection
+  and random-source failure. No default account password is shipped.
+- Native BIOS and VirtIO/OVMF UI tests: real keyboard enrollment followed by
+  ordinary-user page navigation, bilingual help, display modes and wallpaper.
+- Native ATA reboot test: ordinary home writes, denial of outside-home writes
+  and private-file reads, root authentication, volume lock, snapshot restore
+  requiring reauthentication, persistent settings and successful reboot login.
+  Python's independent PBKDF2 implementation verifies the stored hashes; test
+  passwords are absent from serial logs and the stored credential record.
+- Linux normal-user queries and administrative-operation rejection, including
+  direct calls to the privileged entry point, spoofed environment and mismatched
+  real/effective UIDs. Root mutations are exercised against isolated fixtures.
+- In a disposable network-isolated container: ordinary Nmap connect scanning,
+  default denial of raw scanning, opt-in raw SYN scanning on loopback, NET_ADMIN
+  loopback MTU changes, denial for a second account, and capability revocation.
+  The container receives NET_ADMIN solely to make that test possible.
+- Ten enrollment/installer unit checks, including fail-closed invalid network
+  selection and propagation of target-system setup errors.
+
+The workflow additionally validates the installed Calamares page/job order and
+default choice. `development.py` runs small C, C++, Rust, Go, Java, JavaScript
+and Python programs as an ordinary user without networking; it also checks
+nano, the official VS Code CLI and the remaining build tools. CLI checks alone
+do not prove that the editor's graphical window or every extension works.
+These checks run against both newly built profiles before publishing. The
+installer job is exercised with target-environment mocks; that is not a complete
+partition/install/reboot test.
 
 The installer is included, but an end-to-end disk installation, encrypted
 installation and subsequent disk boot have not been validated here. Back up

@@ -32,6 +32,9 @@ TOOLS = {
         ('text-x-generic', 'CTF 工具手册', '工具分类与本地使用说明', ['mousepad', '/usr/share/doc/mnos/ctf.zh.txt']),
     ],
     'system': [
+        ('visual-studio-code', 'Visual Studio Code', '以普通用户编辑项目、打开终端和运行开发工具', ['code', '--new-window']),
+        ('accessories-text-editor', '文本编辑器', 'Mousepad 图形编辑器；终端也可使用 nano', ['mousepad']),
+        ('system-file-manager', '文件管理器', '浏览、创建、复制和整理个人文件', ['thunar']),
         ('preferences-system', '系统管理', '服务、日志、账户与管理员权限', [ADMIN, '/']),
         ('system-software-update', '软件更新', '检查并安装软件包更新', [ADMIN, 'updates']),
         ('drive-harddisk', '磁盘与存储', '分区、挂载、SMART 与加密卷', ['gnome-disks']),
@@ -40,8 +43,8 @@ TOOLS = {
         ('text-x-log', '系统日志', '按时间与服务查找运行记录', [ADMIN, 'system/logs']),
         ('utilities-system-monitor', '任务管理器', '进程、CPU 和内存使用情况', ['xfce4-taskmanager']),
         ('preferences-system-performance', '性能配置', '查看 TuneD 当前生效的配置', ['@terminal', 'tuned-adm', 'active']),
-        ('utilities-terminal', '内核管理', 'root 内核指令、模块、CPU 与运行参数', ['@terminal', 'kernel', 'help']),
-        ('video-display', 'GPU 驱动', '查看显卡绑定的内核驱动', ['@terminal', 'sudo', 'kernel', 'gpu']),
+        ('utilities-terminal', '内核管理', '普通用户查询信息，管理员修改系统状态', ['@terminal', 'kernel', 'help']),
+        ('video-display', 'GPU 驱动', '查看显卡绑定的内核驱动', ['@terminal', 'kernel', 'gpu']),
         ('system-software-install', '软件包管理', '安装、移除与查询 Debian 软件包', ['synaptic-pkexec']),
         ('drive-harddisk', '分区编辑器', '调整分区前请先备份数据', ['gparted']),
         ('utilities-terminal', '终端', 'Bash、sudo 与完整的系统命令', ['xfce4-terminal']),
@@ -50,8 +53,9 @@ TOOLS = {
         ('network-wired', '网络连接', '有线、无线、VPN 与连接配置', ['nm-connection-editor']),
         ('security-high', '防火墙', '检查规则并管理入站连接', ['gufw']),
         ('network-workgroup', 'Wireshark', '打开和分析抓包文件', ['wireshark']),
-        ('network-wired', '抓取网络流量', '经管理员授权在指定网卡上抓包', ['@terminal', 'sudo', 'tcpdump', '-D']),
+        ('network-wired', '抓取网络流量', '按安装时选择的权限模式列出可抓包网卡', ['@network', 'tcpdump', '-D']),
         ('network-server', 'Nmap', '主机与服务探测；运行前指定授权目标', ['@terminal', 'nmap', '--help']),
+        ('network-wired', '网络权限', '查看免 sudo 网络授权模式与 mnos-net 用法', ['@terminal', 'mnos-net', 'help']),
         ('network-transmit-receive', '网络性能', 'iperf3 带宽测试命令与参数', ['@terminal', 'iperf3', '--help']),
         ('security-medium', '安全基线检查', '验证账户、防火墙与内核保护设置', ['@terminal', 'sudo', 'mnos-security-check']),
         ('security-high', 'Lynis 审计', '本机配置检查与改进建议', ['@terminal', 'sudo', 'lynis', 'audit', 'system', '--quick']),
@@ -298,7 +302,9 @@ class Center(Gtk.Application):
         content.pack_start(label('使用说明', 'section-title'), False, False, 0)
         for text in [
             '当前运行 Linux 工具环境。启动菜单另提供 C 与汇编编写的原生内核：动态多核、64 TiB 物理地址管理、MNFS 文件系统及独立图形界面。',
-            'help 默认显示英文帮助；help -cn 显示中文。内核管理使用 kernel <指令> [对象]；Linux 中执行操作需要 sudo，查看帮助无需提权。',
+            'help 默认显示英文帮助；help -cn 显示中文。kernel <指令> [对象] 以普通用户查询信息；修改模块、参数、CPU 状态和性能配置需要 sudo。受限日志仍遵循 Linux 权限。',
+            '个人文件编辑、启动应用和编译项目无需 root。提供官方 VS Code、nano、Mousepad、文件管理器及 C/C++、Python、Node.js、Go、Rust、Java 工具链。',
+            '安装时可选择向本账号开放 NET_ADMIN/NET_RAW，通过 mnos-net 使用指定网络工具，账号仍是普通用户。默认特权网络操作需要 sudo。',
             '显示设置可以调整分辨率、多显示器、缩放及壁纸。Intel、AMD、Nouveau 和 VirtIO 驱动由 Linux 提供；实际加速能力取决于设备、固件和驱动。',
             '系统管理使用 Cockpit 本地模式，在独立网络命名空间内运行，不开放远程管理端口。提权需要当前管理员的密码。',
             '抓包：先在终端用 sudo tcpdump -i 网卡 -w 文件.pcap 保存，再用 Wireshark 打开。Wireshark 图形界面以普通用户运行。',
@@ -333,6 +339,13 @@ class Center(Gtk.Application):
         return True
 
     def launch(self, command):
+        if command[0] == '@network':
+            # The capability helper independently checks group membership and
+            # capabilities. This only chooses the desktop launch path.
+            policy = Path('/etc/mnos/network-policy')
+            delegated = (policy.is_file() and policy.read_text().strip() == 'netadmin'
+                         and os.access('/usr/lib/mnos/net-admin', os.X_OK))
+            command = ['@terminal', 'mnos-net' if delegated else 'sudo', *command[1:]]
         if command[0] == '@terminal':
             command = ['xfce4-terminal', '--hold', '--command', shlex.join(command[1:])]
         if not shutil.which(command[0]):

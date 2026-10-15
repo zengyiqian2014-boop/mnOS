@@ -19,7 +19,10 @@ GPL-3.0-or-later; the font license is in `assets/FONT-LICENSE.txt`.
 - Original [MNFS](FILESYSTEM.md): copy-on-write metadata/data, CRC32C, 64-bit
   sparse files, directories, rename, truncate, collection and one saved snapshot.
   `/ram` is temporary; an optional whole MNFS ATA disk is mounted at `/disk`,
-  read-only until explicitly unlocked. Boot never formats an attached disk.
+  opened read-only for validation. Authenticated home-directory writes are enabled
+  after login; root can explicitly lock the volume. Boot never formats a disk.
+- Local account enrollment/login, separate ordinary/root passwords, user home
+  permissions, password changes, root account creation and session locking.
 - Seven-page graphical UI, English/Chinese console help, PS/2 keyboard/mouse,
   COM1 serial, PCI enumeration and basic ACPI S5 power-off.
 - QEMU/Bochs DISPI 2D mode switching, three wallpapers and MNFS-backed display
@@ -35,8 +38,9 @@ tested scale still impose limits.
 CPU hotplug, task migration, NUMA placement, native USB/network/Wi-Fi/audio,
 AHCI/NVMe, GPU acceleration, a general executable loader and a POSIX/Linux ABI
 are not implemented. Tasks are fixed demonstration/test programs per CPU.
-The native console is a privileged local console without user authentication;
-it is not the Linux account/`sudo` system. Speculation mitigations and a full
+Native authentication covers the local graphical/serial console and its file and
+settings operations; it is separate from Linux PAM/sudo and is not POSIX UID/ACL
+support for arbitrary native programs. Speculation mitigations and a full
 security audit remain outstanding. No performance advantage over RHEL/Linux or
 security certification is claimed. Firefox, CTF tools and common hardware
 drivers run in the separate Linux entry on both release ISOs.
@@ -71,8 +75,40 @@ Display modes: 1024×768, 1280×720, 1600×900, 1920×1080 and 2560×1440, subje
 the supported DISPI adapter and available VRAM.
 The settings selector skips modes that exceed VRAM; QEMU VirtIO VGA's 8 MiB
 legacy framebuffer does not fit 2560×1440 at 32 bpp. Wallpaper IDs: 0 contours,
-1 grid, 2 plain. `kernel save-settings` writes `/disk/display.cfg` only after
-`disk unlock`. Read-only mount still loads saved preferences at the next boot.
+1 grid, 2 plain. `kernel save-settings` writes the signed-in user's
+`/disk/home/NAME/display.cfg` (root uses `/disk/root/display.cfg`). Ordinary users
+can change and save their own preferences. A root-imposed `disk lock` blocks
+disk writes until root unlocks it. Preferences load after authentication.
+
+## Accounts and ordinary-user operations
+
+First boot asks for an ordinary username/password and a separate root password,
+then opens the ordinary session. There is no default password. Passwords use
+PBKDF2-HMAC-SHA256 with 600,000 iterations and a fresh 128-bit salt from RDRAND;
+creation fails closed when that source is unavailable. Password input is masked,
+excluded from history/serial output and cleared from temporary buffers. Failed
+authentication imposes a delay; root sessions expire after five minutes.
+
+| Command or operation | Permission |
+| --- | --- |
+| Queries, display/wallpaper, reboot/shutdown of this local session | Signed-in user |
+| Read/write/create/rename/delete files under `/home/NAME/` | That user or root |
+| `passwd` | Own account, after current-password verification |
+| `su` / `exit` | Authenticate root / return to previous ordinary session |
+| `logout` or `lock` | Lock the session; subsequent input requires login |
+| `useradd NAME`, `passwd NAME`, volume lock/unlock, snapshot and collection | Root |
+
+Up to 16 native accounts are currently stored. `/root` is private; `/system`
+credential data is inaccessible through console file commands, including aliases
+and rename destinations. Dot/empty path components are rejected before access
+checks. Ring-3 demonstration tasks have no file/account system-call interface.
+
+The credential record resides in the MNFS disk's `/system/accounts.bin`; without
+a disk, accounts are temporary and enrollment repeats next boot. A damaged store
+locks access instead of enabling new enrollment. Restoring a disk snapshot also
+restores its account record and locks the session for reauthentication. This
+protects console access, not against someone editing an unencrypted disk or
+replacing the unsigned kernel offline. MNFS has no at-rest encryption yet.
 
 File commands: `fs`, `ls [PATH]`, `stat PATH`, `cat PATH [OFFSET]`, `write PATH
 TEXT`, `writeat PATH OFFSET TEXT`, `mkdir PATH`, `rm PATH`, `mv FROM TO`,
@@ -103,16 +139,17 @@ qemu-system-x86_64 -m 512 -smp 4 -cpu max -vga std \
 `format` creates a **new regular file only** and refuses existing paths, symlinks
 and device nodes. Native ATA supports legacy PIO ports and 512-byte sectors; use
 QEMU's default i440fx/IDE machine for this example. The Linux launcher's q35/
-VirtIO disk does not expose this native ATA path. In the native console:
+VirtIO disk does not expose this native ATA path. Create an ordinary account
+named `demo` at enrollment and sign in, then use the native console:
 
 ```text
-disk unlock
-mkdir /disk/home
-write /disk/home/note saved-on-disk
-writeat /disk/home/large 4294967294 crosses-4-GiB
-snapshot save /disk
+write /disk/home/demo/note saved-on-disk
+writeat /disk/home/demo/large 4294967294 crosses-4-GiB
 kernel save-settings
+su
+snapshot save /disk
 disk lock
+exit
 ```
 
 Use a disposable image while testing this early filesystem. Linux accesses MNFS

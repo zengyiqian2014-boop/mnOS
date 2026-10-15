@@ -81,12 +81,22 @@ resolved versions/hashes are included under `/usr/share/doc/mnos`. It is not
 updated by APT and requires a new image/build or an explicit isolated-venv update.
 No scanner, password-testing tool or proxy starts automatically.
 
-The compiled `kernel` tool accepts `kernel <instruction> [object]`. It requires
-effective UID 0 for operations, validates command objects and calls fixed
-executables with `execv`, without shell evaluation. It has no setuid bit. The
-two help commands are intentionally unprivileged: `kernel help` is English,
-`kernel help -cn` is Chinese. `help` and `help -cn` expose the broader guide;
-the Bash wrapper preserves built-in documentation such as `help cd`.
+The compiled `/usr/bin/kernel` accepts `kernel <instruction> [object]`. Queries
+run with the caller's credentials; protected logs and sysctl reads retain Linux
+access checks, including `kernel.dmesg_restrict` and `kernel.kptr_restrict`.
+Only mutations are forwarded to `/usr/sbin/mnos-kernel-admin`. That backend
+requires both real and effective UID 0 before executing any operation, even
+when invoked directly. Both binaries are root-owned, mode 0755, without setuid
+or file capabilities; sbin placement is organizational, not an access check.
+There is no automatic sudo invocation or passwordless exception. Authorized
+administrators explicitly run `sudo kernel ...`. Command objects are validated,
+external paths are fixed, the execution environment is cleared, and `execv`
+does not interpret shell syntax. Tests run queries as `nobody`, reject all
+mutation classes through both entry points, and exercise root mutations only
+against stub executables and CPU files in an isolated chroot.
+
+`kernel help` is English and `kernel help -cn` is Chinese. `help` and `help -cn`
+expose the broader guide; the Bash wrapper preserves `help cd` documentation.
 
 ## Original memory, SMP and storage
 
@@ -100,10 +110,27 @@ not yet implemented in the native kernel.
 
 MNFS is original code using CoW, CRC32C and checkpoint-based recovery. These
 general techniques do not imply APFS disk compatibility or Apple support.
-Native ATA disks mount read-only until explicitly unlocked; the Linux helper
+Native ATA disks mount read-only for validation. Login enables writes subject
+to home-directory authorization; root can lock the entire volume. The Linux helper
 operates on regular image files and refuses existing destinations when formatting.
 See [the format and durability limits](../native/FILESYSTEM.md). Linux's installed
 root filesystem is not MNFS; the two environments retain separate persistence.
+
+Native local-console accounts use per-account salts, PBKDF2-HMAC-SHA256 password
+records, hidden password input, retry delays and expiring root sessions. The
+console and display/file entry points enforce the current session; this is not
+a POSIX process credential or inode ACL implementation. Ring-3 test tasks have
+no filesystem/account syscalls. The unsigned kernel and unencrypted MNFS disk
+do not protect against offline credential replacement. See `native/README.md`.
+
+The Linux installer defaults privileged network operations to sudo. An explicit
+NET_ADMIN selection grants only the chosen account membership in `mnos-netadmin`.
+The group-executable helper keeps the ordinary UID and supplies only
+CAP_NET_ADMIN/CAP_NET_RAW to allowlisted network programs. Authorized tools and
+their descendants can modify networking and inspect traffic; this is a powerful
+grant, not a query-only permission. No general passwordless sudo rule is added.
+Revocation removes the file capabilities and group entries; already-running
+processes must exit to lose capabilities they previously acquired.
 
 ## Installation and persistence
 

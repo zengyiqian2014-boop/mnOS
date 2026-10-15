@@ -214,7 +214,6 @@ void kernel_main(uintptr_t address) {
     input_init();
     ui_init();
     files_init();
-    ui_load_settings();
     smp_prepare();
     tasks_init();
     smp_start();
