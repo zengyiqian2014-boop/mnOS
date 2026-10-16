@@ -183,7 +183,15 @@ struct Installer {
     Installer() {
         window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
         gtk_window_set_title(GTK_WINDOW(window), "mnOS 安装程序 / Installer");
-        gtk_window_set_default_size(GTK_WINDOW(window), 1000, 720);
+        auto *display = gdk_display_get_default();
+        auto *monitor = gdk_display_get_primary_monitor(display);
+        if (!monitor) monitor = gdk_display_get_monitor(display, 0);
+        GdkRectangle geometry{0, 0, 1024, 768};
+        if (monitor) gdk_monitor_get_geometry(monitor, &geometry);
+        // This installation session intentionally has no desktop/window manager.
+        gtk_window_set_decorated(GTK_WINDOW(window), false);
+        gtk_window_move(GTK_WINDOW(window), geometry.x, geometry.y);
+        gtk_window_set_default_size(GTK_WINDOW(window), geometry.width, geometry.height);
         gtk_window_fullscreen(GTK_WINDOW(window));
         auto *css = gtk_css_provider_new();
         gtk_css_provider_load_from_data(css,
@@ -204,7 +212,7 @@ struct Installer {
         gtk_widget_set_size_request(body, 720, -1);
         gtk_container_add(GTK_CONTAINER(scroll), body);
         gtk_box_pack_start(GTK_BOX(body), label("mnOS  /  INSTALL", "brand"), false, false, 0);
-        gtk_box_pack_start(GTK_BOX(body), label("从这里，开始你的系统。", "title"), false, false, 0);
+        gtk_box_pack_start(GTK_BOX(body), label("安装 mnOS", "title"), false, false, 0);
         gtk_box_pack_start(GTK_BOX(body), label("离线安装 · 桌面与开发工具 · 虚拟机和实体硬件", "muted"), false, false, 0);
         form = gtk_grid_new();
         gtk_grid_set_row_spacing(GTK_GRID(form), 10);

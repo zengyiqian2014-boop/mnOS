@@ -26,10 +26,10 @@ if [ "$(uname -s)" = Darwin ]; then
 fi
 args=(-accel "$ACCEL" -cpu "$CPU" -smp "$CPUS" -m "$MEMORY" -machine "$MACHINE"
       -boot order=d
-      -netdev user,id=net0 -device virtio-net-pci,netdev=net0
+      -netdev 'user,id=net0' -device 'virtio-net-pci,netdev=net0'
       -device virtio-rng-pci -serial mon:stdio)
 if [ "$ARCH" = arm64 ]; then
-    args+=(-device virtio-scsi-pci,id=scsi -drive "file=$ISO,media=cdrom,if=none,id=cd,format=raw,readonly=on" -device scsi-cd,drive=cd,bootindex=0)
+    args+=(-device 'virtio-scsi-pci,id=scsi' -drive "file=$ISO,media=cdrom,if=none,id=cd,format=raw,readonly=on" -device 'scsi-cd,drive=cd,bootindex=0')
     # ARM virt has no built-in PS/2 controller. Supply real guest input devices.
     args+=(-device qemu-xhci -device usb-kbd -device usb-tablet)
 else
@@ -38,7 +38,7 @@ fi
 case "${GPU:-software}" in
     software) args+=(-device "$VIDEO,xres=1920,yres=1080") ;;
     virgl) if [ "$ARCH" = arm64 ]; then VIDEO=virtio-gpu-gl-pci; else VIDEO=virtio-vga-gl; fi
-           args+=(-device "$VIDEO,xres=1920,yres=1080" -display gtk,gl=on) ;;
+           args+=(-device "$VIDEO,xres=1920,yres=1080" -display 'gtk,gl=on') ;;
     *) echo 'GPU must be software or virgl.' >&2; exit 2 ;;
 esac
 if [ -n "${DISK:-}" ]; then

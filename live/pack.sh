@@ -26,7 +26,7 @@ done < <(cd /source/overlay && find . -type f -print0)
 chmod 755 "$ROOT/usr/lib/mnos/first-boot" "$ROOT/usr/lib/mnos/wallpaper" \
     "$ROOT/usr/bin/mnos-center" "$ROOT/usr/bin/mnos-security-check" "$ROOT/usr/bin/mnos-help" \
     "$ROOT/usr/bin/mnos-net" "$ROOT/usr/sbin/mnos-network-policy" "$ROOT/usr/bin/mnos-tools"
-chmod 755 "$ROOT/usr/lib/mnos/installer" "$ROOT/usr/lib/mnos/start-installer" "$ROOT/usr/lib/mnos/install-system"
+chmod 755 "$ROOT/usr/lib/mnos/installer" "$ROOT/usr/lib/mnos/start-installer" "$ROOT/usr/lib/mnos/install-system" "$ROOT/usr/lib/mnos/installer-session"
 if [ -f "$ROOT/usr/share/applications/com.microsoft.VSCode.desktop" ]; then
     sed -i 's/value="code.desktop"/value="com.microsoft.VSCode.desktop"/' "$ROOT/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml"
 fi
@@ -73,6 +73,9 @@ cp "$ROOT/usr/share/doc/mnos/packages.tsv" "/out/packages-$PROFILE-$ARCH.tsv"
 cp "$ROOT/boot/config-$version" "/out/kernel-$PROFILE-$ARCH.config"
 cp "$ROOT/etc/mnos/source-commit" "/out/source-$PROFILE-$ARCH.txt"
 find "$ROOT/usr/lib" "$ROOT/boot" -type f -name '*.dtb' -printf '%P\n' | sort > "/out/device-trees-$PROFILE-$ARCH.txt"
+# All package and overlay changes are complete. Avoid needlessly rebuilding
+# ldconfig and journal catalogs during the first (possibly emulated) ISO boot.
+chroot "$ROOT" /usr/lib/systemd/systemd-update-done
 mksquashfs "$ROOT" "$ISO/live/filesystem.squashfs" -noappend -comp xz \
     "${BCJ[@]}" -b 1M -processors 4 -no-progress
 (cd "$ISO/live" && sha256sum filesystem.squashfs > filesystem.sha256)

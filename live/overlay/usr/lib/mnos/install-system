@@ -84,16 +84,22 @@ if [ "$policy" = delegated ]; then
 else
     chroot "$target" /usr/sbin/mnos-network-policy root
 fi
-mkdir -p "$target/var/lib/mnos"
+install -d -m 755 "$target/var/lib/mnos"
 printf '%s\n' "$account" > "$target/var/lib/mnos/setup-complete"
 printf 'mnOS\n' > "$target/etc/hostname"
 printf '127.0.0.1 localhost\n127.0.1.1 mnOS\n::1 localhost ip6-localhost ip6-loopback\n' > "$target/etc/hosts"
 printf 'LANG=en_US.UTF-8\n' > "$target/etc/default/locale"
 rm -f "$target/etc/machine-id" "$target/var/lib/dbus/machine-id" "$target/var/lib/systemd/random-seed"
 touch "$target/etc/machine-id"
+chmod 644 "$target/etc/machine-id"
 ln -s /etc/machine-id "$target/var/lib/dbus/machine-id"
 chroot "$target" systemctl disable mnos-first-boot mnos-installer
 chroot "$target" systemctl enable lightdm getty@tty1
+case "$arch" in amd64) serial=ttyS0 ;; arm64) serial=ttyAMA0 ;; esac
+if [ -c "/dev/$serial" ]; then
+    # An authenticated maintenance console, useful on servers and headless VMs.
+    chroot "$target" systemctl enable "serial-getty@$serial.service"
+fi
 chroot "$target" systemctl set-default graphical.target
 printf '#!/bin/sh\nexit 101\n' > "$target/usr/sbin/policy-rc.d"
 chmod 755 "$target/usr/sbin/policy-rc.d"
@@ -115,6 +121,12 @@ if [ "$arch" = amd64 ]; then chroot "$target" grub-install --target=i386-pc --re
 chroot "$target" update-grub
 rm -f "$target/usr/sbin/policy-rc.d"
 printf '%s\n' "$arch" > "$target/var/lib/mnos/installed-architecture"
+chmod 644 "$target/var/lib/mnos/installed-architecture"
+jq -n --arg arch "$arch" --arg source "$(cat "$target/etc/mnos/source-commit")" \
+    --arg uuid "$root_uuid" --arg account "$account" \
+    '{architecture:$arch,source_commit:$source,root_uuid:$uuid,account:$account}' \
+    > "$target/var/lib/mnos/installation.json"
+rm -f "$target/usr/share/applications/install-mnos.desktop" "$target/usr/share/applications/calamares-install-debian.desktop"
 sync
 echo 'STAGE 100 Installation complete. Remove the ISO before rebooting. / 安装完成，请移除 ISO 后重启。'
 echo 'MNOS INSTALL PASS'

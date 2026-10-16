@@ -1,0 +1,75 @@
+name: Publish verified installation ISOs
+on:
+  workflow_dispatch:
+    inputs:
+      build_run:
+        description: Successful Unified installation ISO workflow run
+        required: true
+      release_tag:
+        description: New installer preview tag
+        required: true
+        default: v2.0-installer-preview.1
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      SOURCE_RUN: ${{ inputs.build_run }}
+      TAG: ${{ inputs.release_tag }}
+    steps:
+      - name: Verify source and both architecture tests
+        id: source
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+-installer-preview\.[0-9]+$ ]]
+          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN" > /tmp/run.json
+          jq -e --arg repo "$GH_REPO" '.conclusion == "success" and .repository.full_name == $repo and .path == ".github/workflows/installer.yml"' /tmp/run.json
+          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN/jobs" > /tmp/jobs.json
+          jq -e '[.jobs[] | select(.name | startswith("build ("))] | length == 2 and all(.[]; .conclusion == "success")' /tmp/jobs.json
+          source_sha=$(jq -r .head_sha /tmp/run.json)
+          [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
+          printf 'sha=%s\n' "$source_sha" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: mnOS-installer-*
+          run-id: ${{ inputs.build_run }}
+          github-token: ${{ github.token }}
+          path: verified
+      - name: Stage checked binaries and validation records
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p release evidence
+          for arch in amd64 arm64; do
+            source="verified/mnOS-installer-$arch"
+            test "$(cat "$source/source-installer-$arch.txt")" = "$SOURCE_SHA"
+            (cd "$source" && sha256sum -c "mnOS-2.0-preview-installer-$arch.iso.sha256")
+            cp "$source"/*.iso "$source"/*.sha256 "$source"/*.tsv "$source"/*.config "$source"/*.txt release/
+            cp -a "$source/validation" "evidence/$arch"
+          done
+          tar -czf release/installation-validation.tar.gz evidence
+          printf '%s\n' "$SOURCE_SHA" > release/SOURCE_COMMIT.txt
+          bash live/release-assets.sh release
+      - name: Publish installation media
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --json isDraft,targetCommitish > /tmp/existing.json 2>/dev/null; then
+            jq -e --arg sha "$SOURCE_SHA" '.isDraft == true and .targetCommitish == $sha' /tmp/existing.json
+          else
+            gh release create "$TAG" --target "$SOURCE_SHA" --draft --prerelease --title 'mnOS 安装预览版：amd64 / arm64' --notes-file live/INSTALLER-RELEASE.md
+          fi
+          for file in release/publish/*; do gh release upload "$TAG" "$file" --clobber; done
+          gh release view "$TAG" --json assets --jq '.assets[]|[.name,.size,.state]|@tsv'
+          gh release edit "$TAG" --draft=false --prerelease --latest=false

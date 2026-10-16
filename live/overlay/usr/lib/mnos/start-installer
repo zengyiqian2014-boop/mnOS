@@ -2,4 +2,4 @@
 set -eu
 export LANG=zh_CN.UTF-8 LIBGL_ALWAYS_SOFTWARE=1
 mkdir -p /run/mnos
-exec /usr/bin/xinit /usr/lib/mnos/installer -- /usr/lib/xorg/Xorg :0 vt1 -keeptty -nolisten tcp -noreset -logfile /run/mnos/Xorg.log
+exec /usr/bin/xinit /usr/lib/mnos/installer-session -- /usr/lib/xorg/Xorg :0 vt1 -keeptty -nolisten tcp -noreset -logfile /run/mnos/Xorg.log

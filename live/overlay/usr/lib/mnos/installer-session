@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+if [ "${1:-}" != --dbus ]; then
+    exec /usr/bin/dbus-run-session -- "$0" --dbus
+fi
+# Only a window manager, for reliable keyboard focus and confirmation dialogs.
+/usr/bin/xfwm4 --compositor=off &
+exec /usr/lib/mnos/installer

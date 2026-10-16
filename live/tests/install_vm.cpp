@@ -121,8 +121,13 @@ struct VM {
     }
     void wait(const std::string &text,int seconds=480,size_t after=0) {
         auto end=Clock::now()+std::chrono::seconds(seconds);
+        auto capture_at=Clock::now()+20s;
         while(output.find(text,after)==std::string::npos) {
             check(Clock::now()<end,"Timeout waiting for "+text+"; see "+log.string()); pump(500);
+            if (Clock::now() >= capture_at) {
+                capture(log.parent_path()/(log.stem().string()+"-current.ppm"));
+                capture_at=Clock::now()+20s;
+            }
             check(output.find("Kernel panic")==std::string::npos,"Kernel panic");
             check(output.find("SQUASHFS error")==std::string::npos,"SquashFS failure");
         }

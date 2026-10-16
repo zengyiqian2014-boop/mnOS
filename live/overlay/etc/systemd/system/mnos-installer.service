@@ -14,7 +14,7 @@ TTYReset=yes
 TTYVHangup=yes
 StandardOutput=journal+console
 StandardError=journal+console
-Restart=on-failure
+Restart=always
 RestartSec=3
 LimitCORE=0
 
