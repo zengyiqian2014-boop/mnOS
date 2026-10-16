@@ -63,7 +63,8 @@ jobs:
           printf '%s\n' "$SOURCE_RUN" > verified/verified-build-run.txt
           git rev-parse HEAD > verified/verification-code.txt
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends g++ qemu-system-x86 qemu-system-arm qemu-utils ovmf qemu-efi-aarch64
+          sudo apt-get install -y --no-install-recommends g++ acl qemu-system-x86 qemu-system-arm qemu-utils ovmf qemu-efi-aarch64
+          if [ -c /dev/kvm ]; then sudo setfacl -m "u:$(id -u):rw" /dev/kvm; fi
       - name: Install through the GUI and boot from the disk without an ISO
         run: |
           set -euo pipefail

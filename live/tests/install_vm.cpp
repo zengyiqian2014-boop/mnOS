@@ -69,8 +69,16 @@ struct VM {
        const fs::path &work, const std::string &phase, bool nvme=false, bool bios=false) : log(out/(phase+".log")) {
         auto sock=work/(phase+".serial"), q=work/(phase+".qmp"), vars=work/(phase+".fd");
         bool arm = arch == "arm64";
+#ifdef __aarch64__
+        bool matching = arm;
+#else
+        bool matching = !arm;
+#endif
+        bool kvm = matching && access("/dev/kvm", R_OK | W_OK) == 0;
+        std::ofstream(out/"hypervisor.txt", std::ios::app) << phase << ": "
+            << (kvm ? "KVM / host CPU" : "TCG / max CPU") << '\n';
         std::vector<std::string> args{arm ? "qemu-system-aarch64" : "qemu-system-x86_64",
-            "-accel", "tcg", "-cpu", "max", "-smp", "2", "-m", "4096", "-machine",
+            "-accel", kvm ? "kvm" : "tcg", "-cpu", kvm ? "host" : "max", "-smp", "2", "-m", "4096", "-machine",
             arm ? "virt,gic-version=3" : "q35", "-nic", "none", "-display", "none", "-monitor", "none",
             "-device", arm ? "virtio-gpu-pci,xres=1280,yres=720" : "virtio-vga,xres=1280,yres=720",
             "-device", "virtio-rng-pci", "-serial", "unix:"+sock.string()+",server=on,wait=on",
