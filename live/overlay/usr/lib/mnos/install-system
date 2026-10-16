@@ -119,6 +119,12 @@ EOF
 cp "$target/boot/efi/EFI/BOOT/grub.cfg" "$target/boot/efi/EFI/debian/grub.cfg"
 if [ "$arch" = amd64 ]; then chroot "$target" grub-install --target=i386-pc --recheck "$disk"; fi
 chroot "$target" update-grub
+if [ -d /sys/firmware/efi ]; then
+    if ! efibootmgr --create --disk "$disk" --part 2 --label mnOS \
+        --loader "\\EFI\\BOOT\\BOOT${suffix^^}.EFI"; then
+        echo 'WARNING: Firmware did not accept a boot entry. Select the EFI Boot entry for this disk in firmware settings.'
+    fi
+fi
 rm -f "$target/usr/sbin/policy-rc.d"
 printf '%s\n' "$arch" > "$target/var/lib/mnos/installed-architecture"
 chmod 644 "$target/var/lib/mnos/installed-architecture"

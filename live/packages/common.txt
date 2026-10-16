@@ -128,6 +128,7 @@ debsecan
 calamares
 calamares-settings-debian
 shim-signed
+efibootmgr
 qemu-guest-agent
 spice-vdagent
 open-vm-tools

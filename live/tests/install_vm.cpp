@@ -77,7 +77,7 @@ struct VM {
             "-qmp", "unix:"+q.string()+",server=on,wait=off", "-no-reboot",
             "-drive", "file="+disk.string()+",if=none,id=target,format=qcow2,discard=unmap",
             "-device", nvme ? "nvme,drive=target,serial=MNOSTEST01" : "virtio-blk-pci,drive=target"};
-        if (arm) args.insert(args.end(), {"-device","qemu-xhci","-device","usb-kbd","-device","usb-tablet"});
+        args.insert(args.end(), {"-device","qemu-xhci","-device","usb-kbd","-device","usb-tablet"});
         if (!bios) {
             std::string base = arm ? "/usr/share/AAVMF/AAVMF_" : "/usr/share/OVMF/OVMF_";
             std::string end = arm ? ".fd" : "_4M.fd";
@@ -150,6 +150,13 @@ struct VM {
             else key(std::string(1,c));
         }
     }
+    void click(int x, int y) {
+        call("input-send-event", "{\"events\":[{\"type\":\"abs\",\"data\":{\"axis\":\"x\",\"value\":"+
+            std::to_string(x*32767/1279)+"}},{\"type\":\"abs\",\"data\":{\"axis\":\"y\",\"value\":"+
+            std::to_string(y*32767/719)+"}},{\"type\":\"btn\",\"data\":{\"button\":\"left\",\"down\":true}}]}");
+        call("input-send-event", "{\"events\":[{\"type\":\"btn\",\"data\":{\"button\":\"left\",\"down\":false}}]}");
+        pause(1);
+    }
     void capture(const fs::path &path) { call("screendump","{\"filename\":\""+path.string()+"\"}"); }
     void screen(const fs::path &path) {
         for(int i=0;i<60;++i) { capture(path); if(image_active(path)) return; pause(2); }
@@ -172,10 +179,13 @@ int main(int argc,char **argv) {
         {
             VM vm(arch,iso,disk,out,work,"install");
             vm.wait("MNOS INSTALLER GUI READY"); vm.screen(out/"installer.ppm");
+            std::cout << "Installer visible; entering account through USB keyboard and pointer" << std::endl;
+            vm.click(640,310);
             vm.key("alt-u"); vm.type("mnosqa"); vm.key("tab"); vm.type(password);
             vm.key("tab"); vm.type(password); vm.key("tab"); vm.key("spc");
             vm.key("alt-i"); vm.pause(3); vm.type("/dev/vda"); vm.key("ret");
             vm.wait("MNOS INSTALL PASS",1800); vm.pause(8); vm.capture(out/"installed.ppm");
+            std::cout << "Disk installation complete; shutting down the ISO session" << std::endl;
             vm.key("alt-s"); vm.shutdown();
         }
         for(bool nvme : {false,true}) {
@@ -183,12 +193,13 @@ int main(int argc,char **argv) {
             VM vm(arch,{},disk,out,work,phase,nvme);
             vm.wait("mnOS login:"); vm.pause(12); vm.screen(out/(phase+"-login.ppm"));
             // Use real credentials on the graphical greeter, then validate its desktop.
-            vm.type(password); vm.key("ret"); vm.pause(25); vm.screen(out/(phase+"-desktop.ppm"));
+            vm.click(640,349); vm.type(password); vm.key("ret"); vm.pause(25);
             send_all(vm.serial,"mnosqa\n"); vm.wait("Password:");
             send_all(vm.serial,password+"\n"); vm.pause(3);
             size_t start=vm.output.size();
-            send_all(vm.serial,"test $(id -u) -ge 1000 && ! grep -qw boot=live /proc/cmdline && findmnt -n -o FSTYPE / | grep -qx ext4 && test -e /var/lib/mnos/installed-architecture && command -v code firefox-esr nano nmap && pgrep -u $(id -u) xfce4-session && echo MNOS_DISK_DESKTOP_PASS\n");
+            send_all(vm.serial,"test $(id -u) -ge 1000 && ! grep -qw boot=live /proc/cmdline && findmnt -n -o FSTYPE / | grep -qx ext4 && test -e /var/lib/mnos/installed-architecture && command -v code firefox-esr nano nmap && getcap /usr/lib/mnos/net-admin | grep -q cap_net_admin,cap_net_raw=ep && timeout 120 sh -c 'until pgrep -u $(id -u) xfce4-session; do sleep 1; done' && echo MNOS_DISK_DESKTOP_PASS\n");
             vm.wait("\r\nMNOS_DISK_DESKTOP_PASS\r\n",180,start);
+            vm.screen(out/(phase+"-desktop.ppm"));
             send_all(vm.serial,"sudo -S -p 'QA_AUTH:' /usr/bin/systemctl poweroff\n"); vm.wait("QA_AUTH:",30);
             send_all(vm.serial,password+"\n"); vm.shutdown();
         }

@@ -261,7 +261,13 @@ struct Installer {
         }), this);
         gtk_widget_show_all(window); gtk_widget_hide(finish);
         reload(); gtk_widget_grab_focus(name);
-        g_idle_add(+[](gpointer) -> gboolean { marker("MNOS INSTALLER GUI READY"); return G_SOURCE_REMOVE; }, nullptr);
+        g_idle_add(+[](gpointer data) -> gboolean {
+            auto *s = static_cast<Installer *>(data);
+            gtk_window_present(GTK_WINDOW(s->window));
+            gtk_widget_grab_focus(s->name);
+            marker("MNOS INSTALLER GUI READY");
+            return G_SOURCE_REMOVE;
+        }, this);
     }
 };
 int main(int argc, char **argv) {
