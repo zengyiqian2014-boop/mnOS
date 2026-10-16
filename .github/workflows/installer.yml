@@ -55,7 +55,9 @@ jobs:
             'mnos-live:installer-${{ matrix.arch }}' sh -ec '
             bash /source/tests/account-preflight.sh /usr/lib/mnos/account-preflight
             c++ -std=c++17 -O2 -Wall -Wextra -Werror /source/tests/enrollment-runtime.cpp -lutil -lcrypt -o /tmp/enrollment-test
-            /tmp/enrollment-test'
+            /tmp/enrollment-test
+            c++ -std=c++17 -O2 -Wall -Wextra -Werror /source/tests/console-login.cpp -lutil -o /tmp/console-login-test
+            /tmp/console-login-test'
       - name: Install to a blank disk and boot without the ISO
         run: |
           set -euo pipefail

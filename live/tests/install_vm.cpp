@@ -298,11 +298,14 @@ int main(int argc,char **argv) {
         for(bool nvme : {false,true}) {
             std::string phase=nvme?"disk-nvme":"disk-virtio";
             VM vm(arch,{},disk,out,work,phase,nvme);
-            vm.wait("mnOS login:"); vm.pause(12); vm.screen(out/(phase+"-login.ppm"));
+            vm.wait("mnOS login:");
+            // Authenticate promptly: login/PAM has a real login timeout, unlike
+            // agetty's old pre-authentication username prompt.
+            send_all(vm.serial,account+"\n"); vm.wait("Password:",60);
+            send_all(vm.serial,password+"\n"); vm.pause(3);
+            vm.pause(12); vm.screen(out/(phase+"-login.ppm"));
             // Use real credentials on the graphical greeter, then validate its desktop.
             vm.click(640,349); vm.type(password); vm.key("ret"); vm.pause(25);
-            send_all(vm.serial,account+"\n"); vm.wait("Password:");
-            send_all(vm.serial,password+"\n"); vm.pause(3);
             size_t start=vm.output.size();
             send_all(vm.serial,"test $(id -u) -ge 1000 && ! grep -qw boot=live /proc/cmdline && findmnt -n -o FSTYPE / | grep -qx ext4 && test -e /var/lib/mnos/installed-architecture && command -v code firefox-esr nano nmap && /usr/sbin/getcap /usr/lib/mnos/net-admin | grep -q cap_net_admin,cap_net_raw=ep && timeout 120 sh -c 'until pgrep -u $(id -u) xfce4-session && pgrep -u $(id -u) xfce4-panel && pgrep -u $(id -u) xfwm4; do sleep 1; done' && echo MNOS_DISK_DESKTOP_PASS\n");
             vm.wait("\r\nMNOS_DISK_DESKTOP_PASS\r\n",180,start);

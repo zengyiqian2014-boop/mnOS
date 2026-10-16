@@ -65,6 +65,12 @@ mkfs.ext4 -F -L mnOS -E lazy_itable_init=0,lazy_journal_init=0 "$root"
 mount "$root" "$target"
 echo 'STAGE 20 Installing system and applications / 安装系统和应用'
 unsquashfs -f -no-progress -processors 2 -d "$target" "$medium/live/filesystem.squashfs"
+# Also deploy the account-login fix when the ISO carries a verified installer
+# overlay over an older base filesystem. Never patch PAM or enable autologin.
+for unit in getty@.service serial-getty@.service; do
+    install -D -m 644 "/etc/systemd/system/$unit.d/20-account-login.conf" \
+        "$target/etc/systemd/system/$unit.d/20-account-login.conf"
+done
 mkdir -p "$target/boot/efi"
 mount "$esp" "$target/boot/efi"
 root_uuid=$(blkid -s UUID -o value "$root")

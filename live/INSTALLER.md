@@ -59,6 +59,11 @@ unlimited-input claims. Replacing the authentication stack for longer passwords
 has not been implemented. Choose a strong password even though mnOS no longer
 enforces a length/strength policy during enrollment.
 
+Console and serial login let `login`/PAM collect the username directly. This
+avoids agetty's separate 42-byte prompt limit without bypassing authentication,
+enabling autologin, or changing PAM rules. The VM test uses a 64-character name
+and a short password for both graphical and serial authentication.
+
 ## Virtual displays
 
 [UTM on Apple Silicon: backend selection and troubleshooting](UTM.md) distinguishes
