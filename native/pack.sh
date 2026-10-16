@@ -1,13 +1,17 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Run inside mnos-live-builder with /native read-only and /out writable.
+# Native-only diagnostic media; the full installation ISO is built by live/.
 set -eu
+root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+out=${OUT:-/out}
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
 mode=${1:-demo}
 case "$mode" in demo) args= ;; test) args=mnos.selftest=1 ;; *) exit 2 ;; esac
-grub-file --is-x86-multiboot2 /native/build/mnos.elf
-mkdir -p /tmp/native-iso/boot/grub
-cp /native/build/mnos.elf /tmp/native-iso/boot/mnos.elf
-cat > /tmp/native-iso/boot/grub/grub.cfg <<EOF
+grub-file --is-x86-multiboot2 "$root/build/mnos.elf"
+mkdir -p "$work/boot/grub" "$out"
+cp "$root/build/mnos.elf" "$work/boot/mnos.elf"
+cat > "$work/boot/grub/grub.cfg" <<EOF
 set timeout=0
 insmod all_video
 set gfxmode=1280x720,auto
@@ -17,4 +21,4 @@ menuentry 'mnOS native 0.1' {
     boot
 }
 EOF
-grub-mkrescue -o "/out/native-$mode.iso" /tmp/native-iso
+grub-mkrescue -o "$out/native-$mode.iso" "$work"

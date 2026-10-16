@@ -69,6 +69,6 @@ int main(void) {
     seconds+=301;auth_tick(seconds);assert(!auth_logged_in());
     saved.users[1].uid=0;auth_init(&io);assert(!auth_logged_in()&&strstr(auth_status(),"damaged"));
     exists=false;auth_init(&io);random_fail=true;input("alice");new_password("Ordinary-test-491");
-    assert(!auth_logged_in()&&strstr(auth_status(),"random source unavailable"));
+    assert(!auth_logged_in()&&strstr(auth_status(),"No secure RNG"));
     puts("AUTH PASS: SHA/PBKDF2 vectors, enrollment, masked input, login, root separation, homes, retries, password changes, persistence, expiry and fail-closed storage/randomness");
 }

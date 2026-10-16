@@ -87,8 +87,13 @@ disk writes until root unlocks it. Preferences load after authentication.
 
 First boot asks for an ordinary username/password and a separate root password,
 then opens the ordinary session. There is no default password. Passwords use
-PBKDF2-HMAC-SHA256 with 600,000 iterations and a fresh 128-bit salt from RDRAND;
-creation fails closed when that source is unavailable. Password input is masked,
+PBKDF2-HMAC-SHA256 with 600,000 iterations and a fresh 128-bit random salt.
+x86 uses RDRAND or the original VirtIO PCI entropy driver (modern/transitional);
+ARM64 uses VirtIO MMIO, a pre-boot UEFI RNG pool, or the optional RNDR instruction.
+Creation fails closed if none is available. For QEMU, attach `-device virtio-rng-pci`
+on x86; on ARM FDT guests use `-device virtio-rng-device` with modern MMIO enabled.
+The ARM UEFI/ACPI path can obtain entropy through the firmware RNG protocol.
+No timestamp, fixed seed or predictable fallback is used. Password input is masked,
 excluded from history/serial output and cleared from temporary buffers. Failed
 authentication imposes a delay; root sessions expire after five minutes.
 

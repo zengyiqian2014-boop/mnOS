@@ -10,10 +10,12 @@
 `help` 默认英文，`help -cn` 为中文。新增安装器和测试使用 C++、Shell；第三方工具需要的 Python 依赖仍保留。
 
 修复 ARM64 安全显示入口禁用 VirtIO KMS 的配置，并提前加载显示、USB 输入及常见磁盘驱动。
+修复自研 x86 内核仅依赖 RDRAND 导致虚拟机无法创建账号的问题：新增现代/传统 VirtIO PCI 随机数驱动；ARM64 增加 RNDR 支持。完全缺少安全随机数来源时仍拒绝创建密码，并给出设备提示。
 同一镜像可用于软件模拟或宿主机支持的 KVM/HVF 硬件加速。ARM64 使用 UEFI，amd64 支持 UEFI/BIOS。
 
 发布前测试从实际 ISO 的图形界面安装到空白虚拟磁盘，再移除 ISO、重置 UEFI 变量，从已安装磁盘启动。
 检查普通账号登录、图形桌面、软件入口和 VirtIO / NVMe 控制器切换；amd64 另检查 BIOS 启动。
+另以关闭 RDRAND 的虚拟 CPU 实测两种 VirtIO 随机数设备下的账号创建，并验证 ARM64 RNDR 和缺少随机数来源时的拒绝路径。
 验证日志和截图见 `installation-validation.tar.gz`，各 ISO 附 SHA256、包清单、内核配置及源码提交号。
 
 桌面和应用运行在独立的 Linux 环境。两个架构均附实验性的原生 C/汇编内核及源码；原生入口需关闭 Secure Boot，ARM64 原生图形依赖 GOP，尚无 Linux 应用兼容层。

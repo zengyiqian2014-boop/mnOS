@@ -61,6 +61,10 @@ static inline void cpuid(uint32_t leaf, uint32_t sub, uint32_t *a, uint32_t *b, 
 }
 #endif
 bool arch_random(uint8_t *, size_t);
+#ifndef __aarch64__
+void rng_pci_probe(unsigned, unsigned, unsigned, uint16_t, uint16_t);
+bool virtio_random(uint8_t *, size_t);
+#endif
 void *memset(void *, int, size_t);
 void *memcpy(void *, const void *, size_t);
 int memcmp(const void *, const void *, size_t);

@@ -62,6 +62,13 @@ GOP for its graphics; it also has a PL011 serial console. It does not yet drive
 every PCI/USB display/input device supported by Linux. Secure Boot must be off
 to start the unsigned original kernel.
 
+Native account creation needs a secure random source. x86 supports RDRAND and
+VirtIO PCI RNG (modern/transitional); ARM supports VirtIO MMIO RNG, firmware
+entropy and RNDR where available. In QEMU, keep the entropy device enabled.
+Without any of these sources the kernel refuses enrollment; it does not invent
+randomness from timers or bypass account protection. This restriction belongs
+to the experimental kernel, not the Linux installer account setup.
+
 ## Verification
 
 `tests/install_vm.cpp` boots the actual ISO, enters the account and disk

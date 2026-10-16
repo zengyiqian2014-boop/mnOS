@@ -44,6 +44,12 @@ jobs:
           run-id: ${{ inputs.build_run }}
           github-token: ${{ github.token }}
           path: verified
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-random-validation
+          run-id: ${{ inputs.build_run }}
+          github-token: ${{ github.token }}
+          path: evidence/native-randomness
       - name: Stage checked binaries and validation records
         env:
           SOURCE_SHA: ${{ steps.source.outputs.sha }}

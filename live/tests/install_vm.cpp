@@ -197,9 +197,9 @@ int main(int argc,char **argv) {
             send_all(vm.serial,"mnosqa\n"); vm.wait("Password:");
             send_all(vm.serial,password+"\n"); vm.pause(3);
             size_t start=vm.output.size();
-            send_all(vm.serial,"test $(id -u) -ge 1000 && ! grep -qw boot=live /proc/cmdline && findmnt -n -o FSTYPE / | grep -qx ext4 && test -e /var/lib/mnos/installed-architecture && command -v code firefox-esr nano nmap && getcap /usr/lib/mnos/net-admin | grep -q cap_net_admin,cap_net_raw=ep && timeout 120 sh -c 'until pgrep -u $(id -u) xfce4-session; do sleep 1; done' && echo MNOS_DISK_DESKTOP_PASS\n");
+            send_all(vm.serial,"test $(id -u) -ge 1000 && ! grep -qw boot=live /proc/cmdline && findmnt -n -o FSTYPE / | grep -qx ext4 && test -e /var/lib/mnos/installed-architecture && command -v code firefox-esr nano nmap && getcap /usr/lib/mnos/net-admin | grep -q cap_net_admin,cap_net_raw=ep && timeout 120 sh -c 'until pgrep -u $(id -u) xfce4-session && pgrep -u $(id -u) xfce4-panel && pgrep -u $(id -u) xfwm4; do sleep 1; done' && echo MNOS_DISK_DESKTOP_PASS\n");
             vm.wait("\r\nMNOS_DISK_DESKTOP_PASS\r\n",180,start);
-            vm.screen(out/(phase+"-desktop.ppm"));
+            vm.pause(5); vm.screen(out/(phase+"-desktop.ppm"));
             send_all(vm.serial,"sudo -S -p 'QA_AUTH:' /usr/bin/systemctl poweroff\n"); vm.wait("QA_AUTH:",30);
             send_all(vm.serial,password+"\n"); vm.shutdown();
         }

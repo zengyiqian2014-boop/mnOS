@@ -87,7 +87,7 @@ static void start_hash(bool verify) {
     struct auth_user *user=verify?&db.users[target]:&pending.users[target];
     if(!verify&&!io.random(user->salt,sizeof user->salt)) {
         auth_wipe(first,sizeof first);
-        next(auth_logged_in()?READY:BROKEN,"Secure random source unavailable; password was not saved.");return;
+        next(auth_logged_in()?READY:BROKEN,"No secure RNG. Enable a virtual RNG device or CPU RNG, then reboot.");return;
     }
     password_begin(&kdf,verify?input:first,user->salt,AUTH_ROUNDS);
     auth_wipe(first,sizeof first);next(HASHING,"Password hashing: PBKDF2-HMAC-SHA256, 600000 iterations.");

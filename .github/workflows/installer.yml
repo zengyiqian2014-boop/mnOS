@@ -7,9 +7,31 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: installer-${{ github.ref }}
+  group: installer-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: true
 jobs:
+  native-randomness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native build and VM test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc g++ make clang lld llvm qemu-system-x86 qemu-system-arm grub-pc-bin grub-efi-amd64-bin xorriso
+      - name: Compile both original kernels and test real account enrollment
+        run: |
+          set -euo pipefail
+          make -C native -j4 all
+          make -C native -f arch/arm64/Makefile -j4 all CLANG=clang LLD=ld.lld LINK=lld-link OBJCOPY=llvm-objcopy
+          OUT="$PWD/native/build" sh native/pack.sh demo
+          c++ -std=c++17 -O2 -Wall -Wextra -Werror native/tests/random_vm.cpp -o native/build/random-vm
+          native/build/random-vm native/build native/build/random-validation
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-random-validation
+          path: native/build/random-validation/*.log
   build:
     strategy:
       fail-fast: false

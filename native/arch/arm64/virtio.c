@@ -207,9 +207,29 @@ bool block_flush(struct block_device *b) {
     struct device *d = (void *)b->transport;
     return d->flush && request(d, 4, 0, NULL, 0);
 }
+static bool cpu_random(uint8_t *out, size_t n) {
+    // FEAT_RNG is optional even on ARMv8.5; never execute RNDR unconditionally.
+    if (!((sys_read(id_aa64isar0_el1) >> 60) & 15))
+        return false;
+    while (n) {
+        uint64_t value = 0;
+        unsigned ok = 0;
+        for (unsigned retry = 0; retry < 100 && !ok; ++retry)
+            __asm__ volatile("mrs %0,S3_3_C2_C4_0; cset %w1,ne" : "=r"(value), "=r"(ok) :: "cc");
+        if (!ok)
+            return false;
+        size_t take = n < 8 ? n : 8;
+        memcpy(out, &value, take); out += take; n -= take;
+    }
+    return true;
+}
 bool arch_random(uint8_t *out, size_t n) {
-    if (!rng)
-        return arm_firmware_random(out, n);
+    if (!rng) {
+        if (arm_firmware_random(out, n) || cpu_random(out, n))
+            return true;
+        memset(out, 0, n);
+        return false;
+    }
     if (n > PAGE)
         return false;
     uint64_t flags = spin_lock(&transfer_lock);
