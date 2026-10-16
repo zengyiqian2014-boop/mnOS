@@ -20,5 +20,6 @@
 验证日志和截图见 `installation-validation.tar.gz`，各 ISO 附 SHA256、包清单、内核配置及源码提交号。
 镜像包含一个仅用于安装会话的显示修复层；`PAYLOAD_COMMIT.txt` 记录基础系统来源，`SOURCE_COMMIT.txt` 记录最终修复和测试来源。发布的是加入修复层后重新完成安装及启动测试的镜像。
 
-桌面和应用运行在独立的 Linux 环境。两个架构均附实验性的原生 C/汇编内核及源码；原生入口需关闭 Secure Boot，ARM64 原生图形依赖 GOP，尚无 Linux 应用兼容层。
+桌面和应用运行在 Debian 13 / Linux 6.12 LTS 的 Xfce 环境。安装器、工具菜单和系统中心由 mnOS 提供，Xfce 本身是第三方桌面组件。
+两个架构均附实验性的原生 C/汇编内核及源码；原生入口需关闭 Secure Boot，ARM64 原生图形依赖 GOP，尚无 Linux 应用兼容层。
 实体硬件、UTM/Parallels/VMware 的所有型号、Apple Silicon 裸机及各 ARM 开发板未逐一实测，不将 QEMU 测试等同于全部硬件兼容。

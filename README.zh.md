@@ -18,7 +18,7 @@
 | [自研内核](native/README.md) | 本地账号认证、普通用户/root 权限、动态多核、最高 64 TiB 物理地址管理、MNFS CoW 文件系统、图形终端及个人显示设置 |
 | [Linux 桌面](live/README.md) | Xfce、官方 VS Code、nano、Firefox ESR、C/C++/Node.js/Go/Rust/Java、CTF 工具、可选网络授权、系统设置及常见硬件驱动 |
 
-自研内核已完成 32 核和 33 TiB 稀疏 QEMU 内存验证，仍是实验版本。没有固定 CPU
+x86_64 自研内核已完成 32 核和 33 TiB 稀疏 QEMU 内存验证，仍是实验版本。没有固定 CPU
 数组上限，但实际规模受硬件与内存约束；测试结果不等于实体硬件全覆盖或安全认证。
 具体范围见[验证记录](live/VALIDATION.md)、[MNFS 说明](native/FILESYSTEM.md)及
 [安全与性能设计](live/DESIGN.md)。MNFS 使用独立格式，不兼容 APFS。

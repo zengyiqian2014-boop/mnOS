@@ -1,6 +1,55 @@
 # Validation record
 
-## Verified preview.5 build
+## Installer preview.1 — 2026-10-16
+
+[Verification run 38859355432](https://github.com/zengyiqian2014-boop/mnOS/actions/runs/38859355432)
+passed for both complete installation ISOs. The system payload comes from
+`25cccedb6d25c499c677baac4b9ba0b74b41f753`; the installer display overlay and
+verification code come from `6426b950217e70f5fdf371114ab202d20605a64b`.
+The two image-build steps and original-kernel randomness job succeeded in
+[source build 38852455213](https://github.com/zengyiqian2014-boop/mnOS/actions/runs/38852455213).
+The final images were checked after adding the display overlay, including a
+second verification of each ISO's SHA256 after the VM tests.
+
+| Check | amd64 | ARM64 |
+| --- | --- | --- |
+| ISO GUI, USB keyboard/pointer, account setup and installation to a new 40 GiB disk | Passed, KVM | Passed, TCG |
+| Remove ISO, reset UEFI variables, boot installed VirtIO disk | Passed, KVM | Passed, TCG |
+| Move the same installed disk to NVMe and boot with fresh UEFI variables | Passed, KVM | Passed, TCG |
+| Ordinary-account graphical login, session, window manager and visible top panel | Passed on both disk controllers | Passed on both disk controllers |
+| BIOS boot from installed disk to graphical login | Passed, KVM | Not applicable |
+
+These runs used Debian 13's QEMU and firmware, two guest CPUs, 4 GiB guest RAM,
+VirtIO graphics and a virtual RNG. Installed-system checks require an ext4 root,
+absence of `boot=live`, a normal user ID, the installed-system marker, and the
+chosen NET_ADMIN/NET_RAW delegation. Firefox, VS Code, nano and nmap executables
+must be present. This run does not claim interactive testing of every bundled
+application. The desktop check waits for the panel to actually render; starting
+the Xfce processes or displaying only the greeter wallpaper is insufficient.
+
+The ARM installation reached completion after about 17 minutes under software
+emulation, with display checks throughout. An additional local test of the same
+installer-session change left its GUI untouched for 11 minutes and confirmed
+that it stayed visible beyond the previous ten-minute screensaver/DPMS timeout.
+
+The original-kernel job separately passed real account enrollment with x86
+RDRAND disabled and each of modern/legacy VirtIO PCI RNG devices, ARM64 RNDR
+without firmware/VirtIO entropy, and expected refusal on both architectures
+when no secure randomness source exists. No predictable fallback was added.
+
+Release assets include `installation-validation.tar.gz` with the native RNG
+logs and both architectures' serial logs, graphics captures and acceleration
+records. `SOURCE_COMMIT.txt` identifies the final overlay/test source;
+`PAYLOAD_COMMIT.txt` identifies the unchanged base system payload. The desktop
+environment is Xfce on Debian/Linux; the C/assembly kernel is an independent,
+experimental boot entry.
+
+Physical PCs/boards, macOS HVF, UTM/Parallels/VMware configurations and ARM Secure
+Boot were not exercised by this run. QEMU results do not establish universal
+hardware support or production security certification. Older checks below
+retain their original dates and scope.
+
+## Historical preview.5 build
 
 On 2026-10-15, [workflow run 38730394222](https://github.com/zengyiqian2014-boop/mnOS/actions/runs/38730394222)
 successfully built and checked source commit
