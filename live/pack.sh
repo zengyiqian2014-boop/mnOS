@@ -103,7 +103,7 @@ menuentry 'Install mnOS - $ARCH (virtual machines and hardware)' {
 EOF
 cat >> "$ISO/boot/grub/grub.cfg" <<EOF
 menuentry 'Install mnOS - software rendering (keeps display drivers)' {
-    linux /live/vmlinuz boot=live mnos.install=1 apparmor=1 security=apparmor audit=1 audit_backlog_limit=8192 console=$CONSOLE,115200n8 console=tty0
+    linux /live/vmlinuz boot=live mnos.install=1 mnos.graphics=compat apparmor=1 security=apparmor audit=1 audit_backlog_limit=8192 console=$CONSOLE,115200n8 console=tty0
     initrd /live/initrd.img
 }
 menuentry 'Try desktop / diagnostics (changes are temporary)' {

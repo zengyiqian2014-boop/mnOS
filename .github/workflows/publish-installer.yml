@@ -11,7 +11,7 @@ on:
       release_tag:
         description: New installer preview tag
         required: true
-        default: v2.0-installer-preview.1
+        default: v2.0-installer-preview.2
 permissions:
   contents: write
   actions: read
@@ -86,6 +86,12 @@ jobs:
             test "$(cat "$source/source-installer-$arch.txt")" = "$BASE_SHA"
             (cd "$source" && sha256sum -c "mnOS-2.0-preview-installer-$arch.iso.sha256")
             cp "$source"/*.iso "$source"/*.sha256 "$source"/*.tsv "$source"/*.config "$source"/*.txt release/
+            # Keep the version in the public filename so old/new optical media
+            # can be distinguished in VM settings. Renaming does not alter bytes.
+            name="mnOS-${TAG#v}-$arch.iso"
+            mv "release/mnOS-2.0-preview-installer-$arch.iso" "release/$name"
+            rm "release/mnOS-2.0-preview-installer-$arch.iso.sha256"
+            (cd release && sha256sum "$name" > "$name.sha256")
             cp -a "$source/validation" "evidence/$arch"
           done
           tar -czf release/installation-validation.tar.gz evidence
@@ -100,7 +106,7 @@ jobs:
           if gh release view "$TAG" --json isDraft,targetCommitish > /tmp/existing.json 2>/dev/null; then
             jq -e --arg sha "$SOURCE_SHA" '.isDraft == true and .targetCommitish == $sha' /tmp/existing.json
           else
-            gh release create "$TAG" --target "$SOURCE_SHA" --draft --prerelease --title 'mnOS 安装预览版：amd64 / arm64' --notes-file live/INSTALLER-RELEASE.md
+            gh release create "$TAG" --target "$SOURCE_SHA" --draft --prerelease --title 'mnOS 完整离线安装包 · 显示兼容修订（amd64 / ARM64）' --notes-file live/INSTALLER-RELEASE.md
           fi
           for file in release/publish/*; do gh release upload "$TAG" "$file" --clobber; done
           gh release view "$TAG" --json assets --jq '.assets[]|[.name,.size,.state]|@tsv'

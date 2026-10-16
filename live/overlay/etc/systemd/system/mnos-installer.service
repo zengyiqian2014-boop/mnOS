@@ -4,6 +4,8 @@ After=systemd-udev-settle.service systemd-user-sessions.service
 Wants=systemd-udev-settle.service
 ConditionKernelCommandLine=mnos.install=1
 Conflicts=getty@tty1.service
+StartLimitIntervalSec=120
+StartLimitBurst=2
 
 [Service]
 Type=simple
@@ -14,7 +16,7 @@ TTYReset=yes
 TTYVHangup=yes
 StandardOutput=journal+console
 StandardError=journal+console
-Restart=always
+Restart=on-failure
 RestartSec=3
 LimitCORE=0
 

@@ -51,8 +51,11 @@ jobs:
         run: c++ -std=c++17 -O2 -Wall -Wextra -Werror live/tests/install_vm.cpp -o live/out/install-vm
       - name: Install to a blank disk and boot without the ISO
         run: |
+          set -euo pipefail
           mkdir -p live/out/validation
-          docker run --rm --network none --memory=7g --cpus=4 \
+          devices=()
+          if [ -c /dev/kvm ]; then devices+=(--device /dev/kvm); fi
+          docker run --rm --network none --memory=7g --cpus=4 "${devices[@]}" \
             -v "$PWD/live/out:/out" mnos-live-builder \
             /out/install-vm '${{ matrix.arch }}' \
             '/out/mnOS-2.0-preview-installer-${{ matrix.arch }}.iso' /out/validation

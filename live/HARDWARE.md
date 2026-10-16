@@ -52,6 +52,10 @@ present in each rootfs are listed in the `device-trees-*.txt` release manifest.
 
 ## Run ARM64 QEMU
 
+On Apple Silicon Macs, see the [UTM backend and display guide](UTM.md). UTM's
+Apple Virtualization.framework option is distinct from QEMU/HVF acceleration.
+Neither has been exercised by the Linux-hosted automated VM tests.
+
 Install `qemu-system-arm` and `qemu-efi-aarch64` on a Debian/Ubuntu host, then:
 
 ```sh
@@ -63,6 +67,6 @@ the variables template to a temporary file. KVM is used only when the host and
 guest architectures match; cross-architecture runs use TCG. `DISK` optionally
 names an **existing** qcow2 file. The script does not create or overwrite disks.
 
-Build on a matching ARM64 runner with `./live/build.sh qemu arm64` or
-`./live/build.sh hardware arm64`. Builds fail rather than silently substituting
+Build on a matching ARM64 runner with `./live/build.sh installer arm64`.
+Builds fail rather than silently substituting
 an x86 package or an unbootable native-kernel menu entry.

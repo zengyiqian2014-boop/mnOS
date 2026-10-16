@@ -1,5 +1,38 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
 set -eu
 export LANG=zh_CN.UTF-8 LIBGL_ALWAYS_SOFTWARE=1
 mkdir -p /run/mnos
-exec /usr/bin/xinit /usr/lib/mnos/installer-session -- /usr/lib/xorg/Xorg :0 vt1 -keeptty -nolisten tcp -noreset -logfile /run/mnos/Xorg.log
+marker() {
+    printf '%s\n' "$*"
+    printf '<6>%s\n' "$*" > /dev/kmsg 2>/dev/null || true
+}
+start_x() {
+    mode=$1
+    shift
+    marker "MNOS GRAPHICS: $mode"
+    /usr/bin/xinit /usr/lib/mnos/installer-session -- /usr/lib/xorg/Xorg \
+        :0 vt1 -keeptty -nolisten tcp -noreset -logfile "/run/mnos/Xorg.$mode.log" "$@"
+}
+compatibility() {
+    # A software Mesa environment alone does not disable Xorg's glamor path.
+    # Keep KMS/VirtIO active, but use CPU rendering, a software cursor and no
+    # page flipping. Do not use nomodeset: many ARM VMs have no firmware fbdev.
+    start_x compat -config /etc/X11/mnos/compat.conf -extension GLX
+}
+if grep -qw 'mnos.graphics=compat' /proc/cmdline; then
+    compatibility && exit 0
+else
+    start_x normal && exit 0
+    marker 'MNOS GRAPHICS: normal Xorg session failed; trying compatibility mode'
+    compatibility && exit 0
+fi
+marker 'MNOS GRAPHICS FAILED: see /run/mnos/Xorg.*.log and journalctl -u mnos-installer'
+# Preserve useful failure evidence on the serial console as well as the journal.
+for logfile in /run/mnos/Xorg.*.log; do
+    [ -r "$logfile" ] || continue
+    tail -n 30 "$logfile" | while IFS= read -r line; do
+        marker "MNOS XORG: $line"
+    done
+done
+exit 1

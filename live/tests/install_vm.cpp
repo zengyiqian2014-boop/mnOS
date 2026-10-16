@@ -74,6 +74,18 @@ static bool panel_visible(const fs::path &path) {
     }
     return dark>size_t(w)*20*3/4;
 }
+static bool grub_menu_visible(const fs::path &path) {
+    std::ifstream f(path,std::ios::binary); std::string type; int w=0,h=0,max=0;
+    f >> type >> w >> h >> max; f.get();
+    if (!f || type!="P6" || w<640 || h<480 || w>8192 || h>8192 || max!=255) return false;
+    size_t cyan=0, black=0;
+    for (int i=0;i<w*h;++i) {
+        unsigned char p[3]; f.read(reinterpret_cast<char *>(p),3); if (!f) return false;
+        if (p[0]<160 && p[1]>150 && p[2]>150 && p[1]>p[0]*1.3) ++cyan;
+        if (p[0]<20 && p[1]<20 && p[2]<20) ++black;
+    }
+    return cyan>size_t(w)*10 && black>size_t(w)*h*3/4;
+}
 struct VM {
     pid_t pid=-1; int serial=-1, qmp=-1; std::string output; fs::path log;
     VM(const std::string &arch, const fs::path &iso, const fs::path &disk, const fs::path &out,
@@ -90,7 +102,7 @@ struct VM {
             << (kvm ? "KVM / host CPU" : "TCG / max CPU") << '\n';
         std::vector<std::string> args{arm ? "qemu-system-aarch64" : "qemu-system-x86_64",
             "-accel", kvm ? "kvm" : "tcg", "-cpu", kvm ? "host" : "max", "-smp", "2", "-m", "4096", "-machine",
-            arm ? "virt,gic-version=3" : "q35", "-nic", "none", "-display", "none", "-monitor", "none",
+            arm ? "virt-9.1,gic-version=3" : "q35", "-nic", "none", "-display", "none", "-monitor", "none",
             "-device", arm ? "virtio-gpu-pci,xres=1280,yres=720" : "virtio-vga,xres=1280,yres=720",
             "-device", "virtio-rng-pci", "-serial", "unix:"+sock.string()+",server=on,wait=on",
             "-qmp", "unix:"+q.string()+",server=on,wait=off", "-no-reboot",
@@ -197,6 +209,20 @@ struct VM {
         pause(1);
     }
     void capture(const fs::path &path) { call("screendump","{\"filename\":\""+path.string()+"\"}"); }
+    void select_entry(unsigned index) {
+        auto picture=log.parent_path()/(log.stem().string()+"-menu.ppm");
+        auto deadline=Clock::now()+90s;
+        for (;;) {
+            capture(picture);
+            if (grub_menu_visible(picture)) break;
+            check(Clock::now()<deadline,"GRUB menu did not appear");
+            check(output.find("Booting Linux Kernel")==std::string::npos,"Missed GRUB menu");
+            pump(200);
+        }
+        key("home");
+        for (unsigned i=0;i<index;++i) key("down");
+        key("ret");
+    }
     void screen(const fs::path &path) {
         for(int i=0;i<60;++i) { capture(path); if(image_active(path)) return; pause(2); }
         throw std::runtime_error("No active graphical output: "+path.string());
@@ -244,6 +270,15 @@ int main(int argc,char **argv) {
         char temp[]="/tmp/mnos-install-test.XXXXXX"; check(mkdtemp(temp),"mkdtemp"); fs::path work=temp;
         fs::path disk=work/"installed.qcow2"; run({"qemu-img","create","-f","qcow2",disk.string(),"40G"});
         const std::string password="CedarOrbit72Quartz";
+        {
+            VM vm(arch,iso,disk,out,work,"compatibility");
+            vm.select_entry(1);
+            vm.wait("MNOS GRAPHICS: compat",600);
+            check(vm.output.find("mnos.graphics=compat")!=std::string::npos,"Compatibility entry lacks its own kernel argument");
+            vm.wait("MNOS INSTALLER GUI READY",240);
+            vm.screen(out/"installer-compat.ppm");
+            std::cout << "PASS: second menu entry starts a visible installer with Xorg acceleration disabled" << std::endl;
+        }
         {
             VM vm(arch,iso,disk,out,work,"install");
             vm.wait("MNOS INSTALLER GUI READY"); vm.screen(out/"installer.ppm");

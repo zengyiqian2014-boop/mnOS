@@ -28,7 +28,9 @@ CPU architectures to match: use ARM64 with Apple Silicon/ARM hosts, amd64 with
 Intel/AMD hosts. ARM64 requires 64-bit UEFI. amd64 supports BIOS and UEFI.
 
 1. Select **Install mnOS**. The compatibility entry keeps the display driver
-   enabled and uses software rendering. It deliberately does not use
+   enabled and explicitly disables Xorg glamor/GLX acceleration, hardware cursors
+   and page flipping with `mnos.graphics=compat`. The normal entry also retries
+   this configuration if its Xorg session exits with an error. It does not use
    `nomodeset`, which disables VirtIO GPU output on ARM machines without an EFI
    framebuffer.
 2. Choose an unmounted, writable disk of at least 32 GiB. Enter a username and
@@ -47,6 +49,10 @@ the hardware-capable initramfs, and installs the disk boot configuration. Root
 login stays locked; the account uses sudo for administrative operations.
 
 ## Virtual displays
+
+[UTM on Apple Silicon: backend selection and troubleshooting](UTM.md) distinguishes
+Apple Virtualization.framework from QEMU's HVF CPU acceleration. Neither macOS
+backend has been directly tested here; the automated tests use Linux KVM/TCG.
 
 Use a **VirtIO GPU display** with UTM/QEMU ARM64 and a USB keyboard/pointer.
 Start with 3D acceleration disabled. QEMU's “Display output is not active”

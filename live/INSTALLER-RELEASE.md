@@ -3,8 +3,8 @@
 
 | CPU 架构 | 完整离线安装包 |
 | --- | --- |
-| ARM64 / AArch64 | [mnOS-2.0-preview-installer-arm64.iso](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v2.0-installer-preview.1/mnOS-2.0-preview-installer-arm64.iso) |
-| Intel / AMD 64 位 | [mnOS-2.0-preview-installer-amd64.iso](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v2.0-installer-preview.1/mnOS-2.0-preview-installer-amd64.iso) |
+| ARM64 / AArch64 | [mnOS-2.0-installer-preview.2-arm64.iso](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v2.0-installer-preview.2/mnOS-2.0-installer-preview.2-arm64.iso) |
+| Intel / AMD 64 位 | [mnOS-2.0-installer-preview.2-amd64.iso](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v2.0-installer-preview.2/mnOS-2.0-installer-preview.2-amd64.iso) |
 
 两份镜像的区别是 CPU 架构；同一架构镜像同时包含虚拟机驱动、来宾工具和常见实体硬件固件。
 发布页的 `.sha256`、`.tsv`、`.config`、`.txt` 和验证压缩包是校验及开发资料，不是另外需要安装的软件包。
@@ -22,16 +22,18 @@
 网络工具权限可选择 sudo 或向安装账号委派 NET_ADMIN / NET_RAW。root 登录保持锁定。
 `help` 默认英文，`help -cn` 为中文。新增安装器和测试使用 C++、Shell；第三方工具需要的 Python 依赖仍保留。
 
-修复 ARM64 安全显示入口禁用 VirtIO KMS 的配置，并提前加载显示、USB 输入及常见磁盘驱动。
+修复上一版第二项与第一项显示路径相同的问题。第二项现在使用 `mnos.graphics=compat`，显式关闭 Xorg glamor/GLX、硬件光标和翻页，同时保留 VirtIO/KMS 显示驱动。第一项的 Xorg 会话退出失败时，也会自动重试兼容配置。失败日志保存在 `/run/mnos/Xorg.*.log` 及系统日志中，串口输出所选模式；连续失败有重试上限。
 安装会话关闭屏保和显示节能，避免较长安装期间虚拟机显示“Display output is not active”；测试会持续检查安装画面。
 修复自研 x86 内核仅依赖 RDRAND 导致虚拟机无法创建账号的问题：新增现代/传统 VirtIO PCI 随机数驱动；ARM64 增加 RNDR 支持。完全缺少安全随机数来源时仍拒绝创建密码，并给出设备提示。
-同一镜像可用于软件模拟或宿主机支持的 KVM/HVF 硬件加速。ARM64 使用 UEFI，amd64 支持 UEFI/BIOS。
+ARM64 使用 UEFI，amd64 支持 UEFI/BIOS。自动测试使用 Linux 上的 QEMU KVM/TCG。
+
+**UTM：“使用 Apple 虚拟化”与 QEMU 的“Use Hypervisor”是不同后端／设置。** 先选择“虚拟化 → Linux”，取消“使用 Apple 虚拟化”；在 QEMU 设置保留 Use Hypervisor，Apple Silicon 主机配 ARM64 来宾仍可使用 HVF CPU 硬件加速。显卡先选普通 VirtIO，关闭 GL／VirGL。详见 [UTM 设置说明](https://github.com/zengyiqian2014-boop/mnOS/blob/main/live/UTM.md)。本次没有 macOS 实机执行条件，尚不能声明 Apple Virtualization.framework 或 UTM/HVF 黑屏已经修复；兼容显示修订解决的是已确认的重复回退入口问题。
 
 发布前测试从实际 ISO 的图形界面安装到空白虚拟磁盘，再移除 ISO、重置 UEFI 变量，从已安装磁盘启动。
 检查普通账号登录、图形桌面、软件入口和 VirtIO / NVMe 控制器切换；amd64 另检查 BIOS 启动。
 另以关闭 RDRAND 的虚拟 CPU 实测两种 VirtIO 随机数设备下的账号创建，并验证 ARM64 RNDR 和缺少随机数来源时的拒绝路径。
 验证日志和截图见 `installation-validation.tar.gz`，各 ISO 附 SHA256、包清单、内核配置及源码提交号。
-镜像包含一个仅用于安装会话的显示修复层；`PAYLOAD_COMMIT.txt` 记录基础系统来源，`SOURCE_COMMIT.txt` 记录最终修复和测试来源。发布的是加入修复层后重新完成安装及启动测试的镜像。
+`PAYLOAD_COMMIT.txt` 记录基础系统来源，`SOURCE_COMMIT.txt` 记录发布源码；直接构建发布时两者指向同一提交。下载文件名包含 `.2`，可在虚拟光驱设置里与旧版区分。
 
 桌面和应用运行在 Debian 13 / Linux 6.12 LTS 的 Xfce 环境。安装器、工具菜单和系统中心由 mnOS 提供，Xfce 本身是第三方桌面组件。
 两个架构均附实验性的原生 C/汇编内核及源码；原生入口需关闭 Secure Boot，ARM64 原生图形依赖 GOP，尚无 Linux 应用兼容层。
