@@ -19,6 +19,12 @@ GPL-3.0-or-later; the font license is in `assets/FONT-LICENSE.txt`.
 - Supervisor/user separation, W^X, NX, null/stack guards, CR0 write protection,
   optional SMEP/SMAP and checked system-call pointers. SWAPGS protects per-CPU
   context when a user process clears its GS selector.
+- Original ELF64 static executable loader shared by x86_64 and ARM64. The build
+  links a separate user ELF and embeds it as immutable input; the kernel validates
+  and loads it before entering ring 3 / EL0. The current ABI allows one 4 KiB RX
+  code segment and one 4 KiB RW/NX data segment, with zero-filled BSS. Invalid
+  architecture, out-of-range segments, overlapping mappings, W+X, dynamic linking
+  and invalid entry points are rejected before destination pages are changed.
 - Original [MNFS](FILESYSTEM.md): copy-on-write metadata/data, CRC32C, 64-bit
   sparse files, directories, rename, truncate, collection and one saved snapshot.
   `/ram` is temporary; an optional whole MNFS ATA disk is mounted at `/disk`,
@@ -39,8 +45,9 @@ structures do not mean literally unlimited CPUs: firmware, APIC IDs, RAM and
 tested scale still impose limits.
 
 CPU hotplug, task migration, NUMA placement, native USB/network/Wi-Fi/audio,
-AHCI/NVMe, GPU acceleration, a general executable loader and a POSIX/Linux ABI
-are not implemented. Tasks are fixed demonstration/test programs per CPU.
+AHCI/NVMe, GPU acceleration, filesystem-backed exec, arbitrary-size executable
+mapping and a POSIX/Linux ABI are not implemented. ELF programs are still fixed
+demonstration/test programs per CPU; this is not Linux binary compatibility.
 Native authentication covers the local graphical/serial console and its file and
 settings operations; it is separate from Linux PAM/sudo and is not POSIX UID/ACL
 support for arbitrary native programs. Speculation mitigations and a full
@@ -211,3 +218,27 @@ preserved. Calls: 0 bounded console write (length ≤256), 1 yield, 2 local CPU
 ticks, 3 exit, 4 boot-probe report (test task only), 5 sleep (1–1000 ticks).
 Bad addresses return -14; invalid arguments -22; unknown calls -38. Filesystem
 operations currently run in the kernel console, not through a ring-3 file ABI.
+
+## Native executable milestone (2026-10-16)
+
+`src/exec.c` implements the ELF parser without Linux code or a Linux guest
+kernel. `build/user.elf` and `build/arm64/user.elf` are standalone linked user
+executables; their code enters the existing isolated address spaces through the
+loader. x86 fault probes remain raw fixtures; its two scheduled workers use ELF.
+ARM workers and fault probes all use the ELF path. Native runtime and new tests
+are C, assembly and shell; no Python implementation was added.
+
+Verification: `make host-tests` includes ASan/UBSan tests of both architectures,
+truncated headers, integer overflow, BSS, rejected-input destination preservation,
+permissions, entry points and 40,000 deterministic malformed-input mutations.
+After building and packing both test images, `bash tests/exec_boot.sh` checks a
+four-CPU x86 TCG boot and six ARM TCG boots (A53/GIC2, A72/four CPUs, max/eight
+CPUs/GIC3/EL2, 8 GiB RAM, UEFI/FDT and UEFI/ACPI). These assert actual user-mode
+isolation and preemption, not only successful parsing. This does not test real
+hardware or Apple Virtualization.framework.
+
+The next dependencies for a native application environment are filesystem-backed
+exec with task cleanup, process credentials and file descriptors, user file I/O,
+larger mappings, drivers and an application ABI/toolchain. The Linux installer
+release remains separate; this source milestone does not switch its default
+kernel or make Firefox/VS Code native applications.

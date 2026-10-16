@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "kernel.h"
+#include "exec.h"
+extern char native_exec_start[], native_exec_end[];
 #define idle_wakes (cpu_this()->idle_wakes)
 #define probe_counts (cpu_this()->probe_counts)
 uint8_t irq_stack_area[PAGE + 65536] __attribute__((aligned(4096)));
@@ -82,10 +84,15 @@ static void spawn(struct cpu *cpu, unsigned id, const void *program, size_t size
     t->code = page_alloc();
     t->data = page_alloc();
     t->stack = page_alloc();
-    memcpy(phys_pointer(t->code), program, size);
+    uint64_t entry = USER_BASE;
+    if (!probe) {
+        if (elf_load(native_exec_start, native_exec_end - native_exec_start, 62, USER_BASE,
+                     phys_pointer(t->code), phys_pointer(t->data), &entry))
+            panic("invalid native ELF executable");
+    } else memcpy(phys_pointer(t->code), program, size);
     t->cr3 = address_space(t->code, t->data, t->stack);
     t->frame = (struct irq_frame){
-        .rip = USER_BASE, .cs = 0x1b, .ss = 0x23, .rflags = 0x202, .rsp = USER_STACK - 16};
+        .rip = entry, .cs = 0x1b, .ss = 0x23, .rflags = 0x202, .rsp = USER_STACK - 16};
     t->ready = true;
     t->probe = probe;
 }
@@ -98,6 +105,7 @@ void tasks_init_for(struct cpu *cpu) {
     spawn(cpu, 5, user_pointer, user_pointer_end - user_pointer, 4);
     spawn(cpu, 6, user_write_code, user_write_code_end - user_write_code, 5);
     spawn(cpu, 7, user_port_io, user_port_io_end - user_port_io, 6);
+    if (!cpu->index) log_write("Native ELF64 x86_64 loaded: independent user executable\n");
 }
 void tasks_init(void) { tasks_init_for(cpu_this()); }
 static struct irq_frame *schedule(struct irq_frame *frame) {

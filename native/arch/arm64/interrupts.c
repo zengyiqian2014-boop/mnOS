@@ -64,6 +64,8 @@ static void eoi(uint32_t n) {
         mmio_write(platform.gicc + 16, n);
     barrier();
 }
+#include "exec.h"
+extern char native_exec_start[], native_exec_end[];
 void tasks_init_for(struct cpu *c) {
     size_t size = (uintptr_t)arm_user_end - (uintptr_t)arm_user_start;
     if (size > PAGE)
@@ -73,7 +75,10 @@ void tasks_init_for(struct cpu *c) {
         t->code = page_alloc();
         t->data = page_alloc();
         t->stack = page_alloc();
-        memcpy((void *)t->code, (void *)arm_user_start, size);
+        uint64_t entry;
+        if (elf_load(native_exec_start, native_exec_end - native_exec_start, 183, USER_BASE,
+                     (void *)t->code, (void *)t->data, &entry))
+            panic("invalid native ARM ELF executable");
         arm_cache_code(t->code, size);
         t->cr3 = address_space(t->code, t->data, t->stack);
         t->ready = true;
@@ -81,10 +86,11 @@ void tasks_init_for(struct cpu *c) {
         t->frame.x[0] = i;
         t->frame.x[1] = USER_DATA;
         t->frame.x[2] = (uintptr_t)&platform;
-        t->frame.pc = USER_BASE;
+        t->frame.pc = entry;
         t->frame.sp = USER_STACK + PAGE;
         t->frame.psr = 0;
     }
+    if (!c->index) log_write("Native ELF64 ARM64 loaded: independent user executable\n");
 }
 static void select(struct irq_frame *f) {
     tasks[current_task].frame = *f;
