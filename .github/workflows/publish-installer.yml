@@ -85,6 +85,13 @@ jobs:
             fi
             test "$(cat "$source/source-installer-$arch.txt")" = "$BASE_SHA"
             (cd "$source" && sha256sum -c "mnOS-2.0-preview-installer-$arch.iso.sha256")
+            # This release promises one downloadable ISO per architecture.
+            # Stop before creating a public release if GitHub would require parts.
+            bytes=$(stat -c %s "$source/mnOS-2.0-preview-installer-$arch.iso")
+            if (( bytes > 2147483647 )); then
+              echo "$arch ISO exceeds GitHub's single-file limit; publication stopped." >&2
+              exit 1
+            fi
             cp "$source"/*.iso "$source"/*.sha256 "$source"/*.tsv "$source"/*.config "$source"/*.txt release/
             # Keep the version in the public filename so old/new optical media
             # can be distinguished in VM settings. Renaming does not alter bytes.
