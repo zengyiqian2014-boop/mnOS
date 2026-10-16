@@ -13,6 +13,7 @@ struct Console {
     int fd = -1;
     pid_t pid = -1;
     size_t cursor = 0;
+    bool entered_input = false;
     std::string output;
     Console() {
         pid = forkpty(&fd, nullptr, nullptr, nullptr);
@@ -43,9 +44,12 @@ struct Console {
                 output.append(bytes, n);
             }
         }
-        throw std::runtime_error("Console did not reach expected authentication state: " + value);
+        // Startup diagnostics are safe only before any credentials are sent.
+        throw std::runtime_error("Console did not reach expected authentication state: " + value +
+                                 (entered_input ? "" : "; startup output: " + output));
     }
     void send(const std::string &value) {
+        entered_input = true;
         if (write(fd, value.data(), value.size()) != ssize_t(value.size()))
             throw std::runtime_error("Console input failed");
     }
