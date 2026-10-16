@@ -1,27 +1,26 @@
 # Architectures and hardware support
 
-The build matrix contains four desktop images. Each is compiled on a runner of
-the matching architecture, with the same mnOS C/C++ tools and application catalog.
+Current releases provide two offline installation images. Each is compiled on a
+runner of the matching architecture, with the same mnOS C/C++ tools and catalog.
+Virtual-machine support and common physical-hardware firmware are combined.
 
 | Image | Boot target | Original kernel entry |
 | --- | --- | --- |
-| `qemu-amd64.iso` | x86_64 QEMU, BIOS or UEFI | Included |
-| `hardware-amd64.iso` | x86_64 PC, BIOS or UEFI | Included |
-| `qemu-arm64.iso` | AArch64 QEMU `virt`, AAVMF UEFI, VirtIO | Not yet ported |
-| `hardware-arm64.iso` | AArch64 UEFI computer/server with Linux-supported platform firmware | Not yet ported |
+| `installer-amd64.iso` | x86_64 VM or PC, BIOS/UEFI | Original x86_64 kernel |
+| `installer-arm64.iso` | AArch64 VM or UEFI machine with Linux-supported firmware | Original ARM64 kernel |
 
-The ARM64 images run the signed Debian ARM64 Linux kernel. They do **not** run
-the original x86 kernel, and are not described as native-kernel dual boot. ARM64
-Secure Boot is not yet validated; shipping signed binaries alone is not a test.
-The current workflow checks ARM64 UEFI boot through the actual ISO. x86_64 also
-checks BIOS, Secure Boot Linux and the original kernel's two boot paths.
+Installation and applications run on the signed Debian Linux kernel. The
+architecture-matched original kernel is a separate experimental entry requiring
+Secure Boot to be off. The new installer is tested through installation and
+no-ISO disk boot using UEFI, plus amd64 BIOS. Secure Boot results from older live
+releases do not certify the new installer or ARM64 Secure Boot.
 
 ## Driver coverage
 
 Both architectures use Debian's broad kernel configuration rather than a
 QEMU-only kernel. Both include VirtIO storage/network/display/RNG, NVMe, USB
 storage and input, standard Ethernet drivers and Mesa rendering libraries.
-The hardware profiles add Wi-Fi/Bluetooth/audio/GPU firmware: Intel, AMD,
+Both installer images include Wi-Fi/Bluetooth/audio/GPU firmware: Intel, AMD,
 NVIDIA open drivers, Realtek, Atheros/Qualcomm, Broadcom, MediaTek, TI and others
 listed in `packages/hardware.txt`. x86 alone adds Intel/AMD CPU microcode; ARM64
 adds Qualcomm SoC and Samsung firmware. Availability still depends on the exact
@@ -56,7 +55,7 @@ present in each rootfs are listed in the `device-trees-*.txt` release manifest.
 Install `qemu-system-arm` and `qemu-efi-aarch64` on a Debian/Ubuntu host, then:
 
 ```sh
-ARCH=arm64 ./live/run.sh live/out/mnOS-2.0-preview-qemu-arm64.iso
+ARCH=arm64 DISK=/path/to/existing.qcow2 ./live/run.sh live/out/mnOS-2.0-preview-installer-arm64.iso
 ```
 
 Use `AAVMF_CODE` and `AAVMF_VARS` to select other firmware paths. Each run copies

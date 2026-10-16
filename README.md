@@ -2,16 +2,19 @@
 
 [English](README.md) | [中文](README.zh.md)
 
-[Download the x86_64 / ARM64 desktop preview](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-desktop-preview.5)
+[Download the amd64 / ARM64 offline installers](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.1)
 · [Boot and validation record](live/VALIDATION.md)
 
 mnOS has an original C/assembly kernel for **x86_64 and ARM64**, plus a separate
 Debian 13 / Linux 6.12 LTS desktop for Firefox, CTF tools and common hardware.
-[Download the two native-kernel ISOs](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.2-native-preview.1)
-and see the [ARM64 boot and compatibility record](native/arch/arm64/README.md).
-These small native ISOs contain no Python or Linux environment. Desktop preview
-.5 remains a separate release: its x86 ISO includes the older native entry;
-its ARM64 ISO is Linux-only. The new ARM kernel is supplied by the native release.
+There is **one installer per architecture**, with virtual-machine drivers and
+common physical-hardware firmware in the same image. It starts the C++/GTK
+installer, creates an account and installs to a chosen disk. Shut down, remove
+the ISO, and boot from that disk. Both installers include an experimental entry
+for the matching original kernel. [Installation instructions and limits](live/INSTALLER.md)
+describe the whole-disk erase flow, UEFI/BIOS requirements and VM display setup.
+The older small native-only ISOs and Desktop .5 live images remain historical
+releases; they are not the new installation media.
 
 | Environment | Current capabilities |
 | --- | --- |
@@ -42,7 +45,7 @@ sudo kernel performance balanced  # Linux: change the TuneD profile
 Native F7 opens resolution/wallpaper settings; an MNFS disk can retain them
 across boots. Linux exposes display, wallpaper, audio, network and account
 settings through the system center. Python remains included for tools that need
-it. First Linux boot creates a normal local account with sudo authorization;
+it. Linux installation creates a normal local account with sudo authorization;
 root login is locked and there is no default password. `/usr/bin/kernel` handles
 queries; `/usr/sbin/mnos-kernel-admin` checks root credentials for mutations.
 Restricted logs/parameters still obey Linux permissions. Native accounts are

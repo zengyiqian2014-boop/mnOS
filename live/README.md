@@ -1,27 +1,27 @@
-# mnOS dual-boot ISO
+# mnOS offline installation ISO
 
-The x86_64 ISOs offer two independent environments: the original freestanding
+Both architecture-specific installers provide two independent environments: the original freestanding
 [mnOS native kernel](../native/README.md), and a usable desktop built from
 maintained Debian 13 packages (Linux 6.12 LTS, Xfce, Firefox ESR, system management,
-CTF utilities and Calamares). The native kernel has its own framebuffer UI,
+CTF utilities). The native kernel has its own framebuffer UI,
 preemptive scheduler and ring-3 isolation; it does not run Linux applications.
 The original BusyBox build remains available from the repository root.
 
-Both `amd64` and `arm64` have two profiles:
+Use the `installer` profile for both `amd64` and `arm64`:
 
 | Profile | Purpose | Extras |
 | --- | --- | --- |
-| `qemu` | Virtual machines | VirtIO, QEMU Guest Agent, SPICE agent; compositor off |
-| `hardware` | General PCs/laptops | Common GPU/network/Wi-Fi/audio firmware, CPU microcode, Bluetooth |
+| `installer` | Virtual machines and supported physical hardware | VirtIO, QEMU/SPICE/VMware agents, common GPU/network/Wi-Fi/audio firmware, Bluetooth; x86 CPU microcode |
 
-ARM64 targets QEMU `virt` and generic UEFI hardware; its original kernel entry
-has not been ported. CPU microcode packages apply to x86 only. See
-[HARDWARE.md](HARDWARE.md) for the four-image matrix, ARM board boot requirements,
+ARM64 targets QEMU `virt` and generic UEFI hardware; it includes the original
+ARM64 kernel as an experimental boot entry. See [INSTALLER.md](INSTALLER.md)
+for the C++/GTK installation flow, then [HARDWARE.md](HARDWARE.md) for the two-image matrix, ARM board boot requirements,
 driver coverage and the distinction between included drivers and tested devices.
 
 See [DESIGN.md](DESIGN.md) for kernel choices, RHEL design references, tuning,
 security boundaries and hardware limitations. There is no default account password.
-First boot asks you to create a local administrator; root login remains locked.
+Installation creates an ordinary local account authorized for sudo; root login remains locked.
+The installer erases the whole disk explicitly selected and confirmed by the user.
 
 ## Help and administration
 
@@ -64,7 +64,7 @@ permissions; its [command reference](../native/README.md) describes the scope.
 
 ### Network permission choice
 
-Calamares presents a **Network permissions** page after account creation. The
+The mnOS installer offers a **Network permissions** checkbox with account creation. The
 default keeps privileged network operations behind sudo. The optional mode adds
 only the created account to `mnos-netadmin` and enables `CAP_NET_ADMIN` plus
 `CAP_NET_RAW` on a root-owned, group-executable helper. Run `mnos-net nmap ...`,
@@ -120,11 +120,9 @@ Package downloads use signed Debian repositories. Image tools run in containers;
 the scripts do not install packages or start OS services on the host.
 
 ```sh
-./live/build.sh qemu
-./live/build.sh hardware
+./live/build.sh installer amd64
 # On an ARM64 host:
-./live/build.sh qemu arm64
-./live/build.sh hardware arm64
+./live/build.sh installer arm64
 ```
 
 Output goes to `live/out/`. Each ISO has its own SHA256 file, package/source
@@ -149,28 +147,31 @@ actual package versions and Python wheel hashes used for each image.
 ./live/run.sh                              # 4 GiB RAM, two vCPUs
 UEFI=1 ./live/run.sh                       # OVMF required
 MEMORY=8192 CPUS=4 ./live/run.sh /path/to/image.iso
-qemu-img create -f qcow2 mnos.qcow2 32G
+qemu-img create -f qcow2 mnos.qcow2 40G
 DISK="$PWD/mnos.qcow2" ./live/run.sh        # existing disk only
 GPU=virgl ./live/run.sh                    # optional host OpenGL + QEMU GTK support
 ```
 
-KVM is preferred when available; TCG is supported for functional testing.
+KVM on Linux and HVF on macOS are selected when host and guest architectures
+match; otherwise TCG is used for functional testing.
 The default VirtIO display uses software rendering. `GPU=virgl` requests VirGL;
 it requires a working host OpenGL stack and a QEMU build with GTK/OpenGL. This
 optional accelerated host path has not been validated in the headless build
-environment. The native entry uses only the adapter's DISPI 2D interface.
+environment. The x86 native entry uses the boot framebuffer/DISPI 2D interface;
+the ARM native entry requires GOP or its serial console.
 The x86_64 ISOs have BIOS and UEFI paths; ARM64 uses UEFI. All have an appended
 EFI partition for USB booting on suitable firmware. The Linux signed EFI chain
 uses Debian shim/GRUB/kernel, not mnOS-owned keys.
-The unsigned **native kernel requires Secure Boot to be off**. Linux is the
-default entry; select the native entry to explore its UI and isolation tests.
-Installed x86_64 systems retain both entries, with Linux first. ARM64 has no
-original-kernel menu entry yet. See [HARDWARE.md](HARDWARE.md) before using an SBC.
+The unsigned **native kernel requires Secure Boot to be off**. The Linux
+installation environment is the default ISO entry; select the experimental
+native entry to explore its UI and isolation tests. Installed systems on both
+architectures retain the original kernel entry, with Linux first.
+See [HARDWARE.md](HARDWARE.md) before using an SBC.
 
 To use an ISO on a physical PC, write it to a spare USB drive with an image
 writer, selecting the correct target. The image writer erases that USB drive.
-Boot the USB, create a Live account, then open **安装 mnOS / Install mnOS** in
-the system center. The installer confirms partition changes before writing.
+Boot the USB and choose **Install mnOS**. The graphical installer asks for a
+disk and account, then requires the full disk path to confirm whole-disk erasure.
 
 Live changes reside in RAM and disappear at shutdown. The installer creates a
 separate persistent system and a new account from the original SquashFS. Back up
@@ -180,11 +181,16 @@ considered tested merely because its driver is present.
 ## Checks
 
 ```sh
-python3 -m unittest discover -s live/tests -p 'test_*.py'
-python3 live/tests/check_kernel.py live/out/kernel-qemu-amd64.config
-docker run --rm --init --network none -v "$PWD/live/tests:/tests:ro" \
-    mnos-live:qemu-amd64 timeout 120s xvfb-run -a dbus-run-session -- python3 /tests/gui_smoke.py
+c++ -std=c++17 -O2 -Wall -Wextra -Werror live/tests/install_vm.cpp -o live/out/install-vm
+docker run --rm --network none --memory=7g --cpus=4 -v "$PWD/live/out:/out" \
+    mnos-live-builder /out/install-vm amd64 \
+    /out/mnOS-2.0-preview-installer-amd64.iso /out/validation
 ```
+
+This test creates its own blank qcow2 disk, uses the actual graphical installer,
+and boots the installed disk without the ISO. Use `arm64` for both architecture
+arguments on an ARM64 builder. The native entropy regression is C++ as well;
+no Python implementation or new Python test is required by this workflow.
 
 In a booted guest:
 

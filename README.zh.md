@@ -1,21 +1,17 @@
 # mnOS
 
-新增：[x86_64 / ARM64 自研内核 ISO](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.2-native-preview.1)。
-这两份是 C／汇编内核启动镜像，不含 Python、Linux、Firefox 或 CTF 软件。
-ARM64 支持直启、UEFI + 设备树和 UEFI + ACPI；已实测 GICv2/v3、1/2/4/8 核、
-8 GiB 内存、VirtIO 磁盘／键盘／随机源、GOP 图形界面及断电重启后的文件和账号。
-完整应用仍在单独的 Desktop .5 镜像中；该版 ARM64 桌面 ISO 尚未集成新内核。
-[ARM64 兼容边界与复现方法](native/arch/arm64/README.md)。
-
-[下载 x86_64 / ARM64 桌面预览版](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-desktop-preview.5)
+[下载 amd64 / ARM64 离线安装 ISO](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.1)
 · [启动与验证记录](live/VALIDATION.md)
 
-mnOS 将用 C 和汇编编写的 x86_64 自研内核，与独立的 Debian 13 / Linux 6.12
-LTS 桌面放在 x86_64 ISO 中。x86_64 与 ARM64 各有 QEMU 和硬件版；ARM64 面向
-通用 UEFI。Desktop .5 的 ARM64 镜像提供 Linux 工具环境；新移植的 ARM64 自研内核
-通过上方独立启动 ISO 发布。
-型号与验证范围见[硬件矩阵](live/HARDWARE.md)。原生入口用于
-内核和文件系统开发；Linux 入口用于 Firefox、CTF、Wi-Fi 和日常系统管理。
+**每个架构一份安装镜像**，同时包含虚拟机驱动与常见实体硬件固件。
+启动后进入 C++／GTK 图形安装器，选择磁盘、创建账号、确认清盘并完成安装；
+关机移除 ISO 后从硬盘启动。当前安装器会清空整块所选磁盘。
+[安装说明和兼容边界](live/INSTALLER.md) · [硬件矩阵](live/HARDWARE.md)。
+
+两个架构均集成 C／汇编自研内核的实验入口，与独立的 Debian 13／Linux 6.12 LTS
+应用环境。原生入口用于内核和文件系统开发；Firefox、VS Code、CTF、Wi-Fi 和日常
+系统管理使用 Linux 环境。旧的约十几 MB 原生启动盘及 Desktop .5 Live 镜像是历史
+发布，不能代替本次安装镜像。[ARM64 原生内核说明](native/arch/arm64/README.md)。
 
 | 环境 | 当前功能 |
 | --- | --- |
@@ -40,7 +36,7 @@ sudo kernel performance balanced  # Linux：管理员切换 TuneD 配置
 
 原生 F7 设置页可调整受支持的 QEMU 分辨率和壁纸，并保存到 MNFS 磁盘。
 Linux 系统中心提供显示、壁纸、声音、网络、账号等设置。Python 保留，供相关
-工具使用。Linux 首次启动创建具有 sudo 授权的普通账号；root 登录锁定，没有默认
+工具使用。Linux 安装过程创建具有 sudo 授权的普通账号；root 登录锁定，没有默认
 密码。/usr/bin/kernel 负责查询，/usr/sbin/mnos-kernel-admin 检查 root 身份后执行
 修改操作。受限制的日志和参数仍遵循 Linux 权限。
 
