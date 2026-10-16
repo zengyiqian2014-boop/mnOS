@@ -63,6 +63,17 @@ static bool image_active(const fs::path &path) {
     }
     return colored > size_t(w*h)/5 && colors.size() > 256;
 }
+static bool panel_visible(const fs::path &path) {
+    std::ifstream f(path,std::ios::binary); std::string type; int w=0,h=0,max=0;
+    f >> type >> w >> h >> max; f.get();
+    if (!f || type!="P6" || w<640 || w>8192 || h<480 || max!=255) return false;
+    size_t dark=0;
+    for (int y=0;y<25;++y) for (int x=0;x<w;++x) {
+        unsigned char rgb[3]; f.read(reinterpret_cast<char *>(rgb),3); if (!f) return false;
+        if (y>=5 && rgb[0]<55 && rgb[1]<55 && rgb[2]<55) ++dark;
+    }
+    return dark>size_t(w)*20*3/4;
+}
 struct VM {
     pid_t pid=-1; int serial=-1, qmp=-1; std::string output; fs::path log;
     VM(const std::string &arch, const fs::path &iso, const fs::path &disk, const fs::path &out,
@@ -190,6 +201,16 @@ struct VM {
         for(int i=0;i<60;++i) { capture(path); if(image_active(path)) return; pause(2); }
         throw std::runtime_error("No active graphical output: "+path.string());
     }
+    void desktop_screen(const fs::path &path) {
+        // A running xfce4-panel process can still be initializing on TCG.
+        // Require its actual top panel, rather than the greeter's wallpaper.
+        for (int i=0;i<60;++i) {
+            capture(path);
+            if (image_active(path) && panel_visible(path)) return;
+            pause(2);
+        }
+        throw std::runtime_error("Desktop panel did not render: "+path.string());
+    }
     void shutdown() {
         auto end=Clock::now()+90s; int status=0;
         while(waitpid(pid,&status,WNOHANG)==0) { check(Clock::now()<end,"Guest did not power off"); pump(); }
@@ -247,7 +268,7 @@ int main(int argc,char **argv) {
             size_t start=vm.output.size();
             send_all(vm.serial,"test $(id -u) -ge 1000 && ! grep -qw boot=live /proc/cmdline && findmnt -n -o FSTYPE / | grep -qx ext4 && test -e /var/lib/mnos/installed-architecture && command -v code firefox-esr nano nmap && /usr/sbin/getcap /usr/lib/mnos/net-admin | grep -q cap_net_admin,cap_net_raw=ep && timeout 120 sh -c 'until pgrep -u $(id -u) xfce4-session && pgrep -u $(id -u) xfce4-panel && pgrep -u $(id -u) xfwm4; do sleep 1; done' && echo MNOS_DISK_DESKTOP_PASS\n");
             vm.wait("\r\nMNOS_DISK_DESKTOP_PASS\r\n",180,start);
-            vm.pause(5); vm.screen(out/(phase+"-desktop.ppm"));
+            vm.desktop_screen(out/(phase+"-desktop.ppm"));
             // Keep the echoed command distinct from the actual sudo prompt.
             send_all(vm.serial,"sudo -S -p 'QA_'\"AUTH:\" /usr/bin/systemctl poweroff\n"); vm.wait("QA_AUTH:",30);
             send_all(vm.serial,password+"\n"); vm.shutdown();
