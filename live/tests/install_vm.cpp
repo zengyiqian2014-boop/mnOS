@@ -269,7 +269,10 @@ int main(int argc,char **argv) {
         fs::path iso=fs::absolute(argv[2]), out=fs::absolute(argv[3]); fs::create_directories(out);
         char temp[]="/tmp/mnos-install-test.XXXXXX"; check(mkdtemp(temp),"mkdtemp"); fs::path work=temp;
         fs::path disk=work/"installed.qcow2"; run({"qemu-img","create","-f","qcow2",disk.string(),"40G"});
-        const std::string password="CedarOrbit72Quartz";
+        // Exercise names longer than the old 31-character policy and a short
+        // user-selected password, including real graphical/PAM login later.
+        const std::string account="mnosqa" + std::string(58, 'a');
+        const std::string password="q7";
         {
             VM vm(arch,iso,disk,out,work,"compatibility");
             vm.select_entry(1);
@@ -284,7 +287,7 @@ int main(int argc,char **argv) {
             vm.wait("MNOS INSTALLER GUI READY"); vm.screen(out/"installer.ppm");
             std::cout << "Installer visible; entering account through USB keyboard and pointer" << std::endl;
             vm.click(640,310);
-            vm.key("alt-u"); vm.type("mnosqa"); vm.key("tab"); vm.type(password);
+            vm.key("alt-u"); vm.type(account); vm.key("tab"); vm.type(password);
             vm.key("tab"); vm.type(password); vm.key("tab"); vm.key("spc");
             vm.key("alt-i"); vm.pause(3); vm.type("/dev/vda"); vm.key("ret");
             vm.wait("STAGE 5 ",120,0,true);
@@ -298,7 +301,7 @@ int main(int argc,char **argv) {
             vm.wait("mnOS login:"); vm.pause(12); vm.screen(out/(phase+"-login.ppm"));
             // Use real credentials on the graphical greeter, then validate its desktop.
             vm.click(640,349); vm.type(password); vm.key("ret"); vm.pause(25);
-            send_all(vm.serial,"mnosqa\n"); vm.wait("Password:");
+            send_all(vm.serial,account+"\n"); vm.wait("Password:");
             send_all(vm.serial,password+"\n"); vm.pause(3);
             size_t start=vm.output.size();
             send_all(vm.serial,"test $(id -u) -ge 1000 && ! grep -qw boot=live /proc/cmdline && findmnt -n -o FSTYPE / | grep -qx ext4 && test -e /var/lib/mnos/installed-architecture && command -v code firefox-esr nano nmap && /usr/sbin/getcap /usr/lib/mnos/net-admin | grep -q cap_net_admin,cap_net_raw=ep && timeout 120 sh -c 'until pgrep -u $(id -u) xfce4-session && pgrep -u $(id -u) xfce4-panel && pgrep -u $(id -u) xfwm4; do sleep 1; done' && echo MNOS_DISK_DESKTOP_PASS\n");

@@ -20,6 +20,7 @@
 
 包含 Firefox、VS Code、nano、C/C++、Rust、Go、Java、Node.js、CTF 与系统管理工具。
 网络工具权限可选择 sudo 或向安装账号委派 NET_ADMIN / NET_RAW。root 登录保持锁定。
+移除安装器自行设置的用户名 31 字符上限，以及密码 12–512 字符／强度拦截。输入系统已占用的账号或组名时显示“此用户名已被系统占用，请填写一个其他的”。真实账号组件和密码哈希会在确认清盘前预检，后端写盘前再次校验；不会截断或自动改名。当前底层组件仍有用户名 255 字节、非空密码 511 字节的实际边界，尚未实现无限长度认证。
 `help` 默认英文，`help -cn` 为中文。新增安装器和测试使用 C++、Shell；第三方工具需要的 Python 依赖仍保留。
 
 修复上一版第二项与第一项显示路径相同的问题。第二项现在使用 `mnos.graphics=compat`，显式关闭 Xorg glamor/GLX、硬件光标和翻页，同时保留 VirtIO/KMS 显示驱动。第一项的 Xorg 会话退出失败时，也会自动重试兼容配置。失败日志保存在 `/run/mnos/Xorg.*.log` 及系统日志中，串口输出所选模式；连续失败有重试上限。
@@ -28,6 +29,8 @@
 ARM64 使用 UEFI，amd64 支持 UEFI/BIOS。自动测试使用 Linux 上的 QEMU KVM/TCG。
 
 **UTM：“使用 Apple 虚拟化”与 QEMU 的“Use Hypervisor”是不同后端／设置。** 先选择“虚拟化 → Linux”，取消“使用 Apple 虚拟化”；在 QEMU 设置保留 Use Hypervisor，Apple Silicon 主机配 ARM64 来宾仍可使用 HVF CPU 硬件加速。显卡先选普通 VirtIO，关闭 GL／VirGL。详见 [UTM 设置说明](https://github.com/zengyiqian2014-boop/mnOS/blob/main/live/UTM.md)。本次没有 macOS 实机执行条件，尚不能声明 Apple Virtualization.framework 或 UTM/HVF 黑屏已经修复；兼容显示修订解决的是已确认的重复回退入口问题。
+
+用户已提供截图确认：关闭“使用 Apple 虚拟化”后，同一 ARM64 ISO 已进入图形安装器，并识别到 64 GiB 的 VirtIO 磁盘。用户侧安装完成及硬盘启动结果仍待确认；没有据此宣布 Apple Virtualization.framework 兼容问题已解决。
 
 发布前测试从实际 ISO 的图形界面安装到空白虚拟磁盘，再移除 ISO、重置 UEFI 变量，从已安装磁盘启动。
 检查普通账号登录、图形桌面、软件入口和 VirtIO / NVMe 控制器切换；amd64 另检查 BIOS 启动。

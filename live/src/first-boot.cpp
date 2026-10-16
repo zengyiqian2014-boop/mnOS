@@ -25,10 +25,7 @@ static std::string username_line() {
             break;
         if (c == '\n' || c == '\r')
             return result;
-        // 32 characters are enough to reject an overlong name without
-        // allocating unbounded memory for pasted input.
-        if (result.size() < 32)
-            result += c;
+        result += c;
     }
     throw std::runtime_error("Setup interrupted");
 }
@@ -44,7 +41,6 @@ static std::string password(const char *prompt) {
         throw std::runtime_error("Cannot hide password input");
     std::cout << prompt << std::flush;
     std::string result;
-    bool overflow = false;
     while (!interrupted) {
         char c;
         ssize_t n = read(STDIN_FILENO, &c, 1);
@@ -65,10 +61,7 @@ static std::string password(const char *prompt) {
         }
         if (c == 0)
             continue;
-        if (result.size() < 513)
-            result += c;
-        else
-            overflow = true;
+        result += c;
     }
     int restored = tcsetattr(STDIN_FILENO, TCSAFLUSH, &old);
     std::cout << '\n';
@@ -76,8 +69,6 @@ static std::string password(const char *prompt) {
         mnos::erase(result);
         throw std::runtime_error("Setup interrupted; no session unlocked");
     }
-    if (overflow)
-        result.resize(513);
     return result;
 }
 int main() {
@@ -108,22 +99,24 @@ int main() {
             std::string name = username_line();
             if (name.empty())
                 name = "mnos";
-            if (!mnos::username(name)) {
-                std::cout << "Use 1-31 lower-case letters, digits, underscores or hyphens.\n";
-                continue;
-            }
             if (getpwnam(name.c_str())) {
-                std::cout << "That account already exists.\n";
+                std::cout << "此用户名已被系统占用，请填写一个其他的\n";
                 continue;
             }
-            std::string secret = password("Password (12+ characters): ");
-            if (secret.size() < 12 || secret.size() > 512) {
+            if (!mnos::username(name)) {
+                std::cout << "Use lower-case letters, digits, underscores or hyphens; start with a letter.\n";
+                continue;
+            }
+            if (mnos::run({"/usr/lib/mnos/account-preflight", "--name"}, name + '\n'))
+                continue;
+            std::string secret = password("Password: ");
+            if (secret.empty()) {
                 mnos::erase(secret);
-                std::cout << "Use 12-512 characters.\n";
+                std::cout << "Please enter a password.\n";
                 continue;
             }
-            std::string input = secret + '\n';
-            int quality = mnos::run({"/usr/bin/pwscore", name}, input);
+            std::string input = name + '\n' + secret + '\n';
+            int quality = mnos::run({"/usr/lib/mnos/account-preflight", "--check"}, input);
             mnos::erase(input);
             if (quality) {
                 mnos::erase(secret);
@@ -146,7 +139,7 @@ int main() {
             }
             input = name + ':' + secret + '\n';
             mnos::erase(secret);
-            int result = mnos::run({"/usr/sbin/chpasswd"}, input);
+            int result = mnos::run({"/usr/sbin/chpasswd", "--crypt-method", "YESCRYPT"}, input);
             mnos::erase(input);
             if (result) {
                 mnos::checked({"/usr/sbin/userdel", "--remove", name});

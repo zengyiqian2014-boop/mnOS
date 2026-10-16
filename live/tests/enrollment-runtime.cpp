@@ -54,7 +54,7 @@ struct Session {
         }
         // Classify failures without ever logging captured credential input.
         std::string reason;
-        for (const char *message : {"Use 12-512 characters", "Password quality", "Setup interrupted",
+        for (const char *message : {"Please enter a password", "Setup interrupted",
                                     "Cannot hide password", "Passwords do not match", "Username [mnos]"})
             if (output.find(message, start) != std::string::npos)
                 reason += std::string("; observed ") + message;
@@ -72,7 +72,9 @@ struct Session {
     }
 };
 int main() {
-    const char *marker = "/var/lib/mnos/setup-complete", *name = "mnos_enroll_test";
+    const char *marker = "/var/lib/mnos/setup-complete";
+    const std::string long_name = "mnos_enroll_test_" + std::string(48, 'a');
+    const char *name = long_name.c_str();
     assert(geteuid() == 0 && access(marker, F_OK) != 0 && getpwnam(name) == nullptr);
     try {
         {
@@ -82,23 +84,17 @@ int main() {
             s.exited(1);
             assert(access(marker, F_OK) != 0);
         }
-        unsigned char bytes[16];
-        assert(getrandom(bytes, sizeof bytes, 0) == sizeof bytes);
-        std::string secret = "Qv!";
-        for (unsigned char b : bytes) {
-            char v[3];
-            snprintf(v, sizeof v, "%02x", b);
-            secret += v;
-        }
-        if (mnos::run({"/usr/bin/pwscore", name}, secret + '\n'))
-            throw std::runtime_error("Generated test password rejected by pwscore before enrollment");
+        // An explicit short password must not be rejected by mnOS policy.
+        std::string secret = "q7";
         {
             Session s;
             s.expect("Username [mnos]");
             s.send("bad;name\n");
-            s.expect("Use 1-31");
+            s.expect("Use lower-case");
+            s.send("root\n");
+            s.expect("此用户名已被系统占用，请填写一个其他的");
             s.send(std::string(name) + "\n");
-            s.expect("Password (12+");
+            s.expect("Password:");
             s.send(secret + "\n");
             s.expect("Confirm password");
             s.send(secret + "\n");

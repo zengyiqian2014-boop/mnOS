@@ -85,7 +85,7 @@ inline void checked(const std::vector<std::string> &args, const std::string &inp
         throw std::runtime_error("Command failed: " + args[0]);
 }
 inline bool username(const std::string &s) {
-    if (s.empty() || s.size() > 31 || s[0] < 'a' || s[0] > 'z')
+    if (s.empty() || s[0] < 'a' || s[0] > 'z')
         return false;
     for (char c : s)
         if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '-'))

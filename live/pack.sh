@@ -27,6 +27,7 @@ chmod 755 "$ROOT/usr/lib/mnos/first-boot" "$ROOT/usr/lib/mnos/wallpaper" \
     "$ROOT/usr/bin/mnos-center" "$ROOT/usr/bin/mnos-security-check" "$ROOT/usr/bin/mnos-help" \
     "$ROOT/usr/bin/mnos-net" "$ROOT/usr/sbin/mnos-network-policy" "$ROOT/usr/bin/mnos-tools"
 chmod 755 "$ROOT/usr/lib/mnos/installer" "$ROOT/usr/lib/mnos/start-installer" "$ROOT/usr/lib/mnos/install-system" "$ROOT/usr/lib/mnos/installer-session"
+chmod 755 "$ROOT/usr/lib/mnos/account-preflight"
 if [ -f "$ROOT/usr/share/applications/com.microsoft.VSCode.desktop" ]; then
     sed -i 's/value="code.desktop"/value="com.microsoft.VSCode.desktop"/' "$ROOT/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml"
 fi

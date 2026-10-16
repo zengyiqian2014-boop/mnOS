@@ -4,6 +4,13 @@ Current releases provide two offline installation images. Each is compiled on a
 runner of the matching architecture, with the same mnOS C/C++ tools and catalog.
 Virtual-machine support and common physical-hardware firmware are combined.
 
+The compatibility policy is one installer per CPU architecture, with runtime
+device detection and standard drivers. There is no separate UTM-only image or
+hard-coded machine selection. The same graphics fallback is available on PCs
+and virtual machines: disable Xorg acceleration while retaining the detected
+KMS driver. A workaround for one backend does not remove the others from the
+compatibility work; it also does not establish support for untested hardware.
+
 | Image | Boot target | Original kernel entry |
 | --- | --- | --- |
 | `installer-amd64.iso` | x86_64 VM or PC, BIOS/UEFI | Original x86_64 kernel |
@@ -55,6 +62,11 @@ present in each rootfs are listed in the `device-trees-*.txt` release manifest.
 On Apple Silicon Macs, see the [UTM backend and display guide](UTM.md). UTM's
 Apple Virtualization.framework option is distinct from QEMU/HVF acceleration.
 Neither has been exercised by the Linux-hosted automated VM tests.
+On 2026-10-16 a user confirmed that disabling UTM's Apple Virtualization option
+allowed the existing ARM64 ISO to reach the graphical installer and detect a
+64 GiB VirtIO disk on a Mac. Installation completion, installed-disk boot and
+the exact HVF setting were not established by that screenshot. Apple
+Virtualization.framework remains an unresolved compatibility target.
 
 Install `qemu-system-arm` and `qemu-efi-aarch64` on a Debian/Ubuntu host, then:
 

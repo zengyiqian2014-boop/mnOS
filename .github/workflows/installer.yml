@@ -49,6 +49,13 @@ jobs:
         run: ./live/build.sh installer '${{ matrix.arch }}'
       - name: Compile installer integration test
         run: c++ -std=c++17 -O2 -Wall -Wextra -Werror live/tests/install_vm.cpp -o live/out/install-vm
+      - name: Verify account preflight and compiled enrollment
+        run: |
+          docker run --rm --network none -v "$PWD/live:/source:ro" \
+            'mnos-live:installer-${{ matrix.arch }}' sh -ec '
+            bash /source/tests/account-preflight.sh /usr/lib/mnos/account-preflight
+            c++ -std=c++17 -O2 -Wall -Wextra -Werror /source/tests/enrollment-runtime.cpp -lutil -lcrypt -o /tmp/enrollment-test
+            /tmp/enrollment-test'
       - name: Install to a blank disk and boot without the ISO
         run: |
           set -euo pipefail
@@ -66,6 +73,7 @@ jobs:
           path: |
             live/out/validation/*.log
             live/out/validation/*.ppm
+            live/out/validation/*.txt
           retention-days: 14
       - uses: actions/upload-artifact@v4
         if: always()
@@ -79,5 +87,6 @@ jobs:
             live/out/*.txt
             live/out/validation/*.log
             live/out/validation/*.ppm
+            live/out/validation/*.txt
           compression-level: 0
           retention-days: 14

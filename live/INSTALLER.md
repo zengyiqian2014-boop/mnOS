@@ -34,7 +34,7 @@ Intel/AMD hosts. ARM64 requires 64-bit UEFI. amd64 supports BIOS and UEFI.
    `nomodeset`, which disables VirtIO GPU output on ARM machines without an EFI
    framebuffer.
 2. Choose an unmounted, writable disk of at least 32 GiB. Enter a username and
-   a strong password of at least 12 characters. Optionally delegate network
+   a password of your choice. Optionally delegate network
    administration capabilities to that account.
 3. Review the selected disk and type its full device path to confirm erasure.
    **This version replaces the entire selected disk.** It does not offer
@@ -47,6 +47,17 @@ checks the payload checksum before partitioning, writes GPT/ESP/ext4, creates
 the account without exposing its password in arguments or logs, regenerates
 the hardware-capable initramfs, and installs the disk boot configuration. Root
 login stays locked; the account uses sudo for administrative operations.
+
+mnOS no longer adds a 31-character username cap or the former 12–512-character
+password/strength policy. Occupied account or group names show
+“此用户名已被系统占用，请填写一个其他的”. Before disk confirmation, actual
+`useradd` and YESCRYPT hashing are exercised in a private temporary account
+database. The backend repeats this check before any disk write. Input is not
+truncated or renamed. The current underlying tools accept usernames up to 255
+bytes and nonempty passwords up to 511 bytes; these are component limits, not
+unlimited-input claims. Replacing the authentication stack for longer passwords
+has not been implemented. Choose a strong password even though mnOS no longer
+enforces a length/strength policy during enrollment.
 
 ## Virtual displays
 

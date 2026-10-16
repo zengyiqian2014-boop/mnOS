@@ -106,7 +106,7 @@ jobs:
           if gh release view "$TAG" --json isDraft,targetCommitish > /tmp/existing.json 2>/dev/null; then
             jq -e --arg sha "$SOURCE_SHA" '.isDraft == true and .targetCommitish == $sha' /tmp/existing.json
           else
-            gh release create "$TAG" --target "$SOURCE_SHA" --draft --prerelease --title 'mnOS 完整离线安装包 · 显示兼容修订（amd64 / ARM64）' --notes-file live/INSTALLER-RELEASE.md
+            gh release create "$TAG" --target "$SOURCE_SHA" --draft --prerelease --title 'mnOS 完整离线安装包 · 显示兼容与账号设置修订（amd64 / ARM64）' --notes-file live/INSTALLER-RELEASE.md
           fi
           for file in release/publish/*; do gh release upload "$TAG" "$file" --clobber; done
           gh release view "$TAG" --json assets --jq '.assets[]|[.name,.size,.state]|@tsv'

@@ -1,0 +1,43 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Validate with the installed account/crypt tools in a private temporary prefix.
+# No host accounts or destination disks are changed. Never log input or hashes.
+set -euo pipefail
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin LC_ALL=C.UTF-8
+umask 077
+ulimit -c 0
+fail() { printf '%s\n' "$*" >&2; exit 1; }
+mode=${1:---check}
+case "$mode" in --name|--check|--hash) ;; *) exit 2 ;; esac
+[ "$(id -u)" = 0 ] || fail 'Administrator authentication required.'
+IFS= read -r account || fail '请输入用户名。'
+[ -n "$account" ] || fail '请输入用户名。'
+if getent -- passwd "$account" >/dev/null || getent -- group "$account" >/dev/null; then
+    fail '此用户名已被系统占用，请填写一个其他的'
+fi
+[[ "$account" =~ ^[a-z][a-z0-9_-]*$ ]] || fail '用户名须以小写字母开头，使用字母、数字、下划线或连字符。'
+scratch=$(mktemp -d /run/mnos-account.XXXXXX)
+cleanup() { unset secret; rm -rf -- "$scratch"; }
+trap cleanup EXIT
+mkdir "$scratch/etc"
+for file in passwd shadow group gshadow login.defs; do
+    cp "/etc/$file" "$scratch/etc/$file"
+done
+if ! useradd --prefix "$scratch" --no-create-home --no-log-init --user-group \
+    --shell /bin/bash --groups sudo,netdev,plugdev -- "$account" 2>"$scratch/error"; then
+    fail '当前系统账号组件无法创建此用户名；未截断、改名或修改磁盘。请更换用户名。'
+fi
+[ "$mode" != --name ] || exit 0
+IFS= read -r secret || fail '请输入密码。'
+[ -n "$secret" ] || fail '请输入密码。'
+if IFS= read -r extra; then fail '账号和密码不能包含换行符；未修改磁盘。'; fi
+# No installer length/strength policy. libxcrypt is authoritative; errors are
+# rejected before any destructive operation, never truncated into another key.
+if ! printf '%s:%s\n' "$account" "$secret" |
+    chpasswd --prefix "$scratch" --crypt-method YESCRYPT 2>"$scratch/error"; then
+    fail '当前系统密码哈希组件无法接受此密码；未截断或修改磁盘。当前版本支持至多 511 字节的非空密码。'
+fi
+unset secret
+if [ "$mode" = --hash ]; then
+    awk -F: -v name="$account" '$1 == name {print $2}' "$scratch/etc/shadow"
+fi

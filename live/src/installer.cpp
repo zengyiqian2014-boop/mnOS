@@ -4,6 +4,8 @@
 #include <json-glib/json-glib.h>
 #include <csignal>
 #include <iostream>
+#include <pwd.h>
+#include <grp.h>
 #include <sys/resource.h>
 
 static void marker(const std::string &text) {
@@ -129,16 +131,36 @@ struct Installer {
         std::string account = gtk_entry_get_text(GTK_ENTRY(name));
         std::string secret = gtk_entry_get_text(GTK_ENTRY(password));
         std::string repeat = gtk_entry_get_text(GTK_ENTRY(again));
-        if (!mnos::username(account) || secret.size() < 12 || secret.size() > 512 || secret != repeat) {
+        if (getpwnam(account.c_str()) || getgrnam(account.c_str())) {
             mnos::erase(secret); mnos::erase(repeat);
-            message("用户名以小写字母开头，最多 31 个字母、数字、下划线或连字符。\n密码需为 12–512 字符，且两次输入一致。");
+            message("此用户名已被系统占用，请填写一个其他的");
+            gtk_widget_grab_focus(name);
+            return;
+        }
+        if (!mnos::username(account) || secret.empty() || secret != repeat) {
+            mnos::erase(secret); mnos::erase(repeat);
+            message("用户名须以小写字母开头，使用字母、数字、下划线或连字符。\n请填写密码，并确保两次输入一致。");
             return;
         }
         mnos::erase(repeat);
-        std::string quality_input = secret + '\n';
-        int quality = mnos::run({"/usr/bin/pwscore", account}, quality_input);
-        mnos::erase(quality_input);
-        if (quality) { mnos::erase(secret); message("密码过于简单。请使用较长、难猜的独立密码。"); return; }
+        GError *validation_error = nullptr;
+        auto *validation = g_subprocess_new(static_cast<GSubprocessFlags>(G_SUBPROCESS_FLAGS_STDIN_PIPE |
+            G_SUBPROCESS_FLAGS_STDOUT_SILENCE | G_SUBPROCESS_FLAGS_STDERR_PIPE), &validation_error,
+            "/usr/lib/mnos/account-preflight", "--check", nullptr);
+        std::string validation_input = account + '\n' + secret + '\n';
+        gchar *validation_message = nullptr;
+        bool valid = validation && g_subprocess_communicate_utf8(validation, validation_input.c_str(),
+            nullptr, nullptr, &validation_message, &validation_error) && g_subprocess_get_successful(validation);
+        mnos::erase(validation_input);
+        if (validation) g_object_unref(validation);
+        if (!valid) {
+            mnos::erase(secret);
+            message(validation_message && *validation_message ? validation_message :
+                "账号验证未完成；尚未修改磁盘。请重试。");
+        }
+        g_free(validation_message);
+        if (validation_error) g_error_free(validation_error);
+        if (!valid) return;
         auto *dialog = gtk_dialog_new_with_buttons("确认清空目标磁盘", GTK_WINDOW(window), GTK_DIALOG_MODAL,
                                                   "取消", GTK_RESPONSE_CANCEL, "清空并安装", GTK_RESPONSE_ACCEPT, nullptr);
         auto *content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
@@ -240,6 +262,13 @@ struct Installer {
         gtk_grid_attach(GTK_GRID(form), install, 1, 6, 1, 1);
         status = label("正在发现磁盘…", "muted");
         gtk_box_pack_start(GTK_BOX(body), status, false, false, 0);
+        g_signal_connect_swapped(name, "changed", G_CALLBACK(+[](Installer *s) {
+            const char *account = gtk_entry_get_text(GTK_ENTRY(s->name));
+            bool occupied = *account && (getpwnam(account) || getgrnam(account));
+            gtk_label_set_text(GTK_LABEL(s->status), occupied ?
+                "此用户名已被系统占用，请填写一个其他的" :
+                "安装前会再次确认目标磁盘，确认后才开始写入。");
+        }), this);
         progress = gtk_progress_bar_new(); gtk_box_pack_start(GTK_BOX(body), progress, false, false, 0);
         auto *expander = gtk_expander_new("安装日志 / Installation log");
         log = gtk_text_view_new(); gtk_text_view_set_editable(GTK_TEXT_VIEW(log), false);
@@ -278,4 +307,5 @@ int main(int argc, char **argv) {
     gtk_init(&argc, &argv);
     Installer installer;
     gtk_main();
+    return 0;
 }

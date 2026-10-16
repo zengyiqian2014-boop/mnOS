@@ -24,14 +24,14 @@ disk=$(readlink -f -- "$2")
 exec 9>/run/mnos-install.lock
 flock -n 9 || fail 'Another installation is running.'
 list_disks | jq -e --arg disk "$disk" 'any(.[]; .path == $disk)' >/dev/null || fail 'Disk is mounted, read-only, too small, or not a whole disk.'
-read -r account || fail 'Missing account.'
+IFS= read -r account || fail 'Missing account.'
 IFS= read -r secret || fail 'Missing password.'
 read -r policy || fail 'Missing network policy.'
-[[ "$account" =~ ^[a-z][a-z0-9_-]{0,30}$ ]] || fail 'Invalid account name.'
-! getent passwd "$account" >/dev/null || fail 'Account name is reserved.'
-[ "${#secret}" -ge 12 ] && [ "${#secret}" -le 512 ] || fail 'Password must contain 12–512 characters.'
 case "$policy" in root|delegated) ;; *) fail 'Invalid network policy.' ;; esac
-printf '%s\n' "$secret" | pwscore "$account" >/dev/null || fail 'Password is too weak.'
+password_hash=$(printf '%s\n%s\n' "$account" "$secret" |
+    /usr/lib/mnos/account-preflight --hash) || fail 'Account validation failed before disk changes.'
+unset secret
+[[ "$password_hash" == '$y$'* ]] || fail 'Password hashing did not produce a usable account.'
 medium=/run/live/medium
 [ -r "$medium/live/filesystem.squashfs" ] && [ -r "$medium/live/filesystem.sha256" ] || fail 'Installation payload is missing.'
 echo 'STAGE 5 Checking installation media / 检查安装介质'
@@ -43,7 +43,7 @@ case "$arch" in amd64) efi=x86_64-efi; suffix=x64 ;; arm64) efi=arm64-efi; suffi
 list_disks | jq -e --arg disk "$disk" 'any(.[]; .path == $disk)' >/dev/null || fail 'Destination became unavailable.'
 target=$(mktemp -d /mnt/mnos-install.XXXXXX)
 cleanup() {
-    unset secret
+    unset secret password_hash
     sync
     if mountpoint -q "$target"; then umount -R "$target" || true; fi
     rmdir "$target" 2>/dev/null || true
@@ -76,8 +76,8 @@ for dir in dev proc sys run; do
 done
 echo 'STAGE 65 Creating your account / 创建用户账号'
 chroot "$target" useradd --create-home --shell /bin/bash --groups sudo,netdev,plugdev "$account"
-printf '%s:%s\n' "$account" "$secret" | chroot "$target" chpasswd
-unset secret
+printf '%s:%s\n' "$account" "$password_hash" | chroot "$target" chpasswd --encrypted
+unset password_hash
 chroot "$target" passwd --lock root
 if [ "$policy" = delegated ]; then
     chroot "$target" /usr/sbin/mnos-network-policy netadmin "$account"

@@ -15,6 +15,12 @@ Hypervisor.framework（HVF）执行同架构 CPU 指令。两者不是同一个�
 当前自动验证运行在 Linux 上，涵盖 QEMU 的 KVM / TCG；没有 macOS 执行环境，
 不能据此声称 Apple Virtualization.framework 或 UTM/HVF 已通过实测。
 
+2026-10-16 用户反馈：使用同一份 ARM64 安装 ISO，取消“使用 Apple 虚拟化”后
+成功进入图形安装器。后续截图显示完整的账号设置界面，并识别到 `/dev/vda` 的
+64 GiB 虚拟磁盘。用户侧安装完成及硬盘启动尚待确认；实际 HVF 开关状态没有日志
+佐证。这个结果确认该用户的 QEMU 配置能够启动安装器，不能据此认定 Apple 后端
+的具体故障位置，或宣布其兼容性已修复。
+
 ## 排查配置
 
 1. UTM 新建虚拟机，选择 **虚拟化 → Linux**，取消 **使用 Apple 虚拟化**。
