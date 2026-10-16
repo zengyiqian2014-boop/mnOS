@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Runs inside the root filesystem image only, never on the host.
 set -eu
-case "${MNOS_PROFILE:?}" in hardware|qemu) ;; *) exit 2 ;; esac
+case "${MNOS_PROFILE:?}" in installer|hardware|qemu) ;; *) exit 2 ;; esac
 test "${MNOS_BUILD_ROOT:-}" = 1 || { echo 'Run this script through live/build.sh.' >&2; exit 1; }
 
 mkdir -p /etc/mnos /usr/share/doc/mnos /etc/xdg/xfce4/xfconf/xfce-perchannel-xml
@@ -27,6 +27,7 @@ passwd --lock root
 update-cracklib
 chmod 440 /etc/sudoers.d/50-mnos
 chmod 755 /usr/lib/mnos/first-boot /usr/lib/mnos/wallpaper /usr/bin/mnos-center /usr/bin/mnos-security-check
+chmod 755 /usr/lib/mnos/installer /usr/lib/mnos/start-installer /usr/lib/mnos/install-system
 chmod 755 /usr/bin/mnos-help /usr/bin/mnos-tools
 ln -sf mnos-help /usr/bin/help
 printf '\n# mnOS help: English by default; -cn selects Chinese.\n. /etc/profile.d/mnos-help.sh\n' >> /etc/bash.bashrc
@@ -44,7 +45,7 @@ sed -i 's/^DEFAULT_FORWARD_POLICY=.*/DEFAULT_FORWARD_POLICY="DROP"/' /etc/defaul
 sed -i 's/^max_log_file =.*/max_log_file = 20/' /etc/audit/auditd.conf
 sed -i 's/^num_logs =.*/num_logs = 3/' /etc/audit/auditd.conf
 # Service starts are suppressed by policy-rc.d during package installation.
-systemctl enable NetworkManager lightdm apparmor auditd ufw chrony mnos-first-boot
+systemctl enable NetworkManager lightdm apparmor auditd ufw chrony mnos-first-boot mnos-installer
 systemctl enable apt-daily.timer apt-daily-upgrade.timer fstrim.timer
 systemctl enable tuned
 if [ "$MNOS_PROFILE" = qemu ]; then

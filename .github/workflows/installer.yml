@@ -1,0 +1,50 @@
+name: Unified installation ISO
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/unified-installer]
+    paths: ['live/**', 'native/**', '.github/workflows/installer.yml']
+permissions:
+  contents: read
+concurrency:
+  group: installer-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build unified offline installer and original kernel
+        run: ./live/build.sh installer '${{ matrix.arch }}'
+      - name: Compile installer integration test
+        run: c++ -std=c++17 -O2 -Wall -Wextra -Werror live/tests/install_vm.cpp -o live/out/install-vm
+      - name: Install to a blank disk and boot without the ISO
+        run: |
+          mkdir -p live/out/validation
+          docker run --rm --network none --memory=7g --cpus=4 \
+            -v "$PWD/live/out:/out" mnos-live-builder \
+            /out/install-vm '${{ matrix.arch }}' \
+            '/out/mnOS-2.0-preview-installer-${{ matrix.arch }}.iso' /out/validation
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mnOS-installer-${{ matrix.arch }}
+          path: |
+            live/out/*.iso
+            live/out/*.sha256
+            live/out/*.tsv
+            live/out/*.config
+            live/out/*.txt
+            live/out/validation/*.log
+            live/out/validation/*.ppm
+          compression-level: 0
+          retention-days: 14

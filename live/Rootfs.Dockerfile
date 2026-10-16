@@ -31,7 +31,7 @@ RUN --mount=type=secret,id=build_ca \
     --mount=type=bind,source=src,target=/tmp/mnos-src \
     --mount=type=bind,source=keys,target=/tmp/mnos-keys \
     --mount=type=bind,source=build/native-src,target=/tmp/mnfs-src \
-    case "$PROFILE" in hardware|qemu) ;; *) exit 2 ;; esac \
+    case "$PROFILE" in installer|hardware|qemu) ;; *) exit 2 ;; esac \
     && if [ -r /run/secrets/build_ca ]; then printf 'Acquire::https::CaInfo "/run/secrets/build_ca";\n' > /etc/apt/apt.conf.d/99-mnos-build-ca; fi \
     && test "$(gpg --show-keys --with-colons /tmp/mnos-keys/microsoft-code.asc 2>/dev/null | awk -F: '$1=="fpr" {print $10; exit}')" = BC528686B50D79E339D3721CEB3E94ADBE1229CF \
     && install -m 644 /tmp/mnos-keys/microsoft-code.asc /usr/share/keyrings/microsoft-code.asc \
@@ -39,8 +39,10 @@ RUN --mount=type=secret,id=build_ca \
     && printf 'code code/add-microsoft-repo boolean false\n' | debconf-set-selections \
     && apt-get update && apt-get install -y --no-install-recommends \
        gir1.2-webkit2-4.1 tuned dbus-x11 dbus-user-session xdg-user-dirs librsvg2-common \
-    && xargs -r apt-get install -y --no-install-recommends < "/tmp/packages/$PROFILE.txt" \
-    && sed '/^#/d; /^$/d' "/tmp/packages/$PROFILE-$(dpkg --print-architecture).txt" | xargs -r apt-get install -y --no-install-recommends \
+    && MNOS_PACKAGE_PROFILE="$PROFILE" \
+    && if [ "$PROFILE" = installer ]; then MNOS_PACKAGE_PROFILE=hardware; fi \
+    && xargs -r apt-get install -y --no-install-recommends < "/tmp/packages/$MNOS_PACKAGE_PROFILE.txt" \
+    && sed '/^#/d; /^$/d' "/tmp/packages/$MNOS_PACKAGE_PROFILE-$(dpkg --print-architecture).txt" | xargs -r apt-get install -y --no-install-recommends \
     && xargs -r apt-get install -y --no-install-recommends < /tmp/packages/ctf.txt \
     && sed '/^#/d; /^$/d' /tmp/packages/development.txt | xargs -r apt-get install -y --no-install-recommends \
     && cc -std=c11 -O2 -Wall -Wextra -Werror -fstack-protector-strong -D_FORTIFY_SOURCE=3 \

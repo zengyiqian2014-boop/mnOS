@@ -128,5 +128,12 @@ debsecan
 calamares
 calamares-settings-debian
 shim-signed
+qemu-guest-agent
+spice-vdagent
+open-vm-tools
+open-vm-tools-desktop
+squashfs-tools
+xserver-xorg-video-fbdev
+xserver-xorg-input-libinput
 
 libjson-glib-1.0-0

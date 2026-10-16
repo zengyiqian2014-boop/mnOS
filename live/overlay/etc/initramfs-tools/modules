@@ -1,0 +1,19 @@
+# Early display, input and storage for physical machines and hypervisors.
+virtio_pci
+virtio_mmio
+virtio_gpu
+virtio_blk
+virtio_scsi
+virtio_net
+virtio_input
+nvme
+ahci
+sd_mod
+sr_mod
+usb_storage
+uas
+xhci_pci
+xhci_hcd
+usbhid
+hid_generic
+efivarfs

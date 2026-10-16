@@ -3,7 +3,7 @@
 # Private build-container entry point. Rootfs tar comes from stdin.
 set -euo pipefail
 test -f /.dockerenv || exit 1
-case "${PROFILE:?}" in qemu|hardware) ;; *) exit 2 ;; esac
+case "${PROFILE:?}" in installer|qemu|hardware) ;; *) exit 2 ;; esac
 case "${ARCH:-amd64}" in
     amd64) ARCH=amd64; EFI=x86_64-efi; EFI_SUFFIX=x64; BCJ=(-Xbcj x86); CONSOLE=ttyS0 ;;
     # The packaged squashfs tools do not offer an ARM64 BCJ encoder. ARM32
@@ -26,6 +26,7 @@ done < <(cd /source/overlay && find . -type f -print0)
 chmod 755 "$ROOT/usr/lib/mnos/first-boot" "$ROOT/usr/lib/mnos/wallpaper" \
     "$ROOT/usr/bin/mnos-center" "$ROOT/usr/bin/mnos-security-check" "$ROOT/usr/bin/mnos-help" \
     "$ROOT/usr/bin/mnos-net" "$ROOT/usr/sbin/mnos-network-policy" "$ROOT/usr/bin/mnos-tools"
+chmod 755 "$ROOT/usr/lib/mnos/installer" "$ROOT/usr/lib/mnos/start-installer" "$ROOT/usr/lib/mnos/install-system"
 if [ -f "$ROOT/usr/share/applications/com.microsoft.VSCode.desktop" ]; then
     sed -i 's/value="code.desktop"/value="com.microsoft.VSCode.desktop"/' "$ROOT/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml"
 fi
@@ -36,6 +37,9 @@ if [ "$ARCH" = amd64 ]; then
     grub-file --is-x86-multiboot2 /native/build/mnos.elf
     cp /native/build/mnos.elf "$ISO/boot/mnos.elf"
     cp /native/build/mnos.elf "$ROOT/boot/mnos.elf"
+else
+    cp /native/build/arm64/BOOTAA64.EFI "$ISO/boot/mnos-arm64.efi"
+    cp /native/build/arm64/BOOTAA64.EFI "$ROOT/boot/mnos-arm64.efi"
 fi
 rm -f "$ROOT/etc/grub.d/09_mnos_native"
 install -m 755 /source/overlay/etc/grub.d/41_mnos_native "$ROOT/etc/grub.d/41_mnos_native"
@@ -43,7 +47,7 @@ sed -i -E '/^userAutoLogin:/d; s/^doAutologin:.*/doAutologin: false/; s/^setRoot
 cp /source/overlay/usr/share/doc/mnos/guide.zh.txt "$ROOT/usr/share/doc/mnos/guide.zh.txt"
 # Include the original kernel source and font license with the bootable binary.
 mkdir -p "$ROOT/usr/src/mnos-native"
-cp -a /native/src /native/include /native/tests /native/tools /native/Makefile /native/linker.ld /native/README.md /native/FILESYSTEM.md "$ROOT/usr/src/mnos-native/"
+cp -a /native/src /native/include /native/tests /native/tools /native/arch /native/Makefile /native/linker.ld /native/README.md /native/FILESYSTEM.md "$ROOT/usr/src/mnos-native/"
 mkdir -p "$ROOT/usr/src/mnos-admin"
 cp /source/src/kernel.c /source/src/kernel-admin.c /source/src/kernel-common.h "$ROOT/usr/src/mnos-admin/"
 cp /source/src/net-admin.c "$ROOT/usr/src/mnos-admin/"
@@ -71,13 +75,14 @@ cp "$ROOT/etc/mnos/source-commit" "/out/source-$PROFILE-$ARCH.txt"
 find "$ROOT/usr/lib" "$ROOT/boot" -type f -name '*.dtb' -printf '%P\n' | sort > "/out/device-trees-$PROFILE-$ARCH.txt"
 mksquashfs "$ROOT" "$ISO/live/filesystem.squashfs" -noappend -comp xz \
     "${BCJ[@]}" -b 1M -processors 4 -no-progress
+(cd "$ISO/live" && sha256sum filesystem.squashfs > filesystem.sha256)
 cp /usr/share/grub/unicode.pf2 "$ISO/boot/grub/unicode.pf2"
 # Debian's signed EFI core does not embed the Multiboot2 loader. Keep modules
 # from the SAME rootfs package version available when Secure Boot is off.
 cp -a "$ROOT/usr/lib/grub/$EFI" "$ISO/boot/grub/"
 cat > "$ISO/boot/grub/grub.cfg" <<EOF
 set default=0
-set timeout=5
+set timeout=10
 if [ "\$shim_lock" != "y" ]; then
     insmod all_video
     if loadfont /boot/grub/unicode.pf2; then
@@ -88,30 +93,37 @@ if [ "\$shim_lock" != "y" ]; then
 fi
 set menu_color_normal=light-gray/black
 set menu_color_highlight=black/light-cyan
-menuentry 'mnOS Desktop 2.0 - $PROFILE' {
-    linux /live/vmlinuz boot=live quiet apparmor=1 security=apparmor audit=1 audit_backlog_limit=8192 console=tty0 console=$CONSOLE,115200n8
+menuentry 'Install mnOS - $ARCH (virtual machines and hardware)' {
+    linux /live/vmlinuz boot=live mnos.install=1 apparmor=1 security=apparmor audit=1 audit_backlog_limit=8192 console=$CONSOLE,115200n8 console=tty0
+    initrd /live/initrd.img
+}
+EOF
+cat >> "$ISO/boot/grub/grub.cfg" <<EOF
+menuentry 'Install mnOS - software rendering (keeps display drivers)' {
+    linux /live/vmlinuz boot=live mnos.install=1 apparmor=1 security=apparmor audit=1 audit_backlog_limit=8192 console=$CONSOLE,115200n8 console=tty0
+    initrd /live/initrd.img
+}
+menuentry 'Try desktop / diagnostics (changes are temporary)' {
+    linux /live/vmlinuz boot=live apparmor=1 security=apparmor audit=1 audit_backlog_limit=8192 console=tty0 console=$CONSOLE,115200n8
     initrd /live/initrd.img
 }
 EOF
 if [ "$ARCH" = amd64 ]; then
 cat >> "$ISO/boot/grub/grub.cfg" <<'EOF'
-menuentry 'mnOS native kernel 0.1 - Secure Boot off' {
+menuentry 'Experimental C kernel - not the installer - Secure Boot off' {
     insmod multiboot2
     multiboot2 /boot/mnos.elf
     boot
 }
 EOF
-fi
-cat >> "$ISO/boot/grub/grub.cfg" <<EOF
-menuentry 'mnOS Desktop 2.0 - safe graphics' {
-    linux /live/vmlinuz boot=live nomodeset apparmor=1 security=apparmor audit=1 audit_backlog_limit=8192 console=tty0 console=$CONSOLE,115200n8
-    initrd /live/initrd.img
-}
-menuentry 'mnOS Desktop 2.0 - boot messages' {
-    linux /live/vmlinuz boot=live apparmor=1 security=apparmor audit=1 audit_backlog_limit=8192 console=tty0 console=$CONSOLE,115200n8
-    initrd /live/initrd.img
+else
+cat >> "$ISO/boot/grub/grub.cfg" <<'EOF'
+menuentry 'Experimental C kernel - GOP/serial - Secure Boot off' {
+    chainloader /boot/mnos-arm64.efi
+    boot
 }
 EOF
+fi
 cat > /work/early.cfg <<'EOF'
 search --file --set=root /live/filesystem.squashfs
 set prefix=($root)/boot/grub

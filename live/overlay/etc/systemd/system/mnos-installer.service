@@ -1,0 +1,22 @@
+[Unit]
+Description=mnOS graphical installation
+After=systemd-udev-settle.service systemd-user-sessions.service
+Wants=systemd-udev-settle.service
+ConditionKernelCommandLine=mnos.install=1
+Conflicts=getty@tty1.service
+
+[Service]
+Type=simple
+ExecStart=/usr/lib/mnos/start-installer
+StandardInput=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+StandardOutput=journal+console
+StandardError=journal+console
+Restart=on-failure
+RestartSec=3
+LimitCORE=0
+
+[Install]
+WantedBy=graphical.target

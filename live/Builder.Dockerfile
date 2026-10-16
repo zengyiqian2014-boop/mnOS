@@ -4,6 +4,6 @@ RUN case "$(dpkg --print-architecture)" in \
       arm64) packages='grub-efi-arm64-bin qemu-system-arm qemu-efi-aarch64' ;; \
       *) exit 2 ;; esac \
     && apt-get update && apt-get install -y --no-install-recommends squashfs-tools xorriso \
-    $packages grub-common mtools dosfstools python3 \
+    $packages grub-common mtools dosfstools python3 qemu-utils g++ jq \
     python3-gi gir1.2-gtk-3.0 xvfb fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/*

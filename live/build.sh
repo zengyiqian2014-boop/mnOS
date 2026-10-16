@@ -2,13 +2,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 set -euo pipefail
 ROOT=$(cd -- "$(dirname -- "$0")" && pwd)
-PROFILE=${1:-qemu}
+PROFILE=${1:-installer}
 ARCH=${2:-$(uname -m)}
 case "$ARCH" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; amd64|arm64) ;; *) echo 'Unsupported architecture.' >&2; exit 2 ;; esac
-case "$PROFILE" in qemu|hardware) ;; *) echo "Usage: $0 [qemu|hardware] [amd64|arm64]" >&2; exit 2 ;; esac
+case "$PROFILE" in installer|qemu|hardware) ;; *) echo "Usage: $0 [installer] [amd64|arm64]" >&2; exit 2 ;; esac
 case "$(uname -m):$ARCH" in x86_64:amd64|aarch64:arm64) ;; *) echo 'Build on a matching native architecture runner.' >&2; exit 2 ;; esac
 command -v docker >/dev/null || { echo 'Docker is required.' >&2; exit 1; }
 if [ "$ARCH" = amd64 ]; then make -C "$ROOT/../native" -j"${JOBS:-4}" all host-tools; fi
+if [ "$ARCH" = arm64 ]; then
+    docker build -t mnos-native-arm-builder -f "$ROOT/../native/arch/arm64/Builder.Dockerfile" "$ROOT/../native"
+    docker run --rm --network none -v "$ROOT/../native:/native" -w /native mnos-native-arm-builder \
+        make -f arch/arm64/Makefile -j"${JOBS:-4}" all
+fi
 mkdir -p "$ROOT/build/native-src"
 cp "$ROOT/../native/src/mnfs.c" "$ROOT/../native/include/mnfs.h" "$ROOT/build/native-src/"
 cp "$ROOT/../native/tools/mnfs.c" "$ROOT/build/native-src/mnfs-tool.c"

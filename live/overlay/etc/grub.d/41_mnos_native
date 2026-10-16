@@ -2,6 +2,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Keep Linux first after installation. GRUB itself enforces Secure Boot.
 set -e
+if [ -f /boot/mnos-arm64.efi ]; then
+    . /usr/share/grub/grub-mkconfig_lib
+    device=$(grub-probe --target=device /boot/mnos-arm64.efi)
+    path=$(make_system_path_relative_to_its_root /boot/mnos-arm64.efi)
+    printf "menuentry 'mnOS experimental C kernel - Secure Boot off' {\n"
+    prepare_grub_to_access_device "$device" | sed 's/^/    /'
+    printf '    chainloader %s\n    boot\n}\n' "$path"
+    exit 0
+fi
 test -f /boot/mnos.elf || exit 0
 . /usr/share/grub/grub-mkconfig_lib
 device=$(grub-probe --target=device /boot/mnos.elf)

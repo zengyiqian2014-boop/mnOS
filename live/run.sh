@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT=$(cd -- "$(dirname -- "$0")" && pwd)
 ARCH=${ARCH:-$(uname -m)}
 case "$ARCH" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; amd64|arm64) ;; *) exit 2 ;; esac
-ISO=${1:-$ROOT/out/mnOS-2.0-preview-qemu-$ARCH.iso}
+ISO=${1:-$ROOT/out/mnOS-2.0-preview-installer-$ARCH.iso}
 MEMORY=${MEMORY:-4096}
 CPUS=${CPUS:-2}
 if [ "$ARCH" = arm64 ]; then
@@ -20,6 +20,9 @@ ACCEL=tcg
 CPU=max
 if [ -r /dev/kvm ] && [ -w /dev/kvm ]; then
     case "$(uname -m):$ARCH" in x86_64:amd64|aarch64:arm64) ACCEL=kvm; CPU=host ;; esac
+fi
+if [ "$(uname -s)" = Darwin ]; then
+    case "$(uname -m):$ARCH" in arm64:arm64|x86_64:amd64) ACCEL=hvf; CPU=host ;; esac
 fi
 args=(-accel "$ACCEL" -cpu "$CPU" -smp "$CPUS" -m "$MEMORY" -machine "$MACHINE"
       -boot order=d
@@ -50,6 +53,14 @@ if [ "${UEFI:-0}" = 1 ] || [ "$ARCH" = arm64 ]; then
     else
         CODE=${OVMF_CODE:-/usr/share/OVMF/OVMF_CODE_4M.fd}
         VARS_TEMPLATE=${OVMF_VARS:-/usr/share/OVMF/OVMF_VARS_4M.fd}
+    fi
+    if [ ! -r "$CODE" ] && [ "$(uname -s)" = Darwin ] && command -v brew >/dev/null; then
+        firmware="$(brew --prefix)/share/qemu"
+        if [ "$ARCH" = arm64 ]; then
+            CODE="$firmware/edk2-aarch64-code.fd"; VARS_TEMPLATE="$firmware/edk2-arm-vars.fd"
+        else
+            CODE="$firmware/edk2-x86_64-code.fd"; VARS_TEMPLATE="$firmware/edk2-i386-vars.fd"
+        fi
     fi
     test -r "$CODE" && test -r "$VARS_TEMPLATE" || { echo 'UEFI firmware not found.' >&2; exit 1; }
     NVRAM=$(mktemp)
