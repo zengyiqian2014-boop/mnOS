@@ -16,6 +16,7 @@ install -d -m 755 "$work/root/usr/lib/mnos"
 install -m 755 "$source_root/overlay/usr/lib/mnos/installer-session" "$work/root/usr/lib/mnos/installer-session"
 mksquashfs "$work/root" "$work/zz-installer-display.squashfs" -noappend -all-root -comp xz -processors 2 >/dev/null
 xorriso -osirrox on -indev "$iso" -extract /live/filesystem.sha256 "$work/filesystem.sha256" >/dev/null 2>&1
+chmod u+w "$work/filesystem.sha256"
 (cd "$work" && sha256sum zz-installer-display.squashfs >> filesystem.sha256)
 xorriso -indev "$iso" -outdev "$work/patched.iso" -boot_image any replay \
     -map "$work/zz-installer-display.squashfs" /live/zz-installer-display.squashfs \
