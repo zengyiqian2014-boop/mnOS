@@ -101,7 +101,7 @@ to the experimental kernel, not the Linux installer account setup.
 
 ## Recognizing the current installation media
 
-The first menu entry in installer preview.1 is **Install mnOS - arm64 (virtual
+The first menu entry in installer preview.1 and later is **Install mnOS - arm64 (virtual
 machines and hardware)** or its **amd64** equivalent. A three-entry menu reading
 `mnOS Desktop 2.0 - hardware`, `safe graphics` and `boot messages` is the older
 desktop boot configuration. Shut down, inspect every attached virtual optical

@@ -2,7 +2,7 @@
 
 [English](README.md) | [中文](README.zh.md)
 
-[Download the amd64 / ARM64 offline installers](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.1)
+[Download the amd64 / ARM64 offline installers](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.2)
 · [Boot and validation record](live/VALIDATION.md)
 
 mnOS has an original C/assembly kernel for **x86_64 and ARM64**, plus a separate

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Host-only test: the published ISO, real GUI input, a new blank disk, then no ISO.
+#include <algorithm>
 #include <chrono>
 #include <csignal>
 #include <cstring>
@@ -67,12 +68,18 @@ static bool panel_visible(const fs::path &path) {
     std::ifstream f(path,std::ios::binary); std::string type; int w=0,h=0,max=0;
     f >> type >> w >> h >> max; f.get();
     if (!f || type!="P6" || w<640 || w>8192 || h<480 || max!=255) return false;
-    size_t dark=0;
+    size_t dark=0, launcher_color=0;
     for (int y=0;y<25;++y) for (int x=0;x<w;++x) {
         unsigned char rgb[3]; f.read(reinterpret_cast<char *>(rgb),3); if (!f) return false;
         if (y>=5 && rgb[0]<55 && rgb[1]<55 && rgb[2]<55) ++dark;
+        // A black compositor placeholder also looks like a dark panel. Require
+        // painted launcher icons at the left, not just a dark horizontal band.
+        if (y>=5 && x<180 &&
+            std::max({rgb[0],rgb[1],rgb[2]}) > 100 &&
+            std::max({rgb[0],rgb[1],rgb[2]}) - std::min({rgb[0],rgb[1],rgb[2]}) > 40)
+            ++launcher_color;
     }
-    return dark>size_t(w)*20*3/4;
+    return dark>size_t(w)*20*3/4 && launcher_color>60;
 }
 static bool grub_menu_visible(const fs::path &path) {
     std::ifstream f(path,std::ios::binary); std::string type; int w=0,h=0,max=0;

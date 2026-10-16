@@ -1,6 +1,6 @@
 # mnOS
 
-[下载 amd64 / ARM64 离线安装 ISO](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.1)
+[下载 amd64 / ARM64 离线安装 ISO](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.2)
 · [启动与验证记录](live/VALIDATION.md)
 
 **每个架构一份安装镜像**，同时包含虚拟机驱动与常见实体硬件固件。

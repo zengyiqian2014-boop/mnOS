@@ -1,5 +1,83 @@
 # Validation record
 
+## Installer preview.2 — 2026-10-16
+
+The complete installation media were validated in
+[run 38890080005](https://github.com/zengyiqian2014-boop/mnOS/actions/runs/38890080005).
+The base system comes from `03dc433830e2613589f014e549d54f2aad5be2bd`;
+the final installer overlay and verification code come from
+`5b253da1eedd1f96c0e885e548b4bd23eafcce3c`.
+Both architecture image-build steps and the original-kernel randomness job
+succeeded in [source build 38884198603](https://github.com/zengyiqian2014-boop/mnOS/actions/runs/38884198603).
+The final verification checks each remastered ISO's SHA256 before and after
+its VM tests. The base filesystem and installer overlay are also listed in
+the ISO's internal checksum manifest.
+
+| Check | amd64 | ARM64 |
+| --- | --- | --- |
+| Select the second boot entry and render the compatibility installer | Passed, KVM | Passed, TCG |
+| GUI installation to a blank 40 GiB disk, with a 64-character username and a two-character test password | Passed, KVM | Passed, TCG |
+| Remove ISO, reset UEFI variables, and boot the installed VirtIO disk | Passed, KVM | Passed, TCG |
+| Move the installed disk to NVMe and boot with fresh UEFI variables | Passed, KVM | Passed, TCG |
+| Actual serial and graphical authentication, ordinary-user session, and sudo shutdown | Passed on both disk controllers | Passed on both disk controllers |
+| Rendered launcher panel in the saved desktop capture | Observed on both disk controllers | Observed on NVMe; first VirtIO capture incomplete |
+| BIOS boot from installed disk to the graphical login screen | Passed, KVM | Not applicable |
+
+These are offline QEMU 10 tests with two guest CPUs, 4 GiB RAM, VirtIO graphics
+and a virtual RNG. ARM uses the `virt-9.1` machine model; this is not a claim to
+have tested the UTM application or the QEMU 9.1 executable. Acceleration for each
+phase is recorded in `hypervisor.txt` in the published validation archive.
+Manual review found that the first ARM VirtIO desktop capture contains a black
+rectangle and an unpainted top band. Authentication, the desktop processes and
+sudo succeeded, and the subsequent NVMe boot shows the launcher panel, but the
+VirtIO capture does not establish a fully rendered first-boot desktop. The
+original pixel check accepted this incomplete frame because it only checked
+for a dark top band. The repository now also requires painted launcher icons;
+that stricter check was not used for this release's verification run. The
+visual limitation is retained in the release notes and evidence archive.
+The test credentials exist only in the disposable VM; the installer ships no
+default account password. Installed-system assertions check the ext4 root,
+absence of `boot=live`, a normal user ID, the installed-system marker, the
+selected NET_ADMIN/NET_RAW delegation, and Firefox, VS Code, nano and nmap
+executables. They do not establish interactive testing of every application.
+
+Account preflight and compiled enrollment checks passed against both base
+filesystems: long names, short and 511-byte passwords, rejection beyond the
+hash component's boundary, occupied account/group names, hidden password input,
+hashed storage and an unchanged system account database during preflight.
+The installer no longer imposes its former 31-character username or 12–512
+password/strength policy. The underlying tools still accept usernames up to
+255 bytes and nonempty passwords up to 511 bytes; unlimited authentication
+input has not been implemented.
+
+Console login now lets `login`/PAM collect the username directly, avoiding
+agetty's separate 42-byte prompt restriction. Both virtual-console and serial
+service configurations are installed to the target disk. Authentication is
+retained, with no autologin or PAM bypass. A separate C++ PTY test in disposable
+Debian containers passed long-name login, wrong-password rejection, hidden
+input and entry into an ordinary-user shell.
+
+The compatibility entry has its own `mnos.graphics=compat` path: Xorg modesetting
+with glamor/GLX, hardware cursors and page flipping disabled, while retaining
+the KMS driver. The normal installer retries that configuration after an Xorg
+session failure. Installation-session screen blanking and display power saving
+remain disabled. Original-kernel RNG checks passed x86 modern/legacy VirtIO
+enrollment with RDRAND disabled, ARM RNDR enrollment, and expected refusal when
+no secure entropy source is available.
+
+`SOURCE_COMMIT.txt` records the final source above; `PAYLOAD_COMMIT.txt` records
+the base system. Release filenames contain `installer-preview.2`. The two full
+ISOs install all bundled components in one operation; manifests, hashes and
+`installation-validation.tar.gz` are supporting records, not separate packages.
+
+Desktop applications run on Xfce/Debian/Linux. The original C/assembly kernel
+remains an independent experimental entry. The user confirmed that disabling
+UTM's Apple Virtualization option allowed the previous ARM64 ISO to reach its
+installer on a Mac; that report does not establish completed installation or
+Apple Virtualization.framework compatibility. macOS HVF, Apple Virtualization,
+physical PCs/boards and universal hardware support are not certified by these
+Linux-hosted tests.
+
 ## Installer preview.1 — 2026-10-16
 
 [Verification run 38859355432](https://github.com/zengyiqian2014-boop/mnOS/actions/runs/38859355432)
