@@ -18,7 +18,7 @@ jobs:
       - name: Install native build and VM test dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc g++ make clang lld llvm qemu-system-x86 qemu-system-arm grub-pc-bin grub-efi-amd64-bin xorriso
+          sudo apt-get install -y gcc g++ make clang lld llvm qemu-system-x86 qemu-system-arm grub-pc-bin grub-efi-amd64-bin xorriso mtools dosfstools
       - name: Compile both original kernels and test real account enrollment
         run: |
           set -euo pipefail
