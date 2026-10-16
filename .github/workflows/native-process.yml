@@ -1,0 +1,34 @@
+name: Native process lifecycle
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['native/**', '.github/workflows/native-process.yml']
+  pull_request:
+    paths: ['native/**', '.github/workflows/native-process.yml']
+permissions:
+  contents: read
+jobs:
+  process:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build native compiler and QEMU environment
+        run: docker build -t mnos-native-builder -f native/Builder.Dockerfile .
+      - name: Test native x86 and ARM process lifecycle
+        run: |
+          docker run --rm --network none -v "$PWD/native:/native" -w /native \
+            mnos-native-builder bash tests/process_ci.sh
+      - name: Preserve test evidence and native diagnostic media
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-process-validation
+          path: |
+            native/build/process-*.log
+            native/build/exec-x86-boot.log
+            native/build/native-demo.iso
+            native/build/arm64/arm64-*.log
+            native/build/arm64/native-arm64-demo.iso
+          retention-days: 14

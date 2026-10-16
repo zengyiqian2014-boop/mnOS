@@ -14,7 +14,9 @@
 #endif
 #define USER_DATA (USER_BASE + PAGE)
 #define USER_STACK (USER_BASE + 4 * PAGE)
-#define MAX_TASKS 8
+#define PROBE_TASKS 8
+#define APP_TASK PROBE_TASKS
+#define MAX_TASKS (PROBE_TASKS + 1)
 #define SELFTEST_COUNT 8
 #define PIT_HZ 100
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
@@ -173,10 +175,13 @@ uint64_t memory_limit(void);
 uint64_t page_alloc_between(uint64_t, uint64_t);
 const void *firmware_pointer(uint64_t, size_t);
 uint64_t page_alloc(void);
+uint64_t page_try_alloc(void);
 void page_free(uint64_t);
 uint64_t pages_free(void);
 uint64_t pages_total(void);
 uint64_t address_space(uint64_t code, uint64_t data, uint64_t stack);
+uint64_t address_space_try(uint64_t code, uint64_t data, uint64_t stack);
+void address_space_destroy(uint64_t root);
 void interrupts_init(void);
 void tasks_init(void);
 _Noreturn void enter_frame(struct irq_frame *);
@@ -191,6 +196,7 @@ bool files_command(const char *, void (*)(const char *));
 void ui_tick(void);
 void ui_key(char);
 void ui_pointer(int, int, bool);
+void ui_program_output(const char *);
 void ui_panic(const char *);
 void pci_scan(void);
 bool graphics_available(void);

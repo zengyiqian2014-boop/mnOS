@@ -8,3 +8,10 @@
 native_exec_start:
 .incbin "build/arm64/user.elf"
 native_exec_end:
+.global native_hello_start,native_hello_end,native_spin_start,native_spin_end
+native_hello_start:
+.incbin "build/arm64/user/hello.elf"
+native_hello_end:
+native_spin_start:
+.incbin "build/arm64/user/spin.elf"
+native_spin_end:

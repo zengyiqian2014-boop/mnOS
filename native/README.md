@@ -45,12 +45,15 @@ structures do not mean literally unlimited CPUs: firmware, APIC IDs, RAM and
 tested scale still impose limits.
 
 CPU hotplug, task migration, NUMA placement, native USB/network/Wi-Fi/audio,
-AHCI/NVMe, GPU acceleration, filesystem-backed exec, arbitrary-size executable
-mapping and a POSIX/Linux ABI are not implemented. ELF programs are still fixed
-demonstration/test programs per CPU; this is not Linux binary compatibility.
+AHCI/NVMe, GPU acceleration, arbitrary-size executable mapping and a POSIX/Linux
+ABI are not implemented. `exec PATH` can now run a static native ELF from MNFS,
+with one application slot on the boot CPU alongside the fixed test workers.
+This is not Linux binary compatibility.
 Native authentication covers the local graphical/serial console and its file and
 settings operations; it is separate from Linux PAM/sudo and is not POSIX UID/ACL
-support for arbitrary native programs. Speculation mitigations and a full
+support for arbitrary native programs. Application ownership is captured at
+launch; no file or account system calls are exposed to applications yet.
+Speculation mitigations and a full
 security audit remain outstanding. No performance advantage over RHEL/Linux or
 security certification is claimed. Firefox, CTF tools and common hardware
 drivers run in the separate Linux entry on both release ISOs.
@@ -79,6 +82,9 @@ kernel test
 kernel display 1600x900
 kernel wallpaper 1
 kernel save-settings
+kernel exec /ram/bin/hello
+kernel ps
+kernel kill 2
 ```
 
 Display modes: 1024×768, 1280×720, 1600×900, 1920×1080 and 2560×1440, subject to
@@ -111,6 +117,7 @@ authentication imposes a delay; root sessions expire after five minutes.
 | `passwd` | Own account, after current-password verification |
 | `su` / `exit` | Authenticate root / return to previous ordinary session |
 | `logout` or `lock` | Lock the session; subsequent input requires login |
+| `exec PATH`, `ps`, `kill PID` | Signed-in user; executable must be readable under the console path policy |
 | `useradd NAME`, `passwd NAME`, volume lock/unlock, snapshot and collection | Root |
 
 Up to 16 native accounts are currently stored. `/root` is private; `/system`
@@ -237,8 +244,83 @@ CPUs/GIC3/EL2, 8 GiB RAM, UEFI/FDT and UEFI/ACPI). These assert actual user-mode
 isolation and preemption, not only successful parsing. This does not test real
 hardware or Apple Virtualization.framework.
 
-The next dependencies for a native application environment are filesystem-backed
-exec with task cleanup, process credentials and file descriptors, user file I/O,
-larger mappings, drivers and an application ABI/toolchain. The Linux installer
+The next dependencies for a broader native application environment are file
+descriptors, user file I/O, larger mappings, drivers and a general application
+ABI/toolchain. The Linux installer
 release remains separate; this source milestone does not switch its default
 kernel or make Firefox/VS Code native applications.
+
+## Run native programs from MNFS
+
+Sign in to the native console, then run:
+
+```text
+exec /ram/bin/hello
+exec /ram/bin/spin
+ps
+kill 2
+```
+
+`hello` checks initialized data and zero-filled BSS, writes to the graphical
+console/serial output, sleeps for two ticks, then exits with status 7. `spin`
+does not yield; the timer still schedules other tasks and accepts console input.
+Use the actual PID shown by `ps` for `kill`. `kernel exec`, `kernel ps` and
+`kernel kill` are equivalent forms. Neither command requires a root session.
+
+The built-in examples are provisioned into `/ram/bin` at boot and read back
+through the same MNFS path as disk applications. To add a separately compiled
+program to a **detached** MNFS image on the host:
+
+```sh
+make -C native user-programs host-tools
+# For ARM: make -C native -f arch/arm64/Makefile user-programs
+native/build/mnfs disk.img mkdir /bin
+native/build/mnfs disk.img import /bin/hello native/build/user/hello.elf
+# Use native/build/arm64/user/hello.elf for an ARM guest.
+```
+
+`import` accepts a regular host file and creates a new MNFS path; it refuses to
+replace an existing destination. Never modify an image while a VM has it open.
+After booting the native kernel with that disk attached, `exec /disk/bin/hello`
+runs the disk file. Permissions are checked before reading: `/system`, another
+user's home and `/root` remain inaccessible to ordinary users. MNFS does not yet
+store an executable bit, so readable native ELF files are executable.
+
+Exit, user faults, `kill`, logout and switching accounts retire the application.
+The scheduler changes address spaces before freeing the private page tables and
+three payload pages; kernel mappings remain shared and owned by the kernel.
+Payload pages are wiped before release. Malformed ELF and allocation failure
+leave the slot available and release partially allocated pages. Unknown app
+system calls return -38; an application fault terminates that application instead
+of panicking the kernel. Existing boot probes keep their strict panic-on-failure
+behavior. An application does not gain kernel privilege when launched by root.
+
+Current limits: **one application**, pinned to the boot CPU, no command-line
+arguments, at most 64 KiB of ELF file input, one 4 KiB RX segment and one 4 KiB
+RW/NX segment plus one stack page. No dynamic linker, file syscalls, fork, exec
+replacement, wait API, signals or Linux/POSIX binary compatibility. These are
+native development facilities, not a replacement for the Linux desktop yet.
+
+Application ABI (`user/api.h`): x86 uses `int 0x80`, RAX call/result and RDI/RSI
+arguments; ARM uses `svc #0`, X8 call, X0 result/first argument and X1 second
+argument. Calls: 0 console write (up to 256 bytes within one mapped page), 1 yield,
+2 tick count, 3 exit (low eight bits of status), 5 sleep (1–1000 ticks). Errors:
+-14 bad user address, -22 invalid length/delay, -38 unsupported call. Output
+controls are sanitized; the buffer is read through a validated physical alias.
+
+Reproducible native-only QA (C/C++/assembly/shell, no Python test driver):
+
+```sh
+docker build -t mnos-native-builder -f native/Builder.Dockerfile .
+docker run --rm --network none -v "$PWD/native:/native" -w /native \
+  mnos-native-builder bash tests/process_ci.sh
+```
+
+The lifecycle VM test imports external ELF files into a new disposable MNFS disk,
+enrolls an ordinary account, exercises repeated launches, malformed/wrong-machine
+and W+X rejection, protected paths, invalid pointers, unknown calls, code-write
+faults, preemption of a non-yielding loop, PID-based termination and logout.
+It compares free-page counts and boots the same disk again to execute the
+persistent file after login. Both x86_64 BIOS/IDE and ARM64 UEFI/VirtIO were
+tested with two CPUs under QEMU TCG; the existing seven boot configurations and
+ASan/UBSan allocator/filesystem/authentication suites also passed locally.

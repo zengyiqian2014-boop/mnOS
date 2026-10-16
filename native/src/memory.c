@@ -50,9 +50,13 @@ uint64_t page_alloc_between(uint64_t min, uint64_t max) {
     return p;
 }
 uint64_t page_alloc(void) {
+    uint64_t p = page_try_alloc();
+    if (!p) panic("physical memory exhausted");
+    return p;
+}
+uint64_t page_try_alloc(void) {
     uint64_t p = direct_ready ? page_alloc_between(1ULL << 32, physical.limit) : 0;
     if (!p) p = page_alloc_between(0, 1ULL << 32);
-    if (!p) panic("physical memory exhausted");
     return p;
 }
 void page_free(uint64_t p) {
@@ -255,7 +259,17 @@ void memory_init(void) {
     log_write(" huge_1G="); log_dec(huge_gigabyte); log_write("\n");
 }
 uint64_t address_space(uint64_t code, uint64_t data, uint64_t stack) {
-    uint64_t pml4 = page_alloc(), pdpt = page_alloc(), pd = page_alloc(), pt = page_alloc();
+    uint64_t root = address_space_try(code, data, stack);
+    if (!root) panic("task page tables exhausted");
+    return root;
+}
+uint64_t address_space_try(uint64_t code, uint64_t data, uint64_t stack) {
+    uint64_t pages[4];
+    for (unsigned i = 0; i < 4; ++i) {
+        pages[i] = page_try_alloc();
+        if (!pages[i]) { while (i) page_free(pages[--i]); return 0; }
+    }
+    uint64_t pml4 = pages[0], pdpt = pages[1], pd = pages[2], pt = pages[3];
     memcpy(table(pml4), table(kernel_pml4), PAGE);
     table(pml4)[0] = pdpt | 7;
     memcpy(table(pdpt), table(kernel_pdpt), 4 * sizeof(uint64_t));
@@ -265,4 +279,12 @@ uint64_t address_space(uint64_t code, uint64_t data, uint64_t stack) {
     table(pt)[1] = data | 7 | NX;
     table(pt)[3] = stack | 7 | NX;
     return pml4;
+}
+/* Only private user tables are owned. Low kernel and direct-map tables are shared.
+ * Caller must first switch away from this root; no task migrates between CPUs. */
+void address_space_destroy(uint64_t root) {
+    uint64_t pdpt = table(root)[0] & ADDRESS;
+    uint64_t pd = table(pdpt)[4] & ADDRESS;
+    uint64_t pt = table(pd)[0] & ADDRESS;
+    page_free(pt); page_free(pd); page_free(pdpt); page_free(root);
 }

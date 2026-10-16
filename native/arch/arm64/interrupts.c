@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "platform.h"
+#include "process.h"
 static void wait_clear(uintptr_t p, uint32_t mask) {
     for (unsigned n = 0; n < 10000000; ++n)
         if (!(mmio_read(p) & mask))
@@ -70,7 +71,7 @@ void tasks_init_for(struct cpu *c) {
     size_t size = (uintptr_t)arm_user_end - (uintptr_t)arm_user_start;
     if (size > PAGE)
         panic("EL0 probe size");
-    for (unsigned i = 0; i < MAX_TASKS; ++i) {
+    for (unsigned i = 0; i < PROBE_TASKS; ++i) {
         struct task *t = &c->work[i];
         t->code = page_alloc();
         t->data = page_alloc();
@@ -103,6 +104,7 @@ static void select(struct irq_frame *f) {
                 *f = tasks[i].frame;
                 sys_write(ttbr0_el1, tasks[i].cr3);
                 __asm__ volatile("dsb ish; tlbi vmalle1; dsb ish; isb" ::: "memory");
+                process_reap();
                 return;
             }
         }
@@ -119,7 +121,8 @@ struct irq_frame *arm_exception(struct irq_frame *f, uint64_t vector) {
         if ((id & 0xffffff) == platform.timer_irq) {
             arm_timer();
             ++ticks;
-            if (user) {
+            process_tick();
+            if (user && current_task < 2) {
                 uint64_t count = *(uint64_t *)tasks[current_task].data;
                 if (current_task < 2 && count > cpu_this()->probe_counts[current_task])
                     cpu_this()->probe_counts[current_task] = count;
@@ -142,6 +145,12 @@ struct irq_frame *arm_exception(struct irq_frame *f, uint64_t vector) {
         return f;
     }
     if (user && ec == 0x15) {
+        if (current_task == APP_TASK) {
+            bool reschedule;
+            f->x[0] = process_syscall(f->x[8], f->x[0], f->x[1], &reschedule);
+            if (reschedule) select(f);
+            return f;
+        }
         uint64_t call = f->x[8];
         if (call == 0) { /* No arbitrary user dereference: mapped data page only. */
             if (f->x[0] < USER_DATA || f->x[0] >= USER_DATA + PAGE)
@@ -161,6 +170,11 @@ struct irq_frame *arm_exception(struct irq_frame *f, uint64_t vector) {
         return f;
     }
     if (user) {
+        if (current_task == APP_TASK) {
+            process_exit(128 + (int)ec, "fault");
+            select(f);
+            return f;
+        }
         unsigned i = current_task;
         unsigned dfsc = esr & 63;
         bool translation = dfsc >= 4 && dfsc <= 7, permission = dfsc >= 12 && dfsc <= 15;

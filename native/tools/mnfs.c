@@ -33,6 +33,7 @@ int main(int argc, char **argv) {
     if (argc < 3) {
         fprintf(stderr, "Usage: mnfs format NEW_IMAGE SIZE_MiB\n"
             "       mnfs IMAGE ls|check|cat|stat|mkdir|create|rm|write|writeat|truncate|mv|snapshot [PATH] [VALUE]\n"
+            "       mnfs IMAGE import NEW_PATH HOST_FILE (creates, never replaces)\n"
             "Examples: mnfs disk.img writeat /large 4294967294 cross4g\n"
             "          mnfs disk.img snapshot save\n");
         return 2;
@@ -74,6 +75,27 @@ int main(int argc, char **argv) {
                 if (fwrite(buffer, 1, got, stdout) != got) { e = MN_IO; break; }
                 offset += got;
             }
+        } else if (!strcmp(command, "import") && argc == 5) {
+            int source = open(argv[4], O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+            struct stat st;
+            if (source < 0 || fstat(source, &st) || !S_ISREG(st.st_mode)) e = MN_INVALID;
+            else {
+                e = mnfs_create(&f, p, false);
+                if (!e) {
+                    unsigned char buffer[65536]; uint64_t offset = 0;
+                    for (;;) {
+                        ssize_t got = read(source, buffer, sizeof buffer);
+                        if (got < 0 && errno == EINTR) continue;
+                        if (got < 0) { e = MN_IO; break; }
+                        if (!got) break;
+                        e = mnfs_write(&f, p, offset, buffer, (size_t)got);
+                        if (e) break;
+                        offset += (size_t)got;
+                    }
+                    if (e) (void)mnfs_remove(&f, p);
+                }
+            }
+            if (source >= 0) close(source);
         } else if (!strcmp(command, "mkdir") || !strcmp(command, "create")) e = mnfs_create(&f, p, command[0] == 'm');
         else if (!strcmp(command, "rm")) e = mnfs_remove(&f, p);
         else if (!strcmp(command, "mv") && argc == 5) e = mnfs_rename(&f, p, argv[4]);

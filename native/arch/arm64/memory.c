@@ -42,6 +42,13 @@ uint64_t page_alloc_between(uint64_t low, uint64_t high) {
 uint64_t page_alloc(void) {
     return page_alloc_between(0, physical.limit);
 }
+uint64_t page_try_alloc(void) {
+    uint64_t flags = spin_lock(&allocator_lock);
+    uint64_t p = phys_alloc(&physical, 0, physical.limit);
+    spin_unlock(&allocator_lock, flags);
+    if (p) memset((void *)p, 0, PAGE);
+    return p;
+}
 void page_free(uint64_t p) {
     uint64_t flags = spin_lock(&allocator_lock);
     bool ok = phys_release(&physical, p);
@@ -188,10 +195,32 @@ void memory_init(void) {
     log_write(" TiB\n");
 }
 uint64_t address_space(uint64_t code, uint64_t data, uint64_t stack) {
-    uint64_t *root = (void *)page_alloc();
+    uint64_t root = address_space_try(code, data, stack);
+    if (!root) panic("task page tables exhausted");
+    return root;
+}
+uint64_t address_space_try(uint64_t code, uint64_t data, uint64_t stack) {
+    uint64_t pages[4];
+    for (unsigned i = 0; i < 4; ++i) {
+        pages[i] = page_try_alloc();
+        if (!pages[i]) { while (i) page_free(pages[--i]); return 0; }
+    }
+    uint64_t *root = (void *)pages[0], *l1 = (void *)pages[1];
+    uint64_t *l2 = (void *)pages[2], *l3 = (void *)pages[3];
     memcpy(root, (void *)arm_root, PAGE);
-    arm_map(root, USER_BASE, code, RAM | USER | RO | PXN);
-    arm_map(root, USER_DATA, data, RAM | USER | PXN | UXN);
-    arm_map(root, USER_STACK, stack, RAM | USER | PXN | UXN);
+    root[(USER_BASE >> 39) & 511] = pages[1] | 3;
+    l1[(USER_BASE >> 30) & 511] = pages[2] | 3;
+    l2[(USER_BASE >> 21) & 511] = pages[3] | 3;
+    l3[(USER_BASE >> 12) & 511] = code | 3 | RAM | USER | RO | PXN;
+    l3[(USER_DATA >> 12) & 511] = data | 3 | RAM | USER | PXN | UXN;
+    l3[(USER_STACK >> 12) & 511] = stack | 3 | RAM | USER | PXN | UXN;
     return (uintptr_t)root;
+}
+/* The selected TTBR0 must already be different and its TLB invalidated. */
+void address_space_destroy(uint64_t p) {
+    uint64_t *root = (void *)p;
+    uint64_t a = root[(USER_BASE >> 39) & 511] & ADDR;
+    uint64_t b = ((uint64_t *)a)[(USER_BASE >> 30) & 511] & ADDR;
+    uint64_t c = ((uint64_t *)b)[(USER_BASE >> 21) & 511] & ADDR;
+    page_free(c); page_free(b); page_free(a); page_free(p);
 }

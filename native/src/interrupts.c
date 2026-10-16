@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "kernel.h"
 #include "exec.h"
+#include "process.h"
 extern char native_exec_start[], native_exec_end[];
 #define idle_wakes (cpu_this()->idle_wakes)
 #define probe_counts (cpu_this()->probe_counts)
@@ -120,6 +121,7 @@ static struct irq_frame *schedule(struct irq_frame *frame) {
                 current_task = id;
                 ++tasks[id].switches;
                 cr3_set(tasks[id].cr3);
+                process_reap();
                 return &tasks[id].frame;
             }
             if (tasks[id].wake_tick)
@@ -148,6 +150,11 @@ static void pass(const char *what) {
     }
 }
 static struct irq_frame *syscall(struct irq_frame *f) {
+    if (current_task == APP_TASK) {
+        bool reschedule;
+        f->rax = process_syscall(f->rax, f->rdi, f->rsi, &reschedule);
+        return reschedule ? schedule(f) : f;
+    }
     struct task *t = &tasks[current_task];
     switch (f->rax) {
     case 0: {
@@ -201,6 +208,10 @@ struct irq_frame *irq_dispatch(struct irq_frame *f) {
         __asm__ volatile("clac" ::: "memory");
     if (f->vector < 32) {
         if ((f->cs & 3) == 3) {
+            if (current_task == APP_TASK) {
+                process_exit(128 + (int)f->vector, "fault");
+                return schedule(f);
+            }
             struct task *t = &tasks[current_task];
             uint64_t addr = read_cr2();
             if (f->vector == 14 && t->probe == 1 && addr == 0x100000 && (f->error & 5) == 5)
@@ -252,6 +263,7 @@ struct irq_frame *irq_dispatch(struct irq_frame *f) {
     }
     if (f->vector == 32 || f->vector == 64) {
         ++ticks;
+        process_tick();
         for (unsigned i = 0; i < MAX_TASKS; ++i)
             if (tasks[i].wake_tick && tasks[i].wake_tick <= ticks) {
                 tasks[i].wake_tick = 0;
@@ -286,5 +298,6 @@ struct irq_frame *irq_dispatch(struct irq_frame *f) {
         outb(0xa0, 0x20);
     if (f->vector >= 32 && f->vector < 48)
         outb(0x20, 0x20);
-    return f->vector == 32 || f->vector == 64 ? schedule(f) : f;
+    return f->vector == 32 || f->vector == 64 ||
+           (current_task == APP_TASK && process_dying()) ? schedule(f) : f;
 }

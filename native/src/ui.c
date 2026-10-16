@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "kernel.h"
+#include "process.h"
 #include "mnfs.h"
 #include "auth.h"
 struct glyph {
@@ -160,6 +161,7 @@ static void add_number(const char *label, uint64_t n) {
     row[i] = 0;
     add_line(row);
 }
+void ui_program_output(const char *s) { add_line(s); dirty = true; }
 static void setting_message(const char *s) {
     size_t n = strlen(s); if (n >= sizeof setting_status) n = sizeof setting_status - 1;
     memcpy(setting_status, s, n); setting_status[n] = 0; dirty = true;
@@ -217,6 +219,7 @@ static void help(bool chinese) {
         add_line("kernel wallpaper 0|1|2：流线、网格、纯色");
         add_line("kernel save-settings：保存显示设置到 MNFS 磁盘");
         add_line("fs / ls / stat / cat：文件系统信息、列表及读取");
+        add_line("exec /ram/bin/hello；ps；kill PID");
         add_line("write 路径 内容；writeat 路径 偏移 内容");
         add_line("mkdir / rm / mv / truncate：创建、删除、移动、截断");
         add_line("disk unlock|lock：root 开启或关闭 /disk 写入");
@@ -230,6 +233,7 @@ static void help(bool chinese) {
         add_line("kernel display WIDTHxHEIGHT / wallpaper 0|1|2 / save-settings");
         add_line("help  uname  mem  tasks  pci  test  uptime  clear  reboot  shutdown");
         add_line("fs  ls [PATH]  stat PATH  cat PATH [OFFSET]");
+        add_line("exec PATH: run a native ELF; ps: process; kill PID: stop your process");
         add_line("write PATH TEXT / writeat PATH OFFSET TEXT / truncate PATH SIZE");
         add_line("mkdir PATH / rm PATH / mv FROM TO / gc [/ram|/disk]");
         add_line("disk unlock|lock; snapshot save|restore|drop [/ram|/disk]");
@@ -490,6 +494,7 @@ void ui_tick(void) {
     if (!ready)
         return;
     auth_tick(ticks/PIT_HZ);
+    process_session_check();
     static uint32_t last_user=UINT32_MAX;
     if(auth_uid()!=last_user) {
         last_user=auth_uid();history_count=0;auth_wipe(command,sizeof command);command_length=0;

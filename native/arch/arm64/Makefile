@@ -5,6 +5,7 @@ LLD ?= ld.lld-19
 EFI_LD ?= lld-link-19
 OBJCOPY ?= llvm-objcopy-19
 COMMON = src/string.c src/phys.c src/mnfs.c src/files.c src/password.c src/auth.c src/ui.c src/exec.c assets/font.c
+COMMON += src/process.c
 ARM = arch/arm64/acpi.c arch/arm64/core.c arch/arm64/fdt.c arch/arm64/memory.c arch/arm64/interrupts.c arch/arm64/virtio.c
 FLAGS = -std=gnu11 -O2 -g -ffreestanding -fno-builtin -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -mgeneral-regs-only -mstrict-align -mno-outline-atomics -Wall -Wextra -Werror -Wno-misleading-indentation -Iarch/arm64/freestanding -Iinclude -Iarch/arm64 -MMD -MP
 ELF = $(patsubst %.c,build/arm64/elf/%.o,$(COMMON) $(ARM)) build/arm64/elf/entry.o build/arm64/elf/user.o
@@ -16,6 +17,13 @@ PE += build/arm64/pe/exec-image.obj
 build/arm64/user.elf: build/arm64/elf/user.o user/arm64.ld
 	$(LLD) -nostdlib -z max-page-size=0x1000 -T user/arm64.ld -o $@ $<
 build/arm64/elf/exec-image.o build/arm64/pe/exec-image.obj: build/arm64/user.elf
+build/arm64/elf/exec-image.o build/arm64/pe/exec-image.obj: build/arm64/user/hello.elf build/arm64/user/spin.elf
+build/arm64/user/%.elf: user/example.c user/api.h user/app-arm64.ld
+	mkdir -p build/arm64/user
+	$(CLANG) --target=aarch64-none-elf $(FLAGS) -DPROGRAM_$* -c user/example.c -o build/arm64/user/$*.o
+	$(LLD) -nostdlib -z max-page-size=0x1000 -T user/app-arm64.ld -o $@ build/arm64/user/$*.o
+.PHONY: user-programs
+user-programs: $(addprefix build/arm64/user/,$(addsuffix .elf,hello spin fault badptr))
 build/arm64/elf/%.o: %.c
 	mkdir -p $(dir $@)
 	$(CLANG) --target=aarch64-none-elf $(FLAGS) -c $< -o $@

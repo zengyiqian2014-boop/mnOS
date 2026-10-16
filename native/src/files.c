@@ -3,6 +3,8 @@
 #include "block.h"
 #include "mnfs.h"
 #include "auth.h"
+#include "process.h"
+extern char native_hello_start[], native_hello_end[], native_spin_start[], native_spin_end[];
 struct chunk { size_t size; struct chunk *next; bool free; } __attribute__((aligned(16)));
 static struct chunk *heap;
 static struct mnfs ram, disk;
@@ -65,6 +67,11 @@ void files_init(void) {
     const char *readme = "mnOS MNFS v1\n/ram is temporary. /disk persists on an existing MNFS block image.\n"
         "64-bit sizes, sparse files, CoW B-tree, CRC32C, two checkpoints and one saved snapshot.\n";
     if (mnfs_write(&ram, "/home/readme.txt", 0, readme, strlen(readme))) panic("RAM filesystem write");
+    if (mnfs_create(&ram, "/bin", true) || mnfs_create(&ram, "/bin/hello", false) ||
+        mnfs_write(&ram, "/bin/hello", 0, native_hello_start, native_hello_end - native_hello_start) ||
+        mnfs_create(&ram, "/bin/spin", false) ||
+        mnfs_write(&ram, "/bin/spin", 0, native_spin_start, native_spin_end - native_spin_start))
+        panic("native executable filesystem provisioning");
     char probe[16]; size_t got;
     if (mnfs_create(&ram, "/probe", false) || mnfs_write(&ram, "/probe", (1ULL << 32) - 2, "cross4g", 7) ||
         mnfs_write(&ram, "/probe", (1ULL << 45) + 5, "high", 4) ||
@@ -202,6 +209,7 @@ static bool entry(void *unused, const char *name, const struct mnfs_stat *st) {
     emit(row); return true;
 }
 bool files_command(const char *command, void (*print)(const char *)) {
+    if (process_command(command, print)) return true;
     char buffer[256]; size_t length = strlen(command);
     if (length >= sizeof buffer) return false;
     memcpy(buffer, command, length + 1);
@@ -211,16 +219,34 @@ bool files_command(const char *command, void (*print)(const char *)) {
     output = print;
     bool recognized=streq(cmd,"fs")||streq(cmd,"disk")||streq(cmd,"ls")||streq(cmd,"stat")||streq(cmd,"cat")||
         streq(cmd,"write")||streq(cmd,"writeat")||streq(cmd,"mkdir")||streq(cmd,"rm")||streq(cmd,"truncate")||
-        streq(cmd,"mv")||streq(cmd,"snapshot")||streq(cmd,"gc");
+        streq(cmd,"mv")||streq(cmd,"snapshot")||streq(cmd,"gc")||streq(cmd,"exec");
     if(!recognized)return false;
     if(!auth_logged_in()) {emit("Permission denied: sign in first");return true;}
     if(streq(cmd,"disk")||streq(cmd,"snapshot")||streq(cmd,"gc")) {
         if(!auth_admin()) {emit("Permission denied: root required for volume administration");return true;}
     } else if(!streq(cmd,"fs")) {
-        bool write=!(streq(cmd,"ls")||streq(cmd,"stat")||streq(cmd,"cat"));
+        bool write=!(streq(cmd,"ls")||streq(cmd,"stat")||streq(cmd,"cat")||streq(cmd,"exec"));
         if(!auth_path(p,write)) {emit("Permission denied: outside your home or protected system data");return true;}
     }
-    if (streq(cmd, "fs")) {
+    if (streq(cmd, "exec")) {
+        if (!*arg || *word(&cursor)) { emit("Usage: exec PATH (native ELF; no arguments yet)"); return true; }
+        struct mnfs_stat st;
+        error = f ? mnfs_stat(f, p, &st) : MN_NOENT;
+        if (!error && (st.directory || !st.size || st.size > EXEC_FILE_LIMIT)) error = MN_INVALID;
+        if (!error) {
+            void *bytes = allocate((size_t)st.size); size_t got = 0;
+            if (!bytes) { emit("exec: insufficient memory"); return true; }
+            error = mnfs_read(f, p, 0, bytes, (size_t)st.size, &got);
+            if (!error && got != st.size) error = MN_IO;
+            if (!error) {
+                int result = process_start(bytes, got, arg);
+                if (result) emit(result == -16 ? "exec: application slot busy or boot checks pending" :
+                                 result == -8 ? "exec: invalid or unsupported ELF" :
+                                 result == -13 ? "exec: permission denied" : "exec: insufficient memory");
+            }
+            release(bytes);
+        }
+    } else if (streq(cmd, "fs")) {
         emit("MNFS v1 / 64-bit files / CoW / CRC32C / saved snapshot");
         emit(disk_present ? "/ram temporary; /disk present" : "/ram temporary; /disk absent");
         value("RAM free blocks: ", ram.free_blocks);
