@@ -127,13 +127,15 @@ struct VM {
             if(n>0) { output.append(b,size_t(n)); std::ofstream(log)<<output; }
         }
     }
-    void wait(const std::string &text,int seconds=480,size_t after=0) {
+    void wait(const std::string &text,int seconds=480,size_t after=0,bool keep_display=false) {
         auto end=Clock::now()+std::chrono::seconds(seconds);
         auto capture_at=Clock::now()+20s;
         while(output.find(text,after)==std::string::npos) {
             check(Clock::now()<end,"Timeout waiting for "+text+"; see "+log.string()); pump(500);
             if (Clock::now() >= capture_at) {
-                capture(log.parent_path()/(log.stem().string()+"-current.ppm"));
+                auto picture=log.parent_path()/(log.stem().string()+"-current.ppm");
+                capture(picture);
+                if (keep_display) check(image_active(picture),"Installer display became inactive: "+picture.string());
                 capture_at=Clock::now()+20s;
             }
             check(output.find("Kernel panic")==std::string::npos,"Kernel panic");
@@ -211,7 +213,7 @@ int main(int argc,char **argv) {
             vm.key("alt-u"); vm.type("mnosqa"); vm.key("tab"); vm.type(password);
             vm.key("tab"); vm.type(password); vm.key("tab"); vm.key("spc");
             vm.key("alt-i"); vm.pause(3); vm.type("/dev/vda"); vm.key("ret");
-            vm.wait("MNOS INSTALL PASS",1800); vm.pause(8); vm.capture(out/"installed.ppm");
+            vm.wait("MNOS INSTALL PASS",1800,0,true); vm.pause(8); vm.screen(out/"installed.ppm");
             std::cout << "Disk installation complete; shutting down the ISO session" << std::endl;
             vm.finish_installation(out/"installed.ppm");
         }

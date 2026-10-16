@@ -44,14 +44,16 @@ jobs:
             gh api "repos/$GH_REPO/actions/runs/$VERIFY_RUN/jobs" > /tmp/verify-jobs.json
             jq -e '[.jobs[] | select(.name | startswith("verify ("))] | length == 2 and all(.[]; .conclusion == "success")' /tmp/verify-jobs.json
             printf 'assets_run=%s\n' "$VERIFY_RUN" >> "$GITHUB_OUTPUT"
+            printf 'sha=%s\n' "$(jq -r .head_sha /tmp/verify.json)" >> "$GITHUB_OUTPUT"
           else
             jq -e '.conclusion == "success"' /tmp/run.json
             jq -e '[.jobs[] | select(.name | startswith("build ("))] | length == 2 and all(.[]; .conclusion == "success")' /tmp/jobs.json
             printf 'assets_run=%s\n' "$SOURCE_RUN" >> "$GITHUB_OUTPUT"
+            printf 'sha=%s\n' "$(jq -r .head_sha /tmp/run.json)" >> "$GITHUB_OUTPUT"
           fi
           source_sha=$(jq -r .head_sha /tmp/run.json)
           [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
-          printf 'sha=%s\n' "$source_sha" >> "$GITHUB_OUTPUT"
+          printf 'base_sha=%s\n' "$source_sha" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
         with:
           ref: ${{ steps.source.outputs.sha }}
@@ -70,19 +72,25 @@ jobs:
       - name: Stage checked binaries and validation records
         env:
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
+          BASE_SHA: ${{ steps.source.outputs.base_sha }}
         run: |
           set -euo pipefail
           mkdir -p release evidence
           for arch in amd64 arm64; do
             source="verified/mnOS-installer-$arch"
-            if [ -n "$VERIFY_RUN" ]; then test "$(cat "$source/verified-build-run.txt")" = "$SOURCE_RUN"; fi
-            test "$(cat "$source/source-installer-$arch.txt")" = "$SOURCE_SHA"
+            if [ -n "$VERIFY_RUN" ]; then
+              test "$(cat "$source/verified-build-run.txt")" = "$SOURCE_RUN"
+              test "$(cat "$source/boot-overlay-$arch.txt")" = "$SOURCE_SHA"
+              test "$(cat "$source/verification-code.txt")" = "$SOURCE_SHA"
+            fi
+            test "$(cat "$source/source-installer-$arch.txt")" = "$BASE_SHA"
             (cd "$source" && sha256sum -c "mnOS-2.0-preview-installer-$arch.iso.sha256")
             cp "$source"/*.iso "$source"/*.sha256 "$source"/*.tsv "$source"/*.config "$source"/*.txt release/
             cp -a "$source/validation" "evidence/$arch"
           done
           tar -czf release/installation-validation.tar.gz evidence
           printf '%s\n' "$SOURCE_SHA" > release/SOURCE_COMMIT.txt
+          printf '%s\n' "$BASE_SHA" > release/PAYLOAD_COMMIT.txt
           bash live/release-assets.sh release
       - name: Publish installation media
         env:

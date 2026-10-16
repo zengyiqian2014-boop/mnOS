@@ -3,6 +3,11 @@ set -eu
 if [ "${1:-}" != --dbus ]; then
     exec /usr/bin/dbus-run-session -- "$0" --dbus
 fi
+# Long offline installations must keep showing progress. QEMU reports an idle
+# VirtIO display powered down by DPMS as "Display output is not active".
+/usr/bin/xset s off
+/usr/bin/xset s noblank
+/usr/bin/xset -dpms || true
 # Only a window manager, for reliable keyboard focus and confirmation dialogs.
 /usr/bin/xfwm4 --compositor=off &
 exec /usr/lib/mnos/installer
