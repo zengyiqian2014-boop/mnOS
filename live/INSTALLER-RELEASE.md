@@ -1,5 +1,18 @@
-每个架构一份离线安装镜像：`installer-amd64.iso` 和 `installer-arm64.iso`。
-同一架构镜像同时包含虚拟机驱动、来宾工具和常见实体硬件固件，不再要求选择 QEMU / hardware 两个版本。
+**只需下载与你的虚拟机／电脑 CPU 架构对应的一份 ISO，安装一次。**
+桌面、Firefox、VS Code、nano、开发与安全工具、驱动，以及对应架构的实验内核都已包含在其中，安装时一起写入硬盘，无需联网下载或逐个安装组件。
+
+| CPU 架构 | 完整离线安装包 |
+| --- | --- |
+| ARM64 / AArch64 | [mnOS-2.0-preview-installer-arm64.iso](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v2.0-installer-preview.1/mnOS-2.0-preview-installer-arm64.iso) |
+| Intel / AMD 64 位 | [mnOS-2.0-preview-installer-amd64.iso](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v2.0-installer-preview.1/mnOS-2.0-preview-installer-amd64.iso) |
+
+两份镜像的区别是 CPU 架构；同一架构镜像同时包含虚拟机驱动、来宾工具和常见实体硬件固件。
+发布页的 `.sha256`、`.tsv`、`.config`、`.txt` 和验证压缩包是校验及开发资料，不是另外需要安装的软件包。
+
+启动后选择第一项 **`Install mnOS - arm64 (virtual machines and hardware)`**（amd64 镜像对应显示 amd64），即可安装全部组件。
+软件渲染、临时桌面和实验内核入口是可选启动方式，无需逐项执行来完成安装。
+若看到 `mnOS Desktop 2.0 - hardware / safe graphics / boot messages` 三项菜单，当前显示的是旧版引导配置。请先关机，核对所有虚拟光驱，移除旧镜像，仅挂载上面的安装 ISO，再启动。
+`grub> boot` 报 `you need to load the kernel first` 仅说明该命令执行时没有已加载的内核；它不能证明哪个文件缺失，也不表示需要另装一个内核包。
 
 启动后直接进入 C++ / GTK 图形安装器，选择磁盘、创建账号、确认清盘后安装。
 安装完成后关机、移除 ISO，再从硬盘启动。建议虚拟机配置 4 GiB 内存和 40 GiB 磁盘。

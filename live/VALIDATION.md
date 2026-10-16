@@ -49,6 +49,37 @@ Boot were not exercised by this run. QEMU results do not establish universal
 hardware support or production security certification. Older checks below
 retain their original dates and scope.
 
+### Audit of the public downloads — 2026-10-16 07:35 UTC
+
+Both ISO files were downloaded again from the public `v2.0-installer-preview.1`
+release, rather than read from a local build fixture. Their complete SHA256s are:
+
+| Architecture | Bytes | SHA256 |
+| --- | ---: | --- |
+| amd64 | 2120286208 | `faf363a105531c81ea58893d4fdf24cfae1ce69f2cc02983daeb5bea73430407` |
+| arm64 | 2123169792 | `bd59db08807073a8f8f611091d8db5882aba2cb5987149b49c1c1913ba262d2b` |
+
+Extraction of each ISO's actual `/boot/grub/grub.cfg` confirmed that its first
+entry is `Install mnOS - ARCH (virtual machines and hardware)`, followed by
+software rendering, a temporary desktop, and the experimental kernel. Neither
+contains the old three-entry `mnOS Desktop 2.0 - hardware` menu.
+
+Both extracted system filesystems match their internal payload checksums. Their
+dpkg databases mark Firefox, VS Code, nano, nmap, Wireshark, GCC, Rust, Go,
+Node.js, Xfce, Intel Wi-Fi firmware, QEMU/SPICE agents and VMware tools as
+installed. The original kernel inside each installable filesystem is
+byte-identical to the corresponding native kernel on the ISO. The backend
+deploys that whole filesystem in one operation; it does not fetch components.
+
+Both public downloads were then booted with QEMU 10 / TCG, fresh UEFI variables,
+VirtIO graphics, 4 GiB RAM, a new empty 40 GiB disk and **no network adapter**.
+Each reached `MNOS INSTALLER GUI READY` and a visible graphical installer:
+[ARM64 screenshot](../assets/installer-release-arm64.png),
+[amd64 screenshot](../assets/installer-release-amd64.png).
+This additional check stopped at the installer and did not write to the target
+disk; the complete offline installation and subsequent disk boots are covered
+by the successful verification run above. No ISO bytes changed during this audit.
+
 ## Historical preview.5 build
 
 On 2026-10-15, [workflow run 38730394222](https://github.com/zengyiqian2014-boop/mnOS/actions/runs/38730394222)

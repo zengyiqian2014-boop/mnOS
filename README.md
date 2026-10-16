@@ -8,7 +8,13 @@
 mnOS has an original C/assembly kernel for **x86_64 and ARM64**, plus a separate
 Debian 13 / Linux 6.12 LTS desktop for Firefox, CTF tools and common hardware.
 There is **one installer per architecture**, with virtual-machine drivers and
-common physical-hardware firmware in the same image. It starts the C++/GTK
+common physical-hardware firmware in the same image. **Download one ISO matching
+your CPU architecture and install once:** the desktop, Firefox, VS Code,
+development/security tools, drivers and original kernel are deployed together
+offline. The other release files are checksums, manifests and test evidence,
+not additional packages to install. Choose the first **Install mnOS** entry;
+the other boot entries are optional modes, not installation steps.
+It starts the C++/GTK
 installer, creates an account and installs to a chosen disk. Shut down, remove
 the ISO, and boot from that disk. Both installers include an experimental entry
 for the matching original kernel. [Installation instructions and limits](live/INSTALLER.md)

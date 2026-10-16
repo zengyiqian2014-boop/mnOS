@@ -14,6 +14,12 @@ as its offline payload; the installed system runs from the destination disk.
 No Python was added to the installer or its new integration test. Third-party
 applications may require Python libraries.
 
+Download only the ISO matching your CPU architecture. The desktop, Firefox,
+VS Code, development/security tools, drivers and original experimental kernel
+are installed together in one offline operation. Checksums, manifests and test
+archives on the release page do not need installing. Alternative GRUB entries
+are boot modes, not successive component installers.
+
 ## Installation
 
 Allocate at least **4 GiB RAM and a 40 GiB virtual disk** for a VM. Choose the ISO
@@ -45,8 +51,10 @@ login stays locked; the account uses sudo for administrative operations.
 Use a **VirtIO GPU display** with UTM/QEMU ARM64 and a USB keyboard/pointer.
 Start with 3D acceleration disabled. QEMU's “Display output is not active”
 message comes from the emulator, not from the installer; it means the selected
-virtual display has not been initialized. An ISO cannot add a missing display
-device to the VM configuration.
+virtual display is not currently producing an active output. That message alone
+does not distinguish driver initialization, display blanking or an earlier boot
+failure. The installer session disables the screensaver and display power saving;
+the VM must also have a compatible virtual display configured.
 
 `live/run.sh` selects KVM on a compatible Linux host and HVF on a compatible
 macOS host, otherwise TCG. It uses the same installer ISO in either mode. Pass
@@ -68,6 +76,22 @@ entropy and RNDR where available. In QEMU, keep the entropy device enabled.
 Without any of these sources the kernel refuses enrollment; it does not invent
 randomness from timers or bypass account protection. This restriction belongs
 to the experimental kernel, not the Linux installer account setup.
+
+## Recognizing the current installation media
+
+The first menu entry in installer preview.1 is **Install mnOS - arm64 (virtual
+machines and hardware)** or its **amd64** equivalent. A three-entry menu reading
+`mnOS Desktop 2.0 - hardware`, `safe graphics` and `boot messages` is the older
+desktop boot configuration. Shut down, inspect every attached virtual optical
+drive, remove older media, and attach just the matching installer ISO. Verify
+its SHA256 against the checksum on the installer release page if in doubt.
+
+At a `grub>` prompt, `boot` only starts a kernel that has already been loaded.
+`you need to load the kernel first` means none is currently loaded. That message
+alone neither identifies the original loading error nor calls for another
+kernel installation. Press Esc to return to the menu when available; if
+**Install mnOS** fails, record the error immediately after selecting that entry
+and the VM's mounted ISO filename and configuration.
 
 ## Verification
 
