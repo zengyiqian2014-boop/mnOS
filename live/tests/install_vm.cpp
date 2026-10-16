@@ -167,6 +167,25 @@ struct VM {
         while(waitpid(pid,&status,WNOHANG)==0) { check(Clock::now()<end,"Guest did not power off"); pump(); }
         pid=-1; check(WIFEXITED(status)&&WEXITSTATUS(status)==0,"QEMU failed");
     }
+    void finish_installation(const fs::path &picture) {
+        // Backend success precedes its unmount/flush cleanup. The GUI exposes
+        // its shutdown button only after the child has actually exited.
+        auto end=Clock::now()+180s, press_at=Clock::now();
+        bool qmp_closed=false;
+        for (;;) {
+            int status=0;
+            if(waitpid(pid,&status,WNOHANG)==pid) {
+                pid=-1; check(WIFEXITED(status)&&WEXITSTATUS(status)==0,"QEMU failed"); return;
+            }
+            check(Clock::now()<end,"Installer did not finish cleanup and power off");
+            if(!qmp_closed && Clock::now()>=press_at) {
+                try { capture(picture); key("alt-s"); }
+                catch(const std::exception &) { qmp_closed=true; }
+                press_at=Clock::now()+3s;
+            }
+            pump(100);
+        }
+    }
 };
 int main(int argc,char **argv) {
     try {
@@ -186,7 +205,7 @@ int main(int argc,char **argv) {
             vm.key("alt-i"); vm.pause(3); vm.type("/dev/vda"); vm.key("ret");
             vm.wait("MNOS INSTALL PASS",1800); vm.pause(8); vm.capture(out/"installed.ppm");
             std::cout << "Disk installation complete; shutting down the ISO session" << std::endl;
-            vm.key("alt-s"); vm.shutdown();
+            vm.finish_installation(out/"installed.ppm");
         }
         for(bool nvme : {false,true}) {
             std::string phase=nvme?"disk-nvme":"disk-virtio";

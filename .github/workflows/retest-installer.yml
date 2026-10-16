@@ -1,0 +1,82 @@
+name: Verify existing installation ISOs
+on:
+  workflow_dispatch:
+    inputs:
+      build_run:
+        description: Unified installation ISO run containing the exact images to test
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      SOURCE_RUN: ${{ inputs.build_run }}
+      ARCH: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify source build and wait for its image artifact
+        id: source
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
+          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN" > /tmp/source.json
+          jq -e --arg repo "$GH_REPO" '.repository.full_name == $repo and .path == ".github/workflows/installer.yml"' /tmp/source.json
+          printf 'sha=%s\n' "$(jq -r .head_sha /tmp/source.json)" >> "$GITHUB_OUTPUT"
+          deadline=$((SECONDS+3600))
+          while (( SECONDS < deadline )); do
+            gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN/jobs" > /tmp/jobs.json
+            if jq -e --arg arch "$ARCH" '.jobs[] | select(.name | startswith("build ("+$arch+",")) | .steps[] | select(.name == "Build unified offline installer and original kernel") | .conclusion == "success"' /tmp/jobs.json >/dev/null; then
+              gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN/artifacts" > /tmp/artifacts.json
+              if jq -e --arg name "mnOS-installer-$ARCH" 'any(.artifacts[]; .name == $name and .expired == false)' /tmp/artifacts.json >/dev/null; then exit 0; fi
+            fi
+            sleep 30
+          done
+          echo 'Build artifact did not become available.' >&2; exit 1
+      - uses: actions/download-artifact@v4
+        with:
+          name: mnOS-installer-${{ matrix.arch }}
+          run-id: ${{ inputs.build_run }}
+          github-token: ${{ github.token }}
+          path: verified
+      - name: Check image identity and install VM tools
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          test "$(cat "verified/source-installer-$ARCH.txt")" = "$SOURCE_SHA"
+          (cd verified && sha256sum -c "mnOS-2.0-preview-installer-$ARCH.iso.sha256")
+          rm -rf verified/validation
+          mkdir verified/validation
+          printf '%s\n' "$SOURCE_RUN" > verified/verified-build-run.txt
+          git rev-parse HEAD > verified/verification-code.txt
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends g++ qemu-system-x86 qemu-system-arm qemu-utils ovmf qemu-efi-aarch64
+      - name: Install through the GUI and boot from the disk without an ISO
+        run: |
+          set -euo pipefail
+          c++ -std=c++17 -O2 -Wall -Wextra -Werror live/tests/install_vm.cpp -o /tmp/install-vm
+          /tmp/install-vm "$ARCH" "verified/mnOS-2.0-preview-installer-$ARCH.iso" "$PWD/verified/validation"
+          (cd verified && sha256sum -c "mnOS-2.0-preview-installer-$ARCH.iso.sha256")
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: installer-validation-${{ matrix.arch }}
+          path: verified/validation/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mnOS-installer-${{ matrix.arch }}
+          path: verified/*
+          compression-level: 0
