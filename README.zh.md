@@ -3,6 +3,15 @@
 [下载 amd64 / ARM64 离线安装 ISO](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.2)
 · [启动与验证记录](live/VALIDATION.md)
 
+**当前发布的安装器和默认桌面使用 Debian 提供的 Linux 内核。** 自研内核是另一个
+独立的实验启动入口；Firefox、VS Code 和 Linux 驱动还没有迁移到自研内核上。
+
+源码主线已新增原生 `exec PATH`、`ps`、`kill PID`：自研内核可从 MNFS 启动独立
+编译的 C 程序，处理程序异常，并在退出后回收内存。AMD64、ARM64 的实际启动、
+磁盘程序执行、故障隔离和重启测试已在本地通过。目前仅支持一个小型静态应用，
+这些新增功能尚未包含在上方的 **preview.2 安装 ISO** 中。
+[原生程序使用方式、测试和限制](native/README.md#run-native-programs-from-mnfs)。
+
 **每个架构一份安装镜像**，同时包含虚拟机驱动与常见实体硬件固件。
 只下载匹配 CPU 架构的一份 ISO；桌面、Firefox、VS Code、开发与安全工具、
 驱动和对应自研内核在一次离线安装中全部写入硬盘，无需分别安装。

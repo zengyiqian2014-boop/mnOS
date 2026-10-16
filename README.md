@@ -5,6 +5,17 @@
 [Download the amd64 / ARM64 offline installers](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.2)
 · [Boot and validation record](live/VALIDATION.md)
 
+**The released installer and default desktop use Debian's Linux kernel.** The
+original kernel is a separate experimental boot entry; Firefox, VS Code and the
+Linux drivers have not been ported to it.
+
+The source branch now supports native `exec PATH`, `ps` and `kill PID`, with
+MNFS-backed C executables, user-fault isolation and process memory reclamation.
+Local x86_64 and ARM64 VM tests cover execution, faults, teardown and reboot.
+This is limited to one small static application and is **not yet included in
+the linked preview.2 installer ISO**.
+[Native program usage, tests and limits](native/README.md#run-native-programs-from-mnfs).
+
 mnOS has an original C/assembly kernel for **x86_64 and ARM64**, plus a separate
 Debian 13 / Linux 6.12 LTS desktop for Firefox, CTF tools and common hardware.
 There is **one installer per architecture**, with virtual-machine drivers and
