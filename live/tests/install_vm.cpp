@@ -105,7 +105,15 @@ struct VM {
     ~VM() {
         if (serial>=0) close(serial);
         if (qmp>=0) close(qmp);
-        if (pid>0) { kill(pid,SIGTERM); waitpid(pid,nullptr,0); }
+        if (pid>0) {
+            kill(pid,SIGTERM);
+            bool reaped=false;
+            for (int i=0;i<100;++i) {
+                if (waitpid(pid,nullptr,WNOHANG)==pid) { reaped=true; break; }
+                std::this_thread::sleep_for(50ms);
+            }
+            if (!reaped) { kill(pid,SIGKILL); waitpid(pid,nullptr,0); }
+        }
         std::ofstream(log) << output;
     }
     std::string qline() {
@@ -128,10 +136,20 @@ struct VM {
         }
     }
     void wait(const std::string &text,int seconds=480,size_t after=0,bool keep_display=false) {
+        std::cout << log.stem().string() << ": waiting for " << text << std::endl;
         auto end=Clock::now()+std::chrono::seconds(seconds);
         auto capture_at=Clock::now()+20s;
+        size_t progress_at=output.size();
         while(output.find(text,after)==std::string::npos) {
             check(Clock::now()<end,"Timeout waiting for "+text+"; see "+log.string()); pump(500);
+            auto stage=output.find("STAGE ",progress_at);
+            if (stage!=std::string::npos) {
+                auto newline=output.find('\n',stage);
+                if (newline!=std::string::npos) {
+                    std::cout << output.substr(stage,newline-stage) << std::endl;
+                    progress_at=newline+1;
+                }
+            }
             if (Clock::now() >= capture_at) {
                 auto picture=log.parent_path()/(log.stem().string()+"-current.ppm");
                 capture(picture);
@@ -213,6 +231,7 @@ int main(int argc,char **argv) {
             vm.key("alt-u"); vm.type("mnosqa"); vm.key("tab"); vm.type(password);
             vm.key("tab"); vm.type(password); vm.key("tab"); vm.key("spc");
             vm.key("alt-i"); vm.pause(3); vm.type("/dev/vda"); vm.key("ret");
+            vm.wait("STAGE 5 ",120,0,true);
             vm.wait("MNOS INSTALL PASS",1800,0,true); vm.pause(8); vm.screen(out/"installed.ppm");
             std::cout << "Disk installation complete; shutting down the ISO session" << std::endl;
             vm.finish_installation(out/"installed.ppm");
@@ -229,7 +248,8 @@ int main(int argc,char **argv) {
             send_all(vm.serial,"test $(id -u) -ge 1000 && ! grep -qw boot=live /proc/cmdline && findmnt -n -o FSTYPE / | grep -qx ext4 && test -e /var/lib/mnos/installed-architecture && command -v code firefox-esr nano nmap && /usr/sbin/getcap /usr/lib/mnos/net-admin | grep -q cap_net_admin,cap_net_raw=ep && timeout 120 sh -c 'until pgrep -u $(id -u) xfce4-session && pgrep -u $(id -u) xfce4-panel && pgrep -u $(id -u) xfwm4; do sleep 1; done' && echo MNOS_DISK_DESKTOP_PASS\n");
             vm.wait("\r\nMNOS_DISK_DESKTOP_PASS\r\n",180,start);
             vm.pause(5); vm.screen(out/(phase+"-desktop.ppm"));
-            send_all(vm.serial,"sudo -S -p 'QA_AUTH:' /usr/bin/systemctl poweroff\n"); vm.wait("QA_AUTH:",30);
+            // Keep the echoed command distinct from the actual sudo prompt.
+            send_all(vm.serial,"sudo -S -p 'QA_'\"AUTH:\" /usr/bin/systemctl poweroff\n"); vm.wait("QA_AUTH:",30);
             send_all(vm.serial,password+"\n"); vm.shutdown();
         }
         if(arch=="amd64") {

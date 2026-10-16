@@ -63,14 +63,18 @@ jobs:
           printf '%s\n' "$SOURCE_RUN" > verified/verified-build-run.txt
           git rev-parse HEAD > verified/verification-code.txt
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends g++ acl qemu-system-x86 qemu-system-arm qemu-utils ovmf qemu-efi-aarch64 squashfs-tools xorriso
-          if [ -c /dev/kvm ]; then sudo setfacl -m "u:$(id -u):rw" /dev/kvm; fi
+          sudo apt-get install -y --no-install-recommends squashfs-tools xorriso
           bash live/patch-installer-display.sh "verified/mnOS-2.0-preview-installer-$ARCH.iso" "$ARCH"
+          docker build -t mnos-installer-test -f live/tests/VM.Dockerfile .
       - name: Install through the GUI and boot from the disk without an ISO
         run: |
           set -euo pipefail
-          c++ -std=c++17 -O2 -Wall -Wextra -Werror live/tests/install_vm.cpp -o /tmp/install-vm
-          /tmp/install-vm "$ARCH" "verified/mnOS-2.0-preview-installer-$ARCH.iso" "$PWD/verified/validation"
+          devices=()
+          if [ -c /dev/kvm ]; then devices+=(--device /dev/kvm); fi
+          docker run --rm --network none --memory=7g --cpus=4 "${devices[@]}" \
+            -v "$PWD:/source:ro" -v "$PWD/verified:/out" -e ARCH mnos-installer-test \
+            sh -ec 'c++ -std=c++17 -O2 -Wall -Wextra -Werror /source/live/tests/install_vm.cpp -o /tmp/install-vm
+            /tmp/install-vm "$ARCH" "/out/mnOS-2.0-preview-installer-$ARCH.iso" /out/validation'
           (cd verified && sha256sum -c "mnOS-2.0-preview-installer-$ARCH.iso.sha256")
       - uses: actions/upload-artifact@v4
         if: always()
