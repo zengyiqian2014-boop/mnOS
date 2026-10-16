@@ -23,7 +23,7 @@ jobs:
         run: |
           set -euo pipefail
           make -C native -j4 all
-          make -C native -f arch/arm64/Makefile -j4 all CLANG=clang LLD=ld.lld LINK=lld-link OBJCOPY=llvm-objcopy
+          make -C native -f arch/arm64/Makefile -j4 all CLANG=clang LLD=ld.lld EFI_LD=lld-link OBJCOPY=llvm-objcopy
           OUT="$PWD/native/build" sh native/pack.sh demo
           c++ -std=c++17 -O2 -Wall -Wextra -Werror native/tests/random_vm.cpp -o native/build/random-vm
           native/build/random-vm native/build native/build/random-validation

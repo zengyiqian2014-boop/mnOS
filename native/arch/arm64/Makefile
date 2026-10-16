@@ -2,7 +2,7 @@
 # Invoke from native/: make -f arch/arm64/Makefile
 CLANG ?= clang-19
 LLD ?= ld.lld-19
-LINK ?= lld-link-19
+EFI_LD ?= lld-link-19
 OBJCOPY ?= llvm-objcopy-19
 COMMON = src/string.c src/phys.c src/mnfs.c src/files.c src/password.c src/auth.c src/ui.c assets/font.c
 ARM = arch/arm64/acpi.c arch/arm64/core.c arch/arm64/fdt.c arch/arm64/memory.c arch/arm64/interrupts.c arch/arm64/virtio.c
@@ -28,7 +28,7 @@ build/arm64/mnos.elf: $(ELF) arch/arm64/linker.ld
 build/arm64/Image: build/arm64/mnos.elf
 	$(OBJCOPY) -O binary $< $@
 build/arm64/BOOTAA64.EFI: $(PE)
-	$(LINK) /subsystem:efi_application /entry:efi_main /nodefaultlib /machine:arm64 /base:0x100000 /filealign:512 /out:$@ $(PE)
+	$(EFI_LD) /subsystem:efi_application /entry:efi_main /nodefaultlib /machine:arm64 /base:0x100000 /filealign:512 /out:$@ $(PE)
 build/arm64/BOOTAA64-TEST.EFI: $(PE)
-	$(LINK) /subsystem:efi_application /entry:efi_test_main /nodefaultlib /machine:arm64 /base:0x100000 /filealign:512 /out:$@ $(PE)
+	$(EFI_LD) /subsystem:efi_application /entry:efi_test_main /nodefaultlib /machine:arm64 /base:0x100000 /filealign:512 /out:$@ $(PE)
 -include $(ELF:.o=.d) $(PE:.obj=.d)
