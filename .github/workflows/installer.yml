@@ -55,9 +55,9 @@ jobs:
             'mnos-live:installer-${{ matrix.arch }}' sh -ec '
             bash /source/tests/account-preflight.sh /usr/lib/mnos/account-preflight
             c++ -std=c++17 -O2 -Wall -Wextra -Werror /source/tests/enrollment-runtime.cpp -lutil -lcrypt -o /tmp/enrollment-test
-            /tmp/enrollment-test
-            c++ -std=c++17 -O2 -Wall -Wextra -Werror /source/tests/console-login.cpp -lutil -o /tmp/console-login-test
-            /tmp/console-login-test'
+            /tmp/enrollment-test'
+          # Console/PAM authentication is exercised on the installed guest's
+          # actual serial console, including wrong-password rejection below.
       - name: Verify bundled applications, compiler headers and detailed manuals
         run: |
           docker run --rm --network none -v "$PWD/live:/source:ro" \

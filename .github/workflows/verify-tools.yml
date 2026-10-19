@@ -1,0 +1,98 @@
+name: Verify unchanged installer payloads
+on:
+  workflow_dispatch:
+    inputs:
+      build_run:
+        description: Unified installation ISO build containing the unchanged images
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      SOURCE_RUN: ${{ inputs.build_run }}
+      ARCH: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify completed source image and artifact identity
+        id: source
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
+          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN" > /tmp/source.json
+          jq -e --arg repo "$GH_REPO" '.repository.full_name == $repo and .path == ".github/workflows/installer.yml"' /tmp/source.json
+          printf 'sha=%s\n' "$(jq -r .head_sha /tmp/source.json)" >> "$GITHUB_OUTPUT"
+          deadline=$((SECONDS+3600))
+          while (( SECONDS < deadline )); do
+            gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN/jobs" > /tmp/jobs.json
+            if jq -e --arg arch "$ARCH" 'any(.jobs[]; (.name | startswith("build ("+$arch+",")) and any(.steps[]; .name == "Build unified offline installer and original kernel" and .conclusion == "success"))' /tmp/jobs.json >/dev/null; then
+              gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN/artifacts" > /tmp/artifacts.json
+              if jq -e --arg name "mnOS-installer-$ARCH" 'any(.artifacts[]; .name == $name and .expired == false)' /tmp/artifacts.json >/dev/null; then exit 0; fi
+            fi
+            sleep 30
+          done
+          echo 'Source artifact unavailable.' >&2; exit 1
+      - uses: actions/download-artifact@v4
+        with:
+          name: mnOS-installer-${{ matrix.arch }}
+          run-id: ${{ inputs.build_run }}
+          github-token: ${{ github.token }}
+          path: verified
+      - name: Inspect the exact installed payload
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          test "$(cat "verified/source-installer-$ARCH.txt")" = "$SOURCE_SHA"
+          (cd verified && sha256sum -c "mnOS-2.0-preview-installer-$ARCH.iso.sha256")
+          mkdir -p verified/validation
+          printf '%s\n' "$SOURCE_RUN" > verified/verified-build-run.txt
+          printf '%s\n' "$GITHUB_SHA" > verified/verification-code.txt
+          printf 'unchanged\n' > verified/verification-mode.txt
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends squashfs-tools xorriso
+          xorriso -osirrox on -indev "verified/mnOS-2.0-preview-installer-$ARCH.iso" -extract /live/filesystem.squashfs /tmp/mnos-payload.squashfs
+          sudo unsquashfs -no-progress -d /tmp/mnos-payload /tmp/mnos-payload.squashfs
+          sudo tar -C /tmp/mnos-payload -cf - . | docker import - mnos-payload-check
+          docker run --rm --network none -v "$PWD/live:/source:ro" mnos-payload-check sh -ec '
+            bash /source/tests/account-preflight.sh /usr/lib/mnos/account-preflight
+            c++ -std=c++17 -O2 -Wall -Wextra -Werror /source/tests/enrollment-runtime.cpp -lutil -lcrypt -o /tmp/enrollment-test
+            /tmp/enrollment-test
+            sh /source/tests/tool-environment.sh' 2>&1 | tee verified/validation/payload-tools.log
+          docker build -t mnos-installer-test -f live/tests/VM.Dockerfile .
+      - name: Verify installation, real console authentication and application windows
+        run: |
+          set -euo pipefail
+          devices=()
+          if [ -c /dev/kvm ]; then devices+=(--device /dev/kvm); fi
+          docker run --rm --network none --memory=7g --cpus=4 "${devices[@]}" \
+            -v "$PWD:/source:ro" -v "$PWD/verified:/out" -e ARCH mnos-installer-test \
+            sh -ec 'c++ -std=c++17 -O2 -Wall -Wextra -Werror /source/live/tests/install_vm.cpp -o /tmp/install-vm
+            /tmp/install-vm "$ARCH" "/out/mnOS-2.0-preview-installer-$ARCH.iso" /out/validation' 2>&1 | tee verified/validation/install-vm.log
+          (cd verified && sha256sum -c "mnOS-2.0-preview-installer-$ARCH.iso.sha256")
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: installer-validation-${{ matrix.arch }}
+          path: verified/validation/
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: mnOS-installer-${{ matrix.arch }}
+          path: verified/
+          compression-level: 0
+          retention-days: 14
