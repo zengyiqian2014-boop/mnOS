@@ -30,6 +30,8 @@ done
 mnos-help mnos-pkg | grep -q 'mnos-pkg list'
 mnos-help mitmproxy | grep -iq 'options'
 mnos-center --print-help gcc | grep -q 'Usage'
+if mnos-center --print-help sudo >"$work/admin" 2>&1; then exit 1; fi
+grep -q 'No installed manual' "$work/admin"
 if mnos-help mnos-nonexistent-command >"$work/missing" 2>&1; then exit 1; fi
 grep -q 'No installed manual' "$work/missing"
 printf '#include <stdio.h>\nint main(void){puts("C toolchain PASS");}\n' > "$work/hello.c"

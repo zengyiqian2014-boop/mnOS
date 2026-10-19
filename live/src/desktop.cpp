@@ -479,7 +479,6 @@ int main(int argc, char **argv) {
     try {
         popup = fs::path(argv[0]).filename() == "mnos-tools";
         catalog("/usr/share/mnos/tools.json");
-        catalog("/usr/share/mnos/settings.json", true);
         if (argc == 3 && std::string(argv[1]) == "--print-help") {
             // Only run the fixed help invocation from the installed catalog.
             // This console path needs no display and never adds sudo/a shell.
@@ -504,6 +503,7 @@ int main(int argc, char **argv) {
             execv(av[0], av.data());
             return 1;
         }
+        catalog("/usr/share/mnos/settings.json", true);
         if (argc == 3 &&
             (std::string(argv[1]) == "--help-tool" || std::string(argv[1]) == "--describe-tool")) {
             auto it = std::find_if(entries.begin(), entries.end(),
