@@ -2,48 +2,30 @@
 
 [English](README.md) | [中文](README.zh.md)
 
-[Download the original kernel preview: AMD64 / ARM64](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.3-native-preview.2)
-· [Original-system scope and next milestones](native/SYSTEM.md)
+[Native graphical desktop installer: AMD64 / ARM64](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.4-desktop-preview.1)
+· [Install, use and reproduce the tests](native/DESKTOP.md)
 
-[Download the amd64 / ARM64 offline installers](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.2)
-· [Boot and validation record](live/VALIDATION.md)
+**mnOS Desktop 0.4 installs and boots the original C/assembly mnOS kernel and its
+native GUI.** One ISO per architecture includes the graphical installer, boot
+loader, desktop windows, application menu, file browser, text editor, terminal,
+system monitor, settings and local accounts. Files and preferences persist on
+MNFS after removing the ISO and rebooting. This image has no Linux/Xfce/Python
+runtime. Press F1–F7 for apps; Ctrl-S saves a document.
 
-**The released installer and default desktop use Debian's Linux kernel.** The
-original kernel is a separate experimental boot entry; Firefox, VS Code and the
-Linux drivers have not been ported to it.
+The original desktop is a development preview: built-in desktop services still
+run in kernel mode. Linux binary compatibility, Firefox, VS Code, native network,
+Wi-Fi, USB, AHCI/NVMe, audio, accelerated GPU and APFS support remain unfinished.
+Tested hardware models and remaining limits are listed in the installation guide.
 
-The source branch now supports native `exec PATH`, `ps` and `kill PID`, with
-MNFS-backed C executables, dynamically allocated concurrent processes, isolated
-address spaces, sleep/wakeup queues and process memory reclamation.
-Applications currently share the boot CPU and use a small static executable ABI.
-Native 0.3 Preview 2 also adds permission-checked native user file operations:
-create, read, write, stat, truncate, remove and mkdir. The earlier native
-Preview 1 publishes the process milestone without these file calls.
-This source work is **not yet included in
-the linked preview.2 installer ISO**.
-[Native program usage, tests and limits](native/README.md#run-native-programs-from-mnfs).
+The [older Linux/Xfce installer](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.2)
+is a separate Debian-based application environment. Its browser, editors and
+hardware drivers are not part of the native desktop and are not described as
+original implementations. Earlier native 0.3 releases were kernel development
+media; 0.4 adds an actual disk installation and native GUI workflow.
 
-mnOS has an original C/assembly kernel for **x86_64 and ARM64**, plus a separate
-Debian 13 / Linux 6.12 LTS desktop for Firefox, CTF tools and common hardware.
-There is **one installer per architecture**, with virtual-machine drivers and
-common physical-hardware firmware in the same image. **Download one ISO matching
-your CPU architecture and install once:** the desktop, Firefox, VS Code,
-development/security tools, drivers and original kernel are deployed together
-offline. The other release files are checksums, manifests and test evidence,
-not additional packages to install. Choose the first **Install mnOS** entry;
-the other boot entries are optional modes, not installation steps.
-It starts the C++/GTK
-installer, creates an account and installs to a chosen disk. Shut down, remove
-the ISO, and boot from that disk. Both installers include an experimental entry
-for the matching original kernel. [Installation instructions and limits](live/INSTALLER.md)
-describe the whole-disk erase flow, UEFI/BIOS requirements and VM display setup.
-Native-only kernel ISOs are development media; they are not the full Linux
-installation media. Older native/Desktop releases remain separately archived.
-
-| Environment | Current capabilities |
-| --- | --- |
-| [Original native kernel](native/README.md) | Local account authentication, user/root permissions, dynamic SMP, sparse memory up to 64 TiB, MNFS CoW filesystem, graphical console and personal display settings |
-| [Linux desktop](live/README.md) | Xfce, official VS Code, nano, Firefox ESR, C/C++/Node.js/Go/Rust/Java, CTF tools, optional network delegation, system settings and common drivers |
+Native programs support exec, concurrent isolated address spaces, sleep/wakeup,
+process ownership and checked MNFS file operations. Applications currently share
+the boot CPU and use a small static executable ABI. [Native program reference](native/README.md#run-native-programs-from-mnfs).
 
 The x86 native kernel has passed 32-vCPU and 33-TiB sparse-memory QEMU tests.
 The ARM64 port has passed 1/2/4/8-CPU, GICv2/v3, direct, UEFI/FDT and UEFI/ACPI

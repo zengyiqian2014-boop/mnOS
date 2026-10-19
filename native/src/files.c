@@ -4,6 +4,7 @@
 #include "mnfs.h"
 #include "auth.h"
 #include "process.h"
+#include "disk_layout.h"
 extern char native_hello_start[], native_hello_end[], native_spin_start[], native_spin_end[];
 struct chunk { size_t size; struct chunk *next; bool free; } __attribute__((aligned(16)));
 static struct chunk *heap;
@@ -11,6 +12,11 @@ static struct mnfs ram, disk;
 static struct block_device disks[4];
 static uint8_t *ram_data;
 static bool disk_present;
+struct volume { struct block_device *device; uint64_t start, sectors; };
+static struct volume mounted;
+static bool raw_read(void *p,uint64_t a,unsigned n,void *b) {
+    uint8_t *out=b;while(n){unsigned chunk=n>8?8:n;if(!block_read(p,a,chunk,out))return false;a+=chunk;n-=chunk;out+=chunk*512;}return true;
+}
 static bool disk_locked;
 static void accounts_init(void);
 #define RAM_BLOCKS 2048
@@ -44,14 +50,14 @@ static bool ram_write(void *context, uint64_t block, const void *p) {
 }
 static bool ram_flush(void *context) { (void)context; return true; }
 static bool disk_read(void *context, uint64_t block, void *p) {
-    struct block_device *d = context;
-    return block < d->sectors / 8 && block_read(d, block * 8, 8, p);
+    struct volume *v = context;
+    return block < v->sectors / 8 && block_read(v->device, v->start + block * 8, 8, p);
 }
 static bool disk_write(void *context, uint64_t block, const void *p) {
-    struct block_device *d = context;
-    return block < d->sectors / 8 && block_write(d, block * 8, 8, p);
+    struct volume *v = context;
+    return block < v->sectors / 8 && block_write(v->device, v->start + block * 8, 8, p);
 }
-static bool disk_flush(void *context) { return block_flush(context); }
+static bool disk_flush(void *context) { return block_flush(((struct volume *)context)->device); }
 void files_init(void) {
     unsigned count = block_discover(disks, ARRAY_SIZE(disks));
     size_t pool = 8u << 20;
@@ -80,7 +86,11 @@ void files_init(void) {
         mnfs_remove(&ram, "/probe")) panic("filesystem large-offset self-test");
     log_write("FILESYSTEM PASS: MNFS CoW / CRC32C / offsets across 4 GiB and above 32 TiB\n");
     for (unsigned i = 0; i < count && !disk_present; ++i) {
-        io = (struct mnfs_io){&disks[i], disks[i].sectors / 8, disk_read, disk_write, disk_flush, allocate, release};
+        mounted = (struct volume){&disks[i], 0, disks[i].sectors};
+        struct disk_io raw = {&disks[i], disks[i].sectors, raw_read, NULL, NULL};
+        if (disk_data_partition(&raw, &mounted.start, &mounted.sectors))
+            log_write("FILESYSTEM: installed GPT / MNFS partition found\n");
+        io = (struct mnfs_io){&mounted, mounted.sectors / 8, disk_read, disk_write, disk_flush, allocate, release};
         int error = mnfs_mount(&disk, &io, false);
         if (!error) { disk_present = true; log_write("FILESYSTEM: /disk validated read-only; sign in for authorized writes\n"); }
     }
@@ -181,7 +191,7 @@ int files_settings(unsigned *width, unsigned *height, unsigned *wallpaper, bool 
         *p++ = 0; uint64_t n; if (!decimal(start, &n) || n > 65535) return MN_INVALID;
         values[i] = n;
     }
-    if (*p || values[0] < 1024 || values[0] > 2560 || values[1] < 720 || values[1] > 1440 || values[2] > 2) return MN_INVALID;
+    if (*p || values[0] < 640 || values[0] > 2560 || values[1] < 480 || values[1] > 1440 || values[2] > 2) return MN_INVALID;
     *width = values[0]; *height = values[1]; *wallpaper = values[2]; return MN_OK;
 }
 static char *word(char **p) {

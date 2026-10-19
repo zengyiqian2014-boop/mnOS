@@ -115,3 +115,71 @@ boot_stack_guard: .skip 4096
 boot_stack: .skip 65536
 boot_stack_top:
 .section .note.GNU-stack,"",@progbits
+
+/* Original UEFI loader enters with RDI = validated Multiboot-compatible map.
+ * We are already in long mode. Switch to our own GDT/stack/identity map before
+ * memory_init replaces the temporary tables with W^X mappings. */
+.section .text.boot,"ax"
+.code64
+.global efi_kernel_entry
+efi_kernel_entry:
+ cli
+ cld
+ mov %rdi,%r12
+ mov $boot_stack_top,%rsp
+ xor %rbp,%rbp
+ mov $early_pml4,%rdi
+ xor %rax,%rax
+ mov $(24576 / 8),%rcx
+ rep stosq
+ mov $early_pdpt,%rax
+ or $3,%rax
+ mov %rax,early_pml4(%rip)
+ mov $early_pdpt,%rdi
+ mov $early_pd,%rax
+ mov $4,%ecx
+5:
+ mov %rax,%rdx
+ or $3,%rdx
+ mov %rdx,(%rdi)
+ add $4096,%rax
+ add $8,%rdi
+ loop 5b
+ mov $early_pd,%rdi
+ xor %ecx,%ecx
+6:
+ mov %rcx,%rax
+ shl $21,%rax
+ or $0x83,%rax
+ mov %rax,(%rdi)
+ add $8,%rdi
+ inc %ecx
+ cmp $2048,%ecx
+ jne 6b
+ mov $0xc0000080,%ecx
+ rdmsr
+ or $(1 << 11),%eax
+ wrmsr
+ mov %cr0,%rax
+ or $(1 << 16),%rax
+ mov %rax,%cr0
+ mov $early_pml4,%rax
+ mov %rax,%cr3
+ lgdt gdt_pointer(%rip)
+ pushq $8
+ lea 7f(%rip),%rax
+ push %rax
+ lretq
+7:
+ mov $16,%ax
+ mov %ax,%ds
+ mov %ax,%es
+ mov %ax,%ss
+ xor %eax,%eax
+ mov %ax,%fs
+ mov %ax,%gs
+ mov %r12,%rdi
+ call kernel_main
+8: cli
+ hlt
+ jmp 8b

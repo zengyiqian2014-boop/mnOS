@@ -1,7 +1,10 @@
-# mnOS native kernel
+# mnOS native kernel and desktop
+
+[Install the original graphical system](DESKTOP.md) · [Desktop 0.4 release notes](DESKTOP-RELEASE.md)
 
 An experimental x86_64 and ARM64 kernel written in freestanding C and assembly.
-GRUB Multiboot2 enters the x86 kernel; ARM64 supports direct FDT boot and UEFI
+The desktop installer uses our original x86 UEFI loader. Legacy BIOS diagnostic
+media use GRUB Multiboot2; ARM64 supports direct FDT boot and UEFI
 with FDT or ACPI. Linux does not run underneath either kernel. See the
 [ARM64 build, tests and compatibility limits](arch/arm64/README.md).
 The implemented list below describes x86 unless stated otherwise.
@@ -31,12 +34,13 @@ GPL-3.0-or-later; the font license is in `assets/FONT-LICENSE.txt`.
   Process descriptors come from the physical allocator, not a fixed app array.
 - Original [MNFS](FILESYSTEM.md): copy-on-write metadata/data, CRC32C, 64-bit
   sparse files, directories, rename, truncate, collection and one saved snapshot.
-  `/ram` is temporary; an optional whole MNFS ATA disk is mounted at `/disk`,
+  `/ram` is temporary; a GPT MNFS partition installed by our GUI (or legacy whole MNFS disk) is mounted at `/disk`,
   opened read-only for validation. Authenticated home-directory writes are enabled
   after login; root can explicitly lock the volume. Boot never formats a disk.
 - Local account enrollment/login, separate ordinary/root passwords, user home
   permissions, password changes, root account creation and session locking.
-- Seven-page graphical UI, English/Chinese console help, PS/2 keyboard/mouse,
+- Original multi-window desktop, searchable launcher, files, text editor, settings,
+  graphical UEFI installer, English/Chinese console help, PS/2 keyboard/mouse,
   COM1 serial, PCI enumeration and basic ACPI S5 power-off.
 - QEMU/Bochs DISPI 2D mode switching, three wallpapers and MNFS-backed display
   preferences. Other firmware framebuffers retain their boot-time display mode.

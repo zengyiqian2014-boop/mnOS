@@ -127,7 +127,7 @@ static void parse_boot(uintptr_t address) {
 void kernel_main(uintptr_t address) {
     serial_init();
     smp_bootstrap();
-    log_write("mnOS native 0.1 / x86_64\n");
+    log_write("mnOS native 0.4 / x86_64\n");
     parse_boot(address);
     uint32_t a, b, c, d;
     cpuid(0x80000000, 0, &a, &b, &c, &d);

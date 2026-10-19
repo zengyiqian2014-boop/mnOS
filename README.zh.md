@@ -1,40 +1,24 @@
 # mnOS
 
-[下载自研内核预览版：AMD64 / ARM64](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.3-native-preview.2)
-· [原生系统自研范围和后续验收](native/SYSTEM.md)
+[下载原生图形系统安装 ISO：AMD64 / ARM64](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.4-desktop-preview.1)
+· [安装、操作与测试说明](native/DESKTOP.md)
 
-[下载 amd64 / ARM64 离线安装 ISO](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.2)
-· [启动与验证记录](live/VALIDATION.md)
+**mnOS Desktop 0.4 安装后直接启动自研 C／汇编内核和原生图形桌面。**
+每个架构一份 ISO，集成图形安装器、引导加载、桌面窗口、应用菜单及搜索、文件浏览、
+文本编辑器、终端、系统监视、设备与个人设置、本地账号。文件和设置保存在 MNFS；
+移除 ISO 后可从磁盘启动。本镜像不含 Linux、Xfce 或 Python 运行时。
+F1–F7 打开应用，编辑器 Ctrl-S 保存，左上角 Applications 可搜索工具。
 
-**当前发布的安装器和默认桌面使用 Debian 提供的 Linux 内核。** 自研内核是另一个
-独立的实验启动入口；Firefox、VS Code 和 Linux 驱动还没有迁移到自研内核上。
+这是基础原生 GUI 的开发预览版，桌面服务目前仍在内核内运行。Firefox、VS Code、
+Linux 二进制兼容、原生网络／Wi-Fi、USB、AHCI/NVMe、音频、加速 GPU 和 APFS
+尚未完成。具体测试设备和功能限制见安装说明，不宣称兼容全部硬件或已适合日常使用。
 
-源码主线已新增原生 `exec PATH`、`ps`、`kill PID`：自研内核可从 MNFS 启动独立
-编译的 C 程序，并发运行多个进程，隔离各自地址空间，支持休眠、唤醒和退出后
-内存回收。进程按可用内存动态分配，目前共享启动 CPU，使用小型静态程序 ABI。
-原生 0.3 Preview 2 还补上了受权限检查的原生程序文件接口，可创建、读写、查询、截断、
-删除文件和创建目录。之前的原生 Preview 1 包含多进程里程碑，尚无这些文件调用。
-这些源码新增功能尚未包含在上方的 **preview.2 安装 ISO** 中。
-[原生程序使用方式、测试和限制](native/README.md#run-native-programs-from-mnfs)。
+[旧 v2.0 Linux/Xfce 安装包](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.2)
+是另一个独立的 Debian 应用环境；其中的浏览器和驱动不计入原生系统，也不标为自研。
+原生 0.3 系列是内核开发启动介质；0.4 新增了实际可安装的原生桌面流程。
 
-**每个架构一份安装镜像**，同时包含虚拟机驱动与常见实体硬件固件。
-只下载匹配 CPU 架构的一份 ISO；桌面、Firefox、VS Code、开发与安全工具、
-驱动和对应自研内核在一次离线安装中全部写入硬盘，无需分别安装。
-发布页其他校验、清单及验证文件无需安装。选择第一项 **Install mnOS** 即可，
-其他引导选项不是后续安装步骤。
-启动后进入 C++／GTK 图形安装器，选择磁盘、创建账号、确认清盘并完成安装；
-关机移除 ISO 后从硬盘启动。当前安装器会清空整块所选磁盘。
-[安装说明和兼容边界](live/INSTALLER.md) · [硬件矩阵](live/HARDWARE.md)。
-
-两个架构均集成 C／汇编自研内核的实验入口，与独立的 Debian 13／Linux 6.12 LTS
-应用环境。原生入口用于内核和文件系统开发；Firefox、VS Code、CTF、Wi-Fi 和日常
-系统管理使用 Linux 环境。原生内核 ISO 是开发测试介质，尚不能代替完整安装镜像。
-[ARM64 原生内核说明](native/arch/arm64/README.md)。
-
-| 环境 | 当前功能 |
-| --- | --- |
-| [自研内核](native/README.md) | 本地账号认证、普通用户/root 权限、动态多核、最高 64 TiB 物理地址管理、MNFS CoW 文件系统、图形终端及个人显示设置 |
-| [Linux 桌面](live/README.md) | Xfce、官方 VS Code、nano、Firefox ESR、C/C++/Node.js/Go/Rust/Java、CTF 工具、可选网络授权、系统设置及常见硬件驱动 |
+自研内核已有独立原生 ELF、动态进程、抢占调度、休眠／唤醒、进程所有权及文件系统调用。
+原生应用当前共享启动 CPU，采用小型静态 ABI。[原生程序说明](native/README.md#run-native-programs-from-mnfs)。
 
 x86_64 自研内核已完成 32 核和 33 TiB 稀疏 QEMU 内存验证，仍是实验版本。没有固定 CPU
 数组上限，但实际规模受硬件与内存约束；测试结果不等于实体硬件全覆盖或安全认证。
