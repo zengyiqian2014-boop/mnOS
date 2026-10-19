@@ -507,6 +507,7 @@ static bool child_path(char *path, const char *name) {
     return true;
 }
 static void open_file(unsigned index) {
+    static char loaded_text[sizeof edit_buffer];
     if (index >= item_count)
         return;
     char path[MNFS_PATH];
@@ -529,17 +530,19 @@ static void open_file(unsigned index) {
     const char *local;
     struct mnfs *f = gui_volume(path, &local, false);
     size_t got = 0;
-    int e = f ? mnfs_read(f, local, 0, edit_buffer, sizeof edit_buffer - 1, &got) : MN_RO;
+    int e = f ? mnfs_read(f, local, 0, loaded_text, sizeof loaded_text - 1, &got) : MN_RO;
     if (e) {
         announce(mnfs_error(e));
         return;
     }
     for (size_t i = 0; i < got; i++)
-        if ((unsigned char)edit_buffer[i] < 32 && edit_buffer[i] != '\n' &&
-            edit_buffer[i] != '\t' && edit_buffer[i] != '\r') {
+        if ((unsigned char)loaded_text[i] < 32 && loaded_text[i] != '\n' &&
+            loaded_text[i] != '\t' && loaded_text[i] != '\r') {
             announce("Binary file: open it from the terminal.");
             return;
         }
+    memcpy(edit_buffer, loaded_text, got);
+    auth_wipe(loaded_text, sizeof loaded_text);
     edit_buffer[got] = 0;
     edit_size = got;
     edit_cursor = got;
@@ -594,6 +597,9 @@ static void begin_name(bool directory) {
 }
 static void finish_dialog(void) {
     if (dialog == 4) {
+        auth_wipe(edit_buffer, sizeof edit_buffer);
+        edit_path[0] = 0;
+        edit_size = edit_cursor = edit_scroll = 0;
         edit_changed = false;
         windows[2].open = false;
         page = -1;
