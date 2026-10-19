@@ -207,7 +207,7 @@ int main(int argc, char **argv) {
             }
             vm.terminal();
             vm.command("kernel info", "mnOS native / aarch64");
-            vm.command("help", "mnOS command guide (English)");
+            vm.command("help", "mnOS command manual: help COMMAND");
             vm.command("help -cn", "mnOS 中文帮助");
             vm.command("write /disk/outside-home denied", "Permission denied");
             vm.command("disk unlock", "Permission denied");
