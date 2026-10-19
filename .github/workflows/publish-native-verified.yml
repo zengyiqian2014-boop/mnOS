@@ -1,0 +1,74 @@
+name: Publish verified native media
+on:
+  workflow_dispatch:
+    inputs:
+      source_run:
+        description: Successful Native process lifecycle run
+        required: true
+      release_tag:
+        description: Existing draft release targeting the tested commit
+        required: true
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      SOURCE_RUN: ${{ inputs.source_run }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - name: Verify source, release and artifact identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
+          [[ "$RELEASE_TAG" =~ ^v[0-9A-Za-z._-]+$ ]]
+          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN" > run.json
+          jq -e --arg repo "$GH_REPO" '
+            .conclusion == "success" and .status == "completed" and
+            .path == ".github/workflows/native-process.yml" and
+            .head_repository.full_name == $repo and .event != "pull_request"
+          ' run.json
+          sha=$(jq -r .head_sha run.json)
+          gh release view "$RELEASE_TAG" --json isDraft,targetCommitish > release.json
+          jq -e --arg sha "$sha" '.isDraft and .targetCommitish == $sha' release.json
+          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN/artifacts" > artifacts.json
+          jq -e '[.artifacts[] | select(.name == "native-process-validation" and .expired == false)] | length == 1' artifacts.json
+          artifact=$(jq -r '.artifacts[] | select(.name == "native-process-validation") | .id' artifacts.json)
+          digest=$(jq -r '.artifacts[] | select(.name == "native-process-validation") | .digest' artifacts.json)
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          gh api "repos/$GH_REPO/actions/artifacts/$artifact/zip" > verified.zip
+          printf '%s  verified.zip\n' "${digest#sha256:}" | sha256sum --check --strict
+          mkdir unpack release
+          unzip -q verified.zip -d unpack
+          printf '%s\n' "$sha" > release/SOURCE_COMMIT.txt
+          {
+            printf 'Source commit: %s\n' "$sha"
+            printf 'Validation run: https://github.com/%s/actions/runs/%s\n' "$GH_REPO" "$SOURCE_RUN"
+            printf 'Artifact ID: %s\nArtifact digest: %s\n' "$artifact" "$digest"
+            printf 'ISO files below are the unchanged artifacts from that successful run.\n'
+          } > release/PROVENANCE.txt
+      - name: Package unchanged tested media and logs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f unpack/native-demo.iso
+          test -f unpack/arm64/native-arm64-demo.iso
+          cp unpack/native-demo.iso release/mnOS-native-amd64.iso
+          cp unpack/arm64/native-arm64-demo.iso release/mnOS-native-arm64.iso
+          find unpack -type f -name '*.log' -print0 | sort -z > logs.list
+          test -s logs.list
+          tar --null -T logs.list -czf release/boot-validation.tar.gz
+          cd release
+          sha256sum ./*.iso boot-validation.tar.gz SOURCE_COMMIT.txt PROVENANCE.txt > SHA256SUMS
+          sha256sum --check --strict SHA256SUMS
+      - name: Upload and publish the authorized draft
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release upload "$RELEASE_TAG" release/*
+          gh release edit "$RELEASE_TAG" --draft=false --prerelease --latest=false
