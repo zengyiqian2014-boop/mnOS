@@ -8,6 +8,8 @@ int main(void) {
     assert(text_width("iiii",18) < text_width("WWWW",18)/2);
     assert(text_width("Hello",18) < 50);
     assert(text_width("iiii",FONT_MONO18) == text_width("WWWW",FONT_MONO18));
+    assert(font_find(0x663e,FONT_MONO18)->code == 0x663e);
+    assert(text_width("显示",FONT_MONO18) == 4 * text_width("M",FONT_MONO18));
     assert(text_width("ii WW",18) > text_width("iiWW",18));
     assert(font_find('i',18)->advance % 64); /* Keep fractional advances. */
     const char *s="iiii WWWW\tHello\n显示设置\nLast line";

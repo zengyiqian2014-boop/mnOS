@@ -31,20 +31,24 @@ int main(int argc, char **argv) {
         if (c >= 128 && c < sizeof characters) characters[c] = 1;
     }
     fclose(source);
+    if (FT_Set_Pixel_Sizes(mono, 0, 18) || FT_Load_Char(mono, 'M', FT_LOAD_TARGET_LIGHT))
+        die("Monospace metrics");
+    unsigned mono_advance = (unsigned)mono->glyph->advance.x;
     const unsigned sizes[] = {16, 18, 28, 274};
     for (unsigned s = 0; s < 4; s++) {
-        FT_Face face = s == 3 ? mono : ui;
         unsigned size = sizes[s] & 255;
-        if (FT_Set_Pixel_Sizes(face, 0, size)) die("Font size");
-        for (unsigned c = 32; c < (s == 3 ? 127u : (unsigned)sizeof characters); c++) {
+        if (FT_Set_Pixel_Sizes(ui, 0, size)) die("Font size");
+        for (unsigned c = 32; c < (unsigned)sizeof characters; c++) {
             if (!characters[c]) continue;
+            FT_Face face = s == 3 && c < 128 ? mono : ui;
             if (FT_Load_Char(face, c, FT_LOAD_RENDER | FT_LOAD_TARGET_LIGHT)) die("Glyph load");
             FT_GlyphSlot g = face->glyph;
             unsigned bytes = g->bitmap.width * g->bitmap.rows;
             if (count >= sizeof glyphs / sizeof *glyphs || used + bytes > sizeof pixels) die("Atlas capacity");
             glyphs[count++] = (struct record){c, used, g->bitmap.width, g->bitmap.rows,
-                s == 3 ? (unsigned)g->advance.x : (unsigned)((g->linearHoriAdvance + 512) >> 10),
-                sizes[s], g->bitmap_left, (int)size + 1 - g->bitmap_top};
+                s == 3 ? mono_advance * (c < 128 ? 1 : 2) : (unsigned)((g->linearHoriAdvance + 512) >> 10),
+                sizes[s], g->bitmap_left + (s == 3 && c >= 128 ? (int)(mono_advance / 32 - size) / 2 : 0),
+                (int)size + 1 - g->bitmap_top};
             for (unsigned y = 0; y < g->bitmap.rows; y++)
                 for (unsigned x = 0; x < g->bitmap.width; x++)
                     pixels[used++] = g->bitmap.buffer[y * g->bitmap.pitch + x];
