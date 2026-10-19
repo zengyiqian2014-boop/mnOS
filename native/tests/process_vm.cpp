@@ -74,6 +74,7 @@ struct VM {
             char b[4096]; auto n = read(fd, b, sizeof b);
             require(n > 0, "serial closed\n" + output); output.append(b, n);
             require(output.find("PANIC") == std::string::npos, output);
+            require(output.find("EXTENDED STATE TRAP FAILED") == std::string::npos, output);
         }
     }
     size_t send(const std::string &s) {
@@ -100,7 +101,9 @@ struct VM {
     }
     void hello(const std::string &path) {
         auto m = command("kernel exec " + path, "HELLO: native user ELF; initialized data and BSS OK");
-        wait("exited status=7", m); wait("PROCESS reaped; pages restored=1", m);
+        auto id = launched(m);
+        wait("PROCESS " + id + " exited status=7", m);
+        wait("PROCESS reaped; pages restored=1 pid=" + id + "\n", m);
     }
     uint64_t pages() {
         auto m = command("mem", "CONSOLE: mem");
@@ -108,11 +111,32 @@ struct VM {
         require(std::regex_search(text, match, std::regex("Free physical pages: ([0-9]+)")), "free pages\n"+text);
         return std::stoull(match[1]);
     }
-    std::string spin() {
-        auto m = command("exec /ram/bin/spin", "SPIN: running without yielding");
+    std::string launched(size_t m) {
         std::smatch match; auto text = output.substr(m);
         require(std::regex_search(text, match, std::regex("PROCESS ([0-9]+) started")), "PID");
         return match[1];
+    }
+    std::string spin() {
+        return launched(command("exec /ram/bin/spin", "SPIN: running without yielding"));
+    }
+    std::string isolate() {
+        return launched(command("exec /disk/bin/isolate", "ISOLATE: private BSS initialized"));
+    }
+    void terminate(const std::string &id) {
+        auto m = command("kernel kill " + id, "PROCESS " + id + " terminated status=130");
+        wait("PROCESS reaped; pages restored=1 pid=" + id + "\n", m);
+    }
+    std::vector<uint64_t> progress(const std::vector<std::string> &ids) {
+        auto m = command("ps", "CONSOLE: ps"); std::vector<uint64_t> counts;
+        auto text = output.substr(m);
+        for (const auto &id: ids) {
+            std::smatch match;
+            require(std::regex_search(text, match, std::regex("PID " + id + " UID 1000 TICKS ([0-9]+) SWITCHES ([0-9]+)")),
+                    "missing live PID " + id + "\n" + text);
+            require(std::stoull(match[2]) > 0, "process never scheduled: " + id);
+            counts.push_back(std::stoull(match[1]));
+        }
+        return counts;
     }
 };
 int main(int argc, char **argv) {
@@ -130,7 +154,7 @@ int main(int argc, char **argv) {
         require(run({tool, "format", disk.string(), "32"}) == 0, "format");
         mnfs({"mkdir", "/bin"}); mnfs({"mkdir", "/root"});
         auto programs = build / (arch == "arm64" ? "arm64/user" : "user");
-        for (auto name: {"hello", "fault", "badptr"})
+        for (auto name: {"hello", "fault", "badptr", "isolate", "fpstate", "simdstate", "tlsstate"})
             mnfs({"import", std::string("/bin/") + name, (programs / (std::string(name)+".elf")).string()});
         mnfs({"import", "/root/hidden", (programs / "hello.elf").string()});
         require(run({tool, disk.string(), "import", "/bin/hello", (programs / "hello.elf").string()}) != 0,
@@ -163,15 +187,45 @@ int main(int argc, char **argv) {
                 m = vm.command("exec /disk/bin/fault", "fault status=");
                 vm.wait("PROCESS reaped; pages restored=1", m);
                 vm.hello("/disk/bin/hello");
-                std::string pid = vm.spin();
-                vm.command("ps", "PID " + pid + " UID 1000");
-                vm.command("exec /ram/bin/hello", "application slot busy");
+                std::vector<std::string> pids;
+                for (unsigned n = 0; n < 16; ++n) pids.push_back(vm.spin());
+                require(vm.pages() == free - pids.size() * 8, "unexpected live process memory cost");
+                auto before = vm.progress(pids);
+                std::vector<std::string> sleeping;
+                auto isolation_start = vm.output.size();
+                for (unsigned n = 0; n < 4; ++n) sleeping.push_back(vm.isolate());
+                vm.hello("/disk/bin/hello");
+                m = vm.command("exec /disk/bin/fault", "fault status=");
+                auto faulted = vm.launched(m);
+                vm.wait("PROCESS reaped; pages restored=1 pid=" + faulted + "\n", m);
+                m = vm.command("exec /disk/bin/badptr", "BADPTR: boundaries and unknown syscalls rejected");
+                auto badptr = vm.launched(m);
+                vm.wait("PROCESS reaped; pages restored=1 pid=" + badptr + "\n", m);
+                for (auto probe: {"fpstate", "simdstate", "tlsstate"}) {
+                    m = vm.command(std::string("exec /disk/bin/") + probe, "fault status=");
+                    auto trapped = vm.launched(m);
+                    vm.wait("PROCESS reaped; pages restored=1 pid=" + trapped + "\n", m);
+                }
+                vm.wait("ISOLATE: identity and private data survived 5 sleeps", isolation_start);
+                auto after = vm.progress(pids);
+                for (unsigned n = 0; n < pids.size(); ++n)
+                    require(after[n] > before[n], "starved process " + pids[n]);
+                vm.progress(sleeping);
+                require(vm.pages() == free - (pids.size() + sleeping.size()) * 8, "concurrent fault/exit leaked pages");
+                require(vm.output.find("exited status=9") == std::string::npos &&
+                        vm.output.find("exited status=100") == std::string::npos, "private process state corrupted");
                 vm.command("kill 0", "No such process");
-                m = vm.command("kernel kill " + pid, "terminated status=130");
-                vm.wait("PROCESS reaped; pages restored=1", m);
+                for (unsigned n = 0; n < pids.size(); n += 2) vm.terminate(pids[n]);
+                for (unsigned n = 1; n < pids.size(); n += 2) vm.terminate(pids[n]);
+                for (const auto &id: sleeping) vm.terminate(id);
+                vm.command("kill " + pids[0], "No such process");
                 require(vm.pages() == free, "kill/fault leaks pages");
-                vm.spin(); m = vm.command("logout", "Session locked.");
-                vm.wait("session-ended status=125", m); vm.wait("PROCESS reaped; pages restored=1", m);
+                auto spin = vm.spin(), sleeper = vm.isolate();
+                m = vm.command("logout", "Session locked.");
+                for (const auto &id: {spin, sleeper}) {
+                    vm.wait("PROCESS " + id + " session-ended status=125", m);
+                    vm.wait("PROCESS reaped; pages restored=1 pid=" + id + "\n", m);
+                }
                 vm.command("demo", "AUTH PROMPT: Password:");
                 vm.command("ordinarytest491", "Signed in as an ordinary user.");
                 vm.hello("/disk/bin/hello");
@@ -179,7 +233,7 @@ int main(int argc, char **argv) {
             }
             require(vm.output.find("ordinarytest491") == std::string::npos &&
                     vm.output.find("rootadmintest785") == std::string::npos, "password leaked");
-            std::cout << "PASS " << arch << " phase " << phase << ": MNFS exec, user mode, lifecycle and isolation\n";
+            std::cout << "PASS " << arch << " phase " << phase << ": MNFS exec, dynamic processes, preemption, fault isolation and reclamation\n";
         }
         mnfs({"check"}); fs::remove_all(work); return 0;
     } catch (const std::exception &e) { std::cerr << e.what() << '\n'; return 1; }

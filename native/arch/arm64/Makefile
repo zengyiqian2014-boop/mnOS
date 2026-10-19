@@ -23,7 +23,7 @@ build/arm64/user/%.elf: user/example.c user/api.h user/app-arm64.ld
 	$(CLANG) --target=aarch64-none-elf $(FLAGS) -DPROGRAM_$* -c user/example.c -o build/arm64/user/$*.o
 	$(LLD) -nostdlib -z max-page-size=0x1000 -T user/app-arm64.ld -o $@ build/arm64/user/$*.o
 .PHONY: user-programs
-user-programs: $(addprefix build/arm64/user/,$(addsuffix .elf,hello spin fault badptr))
+user-programs: $(addprefix build/arm64/user/,$(addsuffix .elf,hello spin fault badptr isolate fpstate simdstate tlsstate))
 build/arm64/elf/%.o: %.c
 	mkdir -p $(dir $@)
 	$(CLANG) --target=aarch64-none-elf $(FLAGS) -c $< -o $@

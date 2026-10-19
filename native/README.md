@@ -25,6 +25,10 @@ GPL-3.0-or-later; the font license is in `assets/FONT-LICENSE.txt`.
   code segment and one 4 KiB RW/NX data segment, with zero-filled BSS. Invalid
   architecture, out-of-range segments, overlapping mappings, W+X, dynamic linking
   and invalid entry points are rejected before destination pages are changed.
+- Dynamic native processes on both architectures: independent address spaces,
+  timer preemption, round-robin ready queue, sleep deadlines, process ownership,
+  per-process statistics and deferred reclamation after switching page tables.
+  Process descriptors come from the physical allocator, not a fixed app array.
 - Original [MNFS](FILESYSTEM.md): copy-on-write metadata/data, CRC32C, 64-bit
   sparse files, directories, rename, truncate, collection and one saved snapshot.
   `/ram` is temporary; an optional whole MNFS ATA disk is mounted at `/disk`,
@@ -47,7 +51,7 @@ tested scale still impose limits.
 CPU hotplug, task migration, NUMA placement, native USB/network/Wi-Fi/audio,
 AHCI/NVMe, GPU acceleration, arbitrary-size executable mapping and a POSIX/Linux
 ABI are not implemented. `exec PATH` can now run a static native ELF from MNFS,
-with one application slot on the boot CPU alongside the fixed test workers.
+with multiple applications on the boot CPU alongside the fixed test workers.
 This is not Linux binary compatibility.
 Native authentication covers the local graphical/serial console and its file and
 settings operations; it is separate from Linux PAM/sudo and is not POSIX UID/ACL
@@ -257,6 +261,7 @@ Sign in to the native console, then run:
 ```text
 exec /ram/bin/hello
 exec /ram/bin/spin
+exec /ram/bin/spin
 ps
 kill 2
 ```
@@ -286,25 +291,53 @@ runs the disk file. Permissions are checked before reading: `/system`, another
 user's home and `/root` remain inaccessible to ordinary users. MNFS does not yet
 store an executable bit, so readable native ELF files are executable.
 
-Exit, user faults, `kill`, logout and switching accounts retire the application.
+`ps` lists the calling account's applications; root can see all applications.
+It includes PID, owner UID, user-mode timer ticks, dispatches and syscall counts.
+`kill PID` requires ownership or root. PIDs increase monotonically without reuse
+during a boot, so an old PID cannot target a newly allocated process descriptor.
+
+Exit, user faults, `kill`, logout and switching accounts retire applications.
 The scheduler changes address spaces before freeing the private page tables and
 three payload pages; kernel mappings remain shared and owned by the kernel.
-Payload pages are wiped before release. Malformed ELF and allocation failure
-leave the slot available and release partially allocated pages. Unknown app
+Payload and descriptor pages are wiped before release. Malformed ELF and allocation
+failure release partially allocated pages while other applications keep running. Unknown app
 system calls return -38; an application fault terminates that application instead
 of panicking the kernel. Existing boot probes keep their strict panic-on-failure
 behavior. An application does not gain kernel privilege when launched by root.
 
-Current limits: **one application**, pinned to the boot CPU, no command-line
+Each application uses eight 4 KiB pages: descriptor, code, data, stack and four
+private page tables. Admission reserves 64 free physical pages for kernel work.
+The process count is bounded by available memory and the signed 64-bit PID space;
+there is no fixed application-slot limit. This reserve is not an OOM recovery
+guarantee for arbitrary future kernel allocations.
+
+Ready-queue selection/removal is O(1). Sleep insertion is O(number of sleepers);
+timer wakeup visits only expired deadlines. `ps` and PID lookup remain linear.
+The console's identity check scans processes only when the logged-in UID changes,
+rather than rescanning the registry at each timer interrupt.
+Returning to the same address space avoids an unnecessary page-table reload/TLB
+flush. These changes reduce avoidable work; they are not a throughput comparison
+against Linux. All application queues are currently owned by the boot CPU and
+mutated with local IRQs masked; other CPUs continue their independent boot workers.
+
+Current limits: applications are **pinned to the boot CPU**, no command-line
 arguments, at most 64 KiB of ELF file input, one 4 KiB RX segment and one 4 KiB
 RW/NX segment plus one stack page. No dynamic linker, file syscalls, fork, exec
 replacement, wait API, signals or Linux/POSIX binary compatibility. These are
 native development facilities, not a replacement for the Linux desktop yet.
+Only general-purpose registers are currently saved. FP/SIMD access explicitly
+traps on both architectures (x86 CR0.EM/TS; ARM CPACR_EL1), instead of inheriting
+firmware settings or exposing unsaved extended state. Compile applications with
+`-mgeneral-regs-only`; FP/SIMD context support remains future work.
+ARM64 saves/restores each process's TPIDR_EL0 and initializes it to zero. x86
+has no FS/GS TLS API yet; FS starts at zero, user GS starts at zero, and
+FSGSBASE instructions are disabled. Firmware register defaults are not the ABI.
 
 Application ABI (`user/api.h`): x86 uses `int 0x80`, RAX call/result and RDI/RSI
 arguments; ARM uses `svc #0`, X8 call, X0 result/first argument and X1 second
 argument. Calls: 0 console write (up to 256 bytes within one mapped page), 1 yield,
-2 tick count, 3 exit (low eight bits of status), 5 sleep (1–1000 ticks). Errors:
+2 tick count, 3 exit (low eight bits of status), 5 sleep (1–1000 ticks),
+6 process ID, 7 owner UID. Errors:
 -14 bad user address, -22 invalid length/delay, -38 unsupported call. Output
 controls are sanitized; the buffer is read through a validated physical alias.
 
@@ -316,11 +349,38 @@ docker run --rm --network none -v "$PWD/native:/native" -w /native \
   mnos-native-builder bash tests/process_ci.sh
 ```
 
-The lifecycle VM test imports external ELF files into a new disposable MNFS disk,
-enrolls an ordinary account, exercises repeated launches, malformed/wrong-machine
-and W+X rejection, protected paths, invalid pointers, unknown calls, code-write
-faults, preemption of a non-yielding loop, PID-based termination and logout.
-It compares free-page counts and boots the same disk again to execute the
-persistent file after login. Both x86_64 BIOS/IDE and ARM64 UEFI/VirtIO were
-tested with two CPUs under QEMU TCG; the existing seven boot configurations and
-ASan/UBSan allocator/filesystem/authentication suites also passed locally.
+The lifecycle VM test imports external ELF files into a new disposable MNFS disk
+and enrolls an ordinary account. It runs 16 non-yielding applications plus four
+sleeping applications with different private data and identities. While they
+remain alive, it exercises normal exit, read-only code faults, invalid pointers,
+unknown syscalls and FP/SIMD traps. Every spinning PID must gain CPU ticks;
+private-data processes must remain alive after repeated sleep/wake cycles.
+ARM64's private TPIDR_EL0 must survive those switches; attempts to write its
+read-only thread pointer, or to use x86 WRFSBASE outside the ABI, must fault.
+The test checks eight pages per live process, out-of-order termination, stale
+PIDs, logout revocation and exact free-page restoration, then boots the same
+disk again to execute its persisted ELF. Malformed/wrong-machine/W+X ELF and
+protected-path rejection remain covered.
+
+`tests/process.c` links the production C process manager and ELF loader under
+ASan/UBSan with simulated CPU/page-table hooks. It exercises 512 concurrent
+descriptors, all eight allocation-failure points, sorted and tied sleep deadlines,
+owner/root permissions, current-root reclamation, pressure with a 64-page kernel
+reserve, and 1,000 create/retire cycles. The host queue microbenchmark reports
+selection cost only; it excludes interrupts, hardware page-table changes and
+TLB effects, and is not an end-to-end OS performance score.
+
+Local validation on **2026-10-19** used Debian 13 and QEMU 10.0.13 with TCG:
+
+| Check | Result |
+| --- | --- |
+| Production process manager with ASan/UBSan | PASS: 512 concurrent descriptors, eight allocation failures, 1,000 reclamation cycles |
+| x86_64 BIOS/IDE, two CPUs | PASS: 20 concurrent programs, fault/register isolation, complete reclamation, persisted login and second boot |
+| ARM64 UEFI/FDT/VirtIO, two CPUs | PASS: same lifecycle, private TPIDR_EL0, persisted login and second boot |
+| x86 four-CPU boot plus six ARM CPU/GIC/direct/UEFI configurations | PASS: preemption and boot isolation checks |
+| ELF, physical allocator, MNFS and authentication host regressions | PASS under ASan/UBSan |
+
+These are native-kernel tests, not a desktop migration or a new production
+security/performance certification. The linked preview.2 installer remains the
+previous release. The `Native process lifecycle` CI workflow reproduces this
+suite and retains serial logs and native diagnostic ISOs.

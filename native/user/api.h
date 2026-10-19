@@ -19,6 +19,8 @@ static inline int64_t native_call(uint64_t op, uint64_t arg, uint64_t len) {
 static inline int64_t native_write(const char *p, size_t n) {
     return native_call(0, (uintptr_t)p, n);
 }
+static inline int64_t native_getpid(void) { return native_call(6, 0, 0); }
+static inline int64_t native_getuid(void) { return native_call(7, 0, 0); }
 static inline _Noreturn void native_exit(unsigned status) {
     native_call(3, status, 0);
     for (;;) {}

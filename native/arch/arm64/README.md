@@ -96,8 +96,15 @@ Each consumed byte is erased; pool exhaustion or unavailable entropy refuses
 new password hashes. FDT VirtIO RNG requests check returned byte counts and can
 replenish entropy. No timestamps or fixed seeds substitute for randomness.
 
+The shared original process manager runs multiple static native C executables
+from MNFS at EL0, each with private RX code, RW/NX data/stack and translation
+tables. Timer preemption, deadline wakeup, owner-checked termination and deferred
+page reclamation also apply to ARM64. Applications are pinned to the boot CPU;
+this does not yet provide application scheduling across CPUs. See the
+[native process ABI and validation](../../README.md#run-native-programs-from-mnfs).
+
 Secure Boot must be disabled for the unsigned original kernel. Native network,
 Wi-Fi, USB, accelerated GPU, POSIX/Linux ABI, CPU hotplug, task migration, NUMA
-policy and a general program loader remain unimplemented. The Linux desktop
+policy and arbitrary-size/POSIX executable loading remain unimplemented. The Linux desktop
 provides those applications/drivers separately. These boot tests are not a
 security certification or a performance comparison with RHEL.

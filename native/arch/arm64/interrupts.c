@@ -15,6 +15,12 @@ void arm_irq_init(void) {
     barrier();
 }
 void arm_irq_cpu(void) {
+    /* No FP/SIMD/SVE/SME context in the current user ABI. Do not inherit
+     * permissive UEFI FPEN state and share vector registers across processes. */
+    sys_write(cpacr_el1, 0);
+    sys_write(tpidr_el0, 0);
+    sys_write(tpidrro_el0, 0);
+    __asm__ volatile("isb" ::: "memory");
     uintptr_t bank = platform.gicd;
     if (platform.gic_version == 3) {
         uintptr_t r = platform.gicr;
@@ -94,16 +100,25 @@ void tasks_init_for(struct cpu *c) {
     if (!c->index) log_write("Native ELF64 ARM64 loaded: independent user executable\n");
 }
 static void select(struct irq_frame *f) {
-    tasks[current_task].frame = *f;
+    struct task *previous = current_task == APP_TASK ? process_task() : &tasks[current_task];
+    if (!previous) panic("missing current ARM process");
+    previous->frame = *f;
+    previous->thread_pointer = sys_read(tpidr_el0);
+    uint64_t previous_root = previous->cr3;
     for (;;) {
         for (unsigned n = 1; n <= MAX_TASKS; ++n) {
             unsigned i = (current_task + n) % MAX_TASKS;
-            if (tasks[i].ready && tasks[i].wake_tick <= ticks) {
+            struct task *next = i == APP_TASK ? process_choose() :
+                tasks[i].ready && tasks[i].wake_tick <= ticks ? &tasks[i] : NULL;
+            if (next) {
                 current_task = i;
-                ++tasks[i].switches;
-                *f = tasks[i].frame;
-                sys_write(ttbr0_el1, tasks[i].cr3);
-                __asm__ volatile("dsb ish; tlbi vmalle1; dsb ish; isb" ::: "memory");
+                ++next->switches;
+                *f = next->frame;
+                sys_write(tpidr_el0, next->thread_pointer);
+                if (next->cr3 != previous_root) {
+                    sys_write(ttbr0_el1, next->cr3);
+                    __asm__ volatile("dsb ish; tlbi vmalle1; dsb ish; isb" ::: "memory");
+                }
                 process_reap();
                 return;
             }
@@ -121,7 +136,7 @@ struct irq_frame *arm_exception(struct irq_frame *f, uint64_t vector) {
         if ((id & 0xffffff) == platform.timer_irq) {
             arm_timer();
             ++ticks;
-            process_tick();
+            process_tick(user);
             if (user && current_task < 2) {
                 uint64_t count = *(uint64_t *)tasks[current_task].data;
                 if (current_task < 2 && count > cpu_this()->probe_counts[current_task])

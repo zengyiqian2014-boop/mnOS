@@ -49,3 +49,65 @@ _Noreturn void _start(void) {
     native_exit(0);
 }
 #endif
+#ifdef PROGRAM_isolate
+static volatile uint64_t identity[128];
+_Noreturn void _start(void) {
+    uint64_t pid = native_getpid(), uid = native_getuid();
+    if (!pid || uid != 1000) native_exit(96);
+#ifdef __aarch64__
+    uint64_t thread_pointer;
+    __asm__ volatile("mrs %0, tpidr_el0" : "=r"(thread_pointer));
+    if (thread_pointer) native_exit(102);
+    __asm__ volatile("msr tpidr_el0, %0" :: "r"(pid) : "memory");
+#endif
+    for (unsigned i = 0; i < 128; ++i) {
+        if (identity[i]) native_exit(97);
+        identity[i] = pid * 131 + i;
+    }
+    static const char started[] = "ISOLATE: private BSS initialized\n";
+    native_write(started, sizeof started - 1);
+    for (unsigned round = 0;; ++round) {
+        if (native_call(5, 20 + pid % 5, 0)) native_exit(98);
+        for (unsigned i = 0; i < 128; ++i)
+            if (identity[i] != pid * 131 + i) native_exit(99);
+        if (native_getpid() != (int64_t)pid || native_getuid() != (int64_t)uid) native_exit(100);
+#ifdef __aarch64__
+        __asm__ volatile("mrs %0, tpidr_el0" : "=r"(thread_pointer));
+        if (thread_pointer != pid) native_exit(103);
+#endif
+        if (round == 4) {
+            static const char ok[] = "ISOLATE: identity and private data survived 5 sleeps\n";
+            native_write(ok, sizeof ok - 1);
+        }
+    }
+}
+#endif
+#if defined(PROGRAM_fpstate) || defined(PROGRAM_simdstate) || defined(PROGRAM_tlsstate)
+_Noreturn void _start(void) {
+    /* Extended state is deliberately unavailable until context save/restore is
+     * implemented. These instructions must fault only this process. */
+#ifdef PROGRAM_tlsstate
+#ifdef __aarch64__
+    __asm__ volatile("msr tpidrro_el0, xzr");
+#else
+    __asm__ volatile("xor %eax, %eax; wrfsbase %rax");
+#endif
+#elif defined(PROGRAM_fpstate)
+#ifdef __aarch64__
+    /* Explicit encodings keep the rest of this probe -mgeneral-regs-only. */
+    __asm__ volatile(".inst 0x1e6e1000"); /* fmov d0, #1.0 */
+#else
+    __asm__ volatile("fldz");
+#endif
+#else
+#ifdef __aarch64__
+    __asm__ volatile(".inst 0x4f00e400"); /* movi v0.16b, #0 */
+#else
+    __asm__ volatile("pxor %xmm0, %xmm0");
+#endif
+#endif
+    static const char failed[] = "EXTENDED STATE TRAP FAILED\n";
+    native_write(failed, sizeof failed - 1);
+    native_exit(101);
+}
+#endif
