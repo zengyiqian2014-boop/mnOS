@@ -233,6 +233,8 @@ int main(int argc, char **argv) {
                 }
                 vm.command("demo", "AUTH PROMPT: Password:");
                 vm.command("ordinarytest491", "Signed in as an ordinary user.");
+                m = vm.send("t");
+                vm.wait("UI: page 4", m);
                 vm.hello("/disk/bin/hello");
                 require(vm.pages() == free, "session change leaks pages");
             }
