@@ -314,9 +314,18 @@ int main(int argc,char **argv) {
             // Use real credentials on the graphical greeter, then validate its desktop.
             vm.click(640,349); vm.type(password); vm.key("ret"); vm.pause(25);
             size_t start=vm.output.size();
-            send_all(vm.serial,"test $(id -u) -ge 1000 && ! grep -qw boot=live /proc/cmdline && findmnt -n -o FSTYPE / | grep -qx ext4 && test -e /var/lib/mnos/installed-architecture && command -v code firefox-esr nano nmap && /usr/sbin/getcap /usr/lib/mnos/net-admin | grep -q cap_net_admin,cap_net_raw=ep && timeout 120 sh -c 'until pgrep -u $(id -u) xfce4-session && pgrep -u $(id -u) xfce4-panel && pgrep -u $(id -u) xfwm4; do sleep 1; done' && echo MNOS_DISK_DESKTOP_PASS\n");
+            send_all(vm.serial,"test $(id -u) -ge 1000 && ! grep -qw boot=live /proc/cmdline && findmnt -n -o FSTYPE / | grep -qx ext4 && test -e /var/lib/mnos/installed-architecture && command -v code firefox-esr nano nmap mnos-pkg && /usr/sbin/getcap /usr/lib/mnos/net-admin | grep -q cap_net_admin,cap_net_raw=ep && timeout 120 sh -c 'until pgrep -u $(id -u) xfce4-session && pgrep -u $(id -u) xfce4-panel && pgrep -u $(id -u) xfwm4; do sleep 1; done' && echo MNOS_DISK_DESKTOP_PASS\n");
             vm.wait("\r\nMNOS_DISK_DESKTOP_PASS\r\n",180,start);
             vm.desktop_screen(out/(phase+"-desktop.ppm"));
+            if(!nvme) {
+                start=vm.output.size();
+                send_all(vm.serial,"code --version && firefox-esr --version && mnos-help -cn code && ! mnos-pkg install nano && timeout 90 firefox-esr --headless --screenshot /tmp/mnos-browser.png 'data:text/html,<h1>mnOS offline browser check</h1>' && test -s /tmp/mnos-browser.png && printf '#include <stdio.h>\\nint main(void){puts(\"BUILD_OK\");}\\n' > /tmp/mnos-app.c && cc -Wall -Werror /tmp/mnos-app.c -o /tmp/mnos-app && /tmp/mnos-app && echo MNOS_APPLICATIONS_PASS\n");
+                vm.wait("\r\nMNOS_APPLICATIONS_PASS\r\n",180,start);
+                start=vm.output.size();
+                send_all(vm.serial,"DISPLAY=:0 code --disable-extensions --new-window /tmp/mnos-app.c >/tmp/mnos-code.log 2>&1; timeout 90 sh -c 'until DISPLAY=:0 xdotool search --onlyvisible --class Code; do sleep 1; done' && echo MNOS_CODE_WINDOW_PASS\n");
+                vm.wait("\r\nMNOS_CODE_WINDOW_PASS\r\n",120,start);
+                vm.screen(out/"vscode-window.ppm");
+            }
             // Keep the echoed command distinct from the actual sudo prompt.
             send_all(vm.serial,"sudo -S -p 'QA_'\"AUTH:\" /usr/bin/systemctl poweroff\n"); vm.wait("QA_AUTH:",30);
             send_all(vm.serial,password+"\n"); vm.shutdown();

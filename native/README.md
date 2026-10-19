@@ -79,6 +79,10 @@ help
 help -cn
 kernel help
 kernel help -cn
+help display
+help -cn kernel display
+help all
+help -cn all
 ```
 
 Native command syntax is `kernel <instruction> [object]`:
@@ -96,6 +100,12 @@ kernel save-settings
 kernel exec /ram/bin/hello
 kernel ps
 kernel kill 2
+kernel security
+kernel fonts
+kernel unicode
+kernel disk status
+tools native
+tools linux
 ```
 
 Display modes: 1024×768, 1280×720, 1600×900, 1920×1080 and 2560×1440, subject to
@@ -150,6 +160,16 @@ save|restore|drop [/ram|/disk]`. They also accept the `kernel ` prefix. Unprefix
 paths select `/ram`; include `/disk/` to access the persistent volume. `cat`
 displays at most 512 bytes per call. The console accepts at most 255 ASCII bytes
 per command; the filesystem API supports 255-byte names and 1024-byte paths.
+
+Every implemented command has a detailed English/Chinese entry, including
+syntax, permissions, examples and failure cases. `Tab` completes commands,
+kernel instructions and selected objects; Up/Down scroll up to 512 output lines.
+The reference text is generated from the same registry:
+[English](COMMANDS.en.txt) / [中文](COMMANDS.zh.txt).
+`kernel disk status` is read-only for ordinary users; lock/unlock require root.
+Malformed volume arguments are rejected before any operation. Power commands
+open a confirmation dialog. `tools` reports the actual executable environment;
+it does not emulate APT or claim Linux binaries can run in the native kernel.
 
 Other console commands: `uname`, `mem`, `tasks`, `pci`, `test`, `uptime`, `clear`,
 `reboot`, `shutdown`. F1–F7 select pages; `t` opens the console. F7 shows display
@@ -219,7 +239,8 @@ full ISOs. Normal builds use the checked-in font atlas. After editing UI text:
 ```sh
 cd native
 cc -std=c11 -O2 tools/font.c $(pkg-config --cflags --libs freetype2) -o build/font-gen
-build/font-gen /path/NotoSansCJK-Regular.ttc /path/DejaVuSansMono.ttf src/ui.c > assets/font.c
+build/font-gen /path/NotoSansCJK-Regular.ttc /path/DejaVuSansMono.ttf /path/DejaVuSans.ttf src/ui.c > assets/font.c
+build/font-gen /path/NotoSansCJK-Regular.ttc /path/DejaVuSansMono.ttf /path/DejaVuSans.ttf src/ui.c installer > assets/installer-font.c
 cc -std=c11 -O2 tools/icons.c -lm -o build/icon-gen
 build/icon-gen > assets/icons.c
 ```
@@ -229,6 +250,15 @@ coverage atlases, fixed-point font metrics and its own drawing/layout routines;
 FreeType and Python are not runtime dependencies. Noto UI faces use proportional
 advances, the terminal uses DejaVu Sans Mono, and each original application icon
 is rasterized separately at 20, 24, 40 and 48 pixels with 8x coverage sampling.
+The full atlas covers 49,776 Unicode scalar values from Noto CJK and DejaVu:
+all printable ASCII, CJK, Kana, Hangul, extended Latin, Greek, Cyrillic and
+many symbols. UTF-8 decoding accepts valid 1–4 byte sequences and substitutes
+U+FFFD for invalid sequences/unavailable glyphs. A bounded 4-bit RLE decoder
+reduces bitmaps to about 8 MiB; monospace CJK shares bitmap storage. Exact UI
+sizes retain baked metrics; other Unicode text falls back to scaled 18px glyphs.
+This is not complete Unicode coverage: no IME, bidirectional layout, complex
+shaping, grapheme-aware cursor movement or color emoji. Keyboard text entry is
+currently ASCII. `kernel unicode` displays a real multilingual rendering sample.
 
 ## System-call ABI
 

@@ -1,0 +1,335 @@
+help [-cn] [COMMAND|all]
+Read the command manual
+Default language: English. -cn selects Chinese. Use all for every entry.
+Use Up/Down to scroll output; Tab completes command names.
+Examples use USER as a placeholder for your own account name.
+Example:
+help -cn kernel display
+
+kernel INSTRUCTION [OBJECT]
+Control the native kernel
+Calls actual mnOS services. Queries and personal display settings need
+no root. Volume administration requires su authentication.
+File/process/account commands below also accept the kernel prefix.
+This kernel has no Linux ABI, loadable driver modules or network stack.
+Example:
+kernel info
+
+kernel info
+Kernel and architecture
+Read-only: reports the original C/assembly kernel, CPU name and online
+CPU count. uname is an alias. Does not claim Linux compatibility.
+Example:
+kernel info
+
+kernel cpu
+Processor discovery
+Read-only: firmware-discovered and successfully started CPU counts.
+A discovered CPU is not necessarily online. Hotplug is not implemented.
+Example:
+kernel cpu
+
+kernel memory
+Physical memory accounting
+Read-only: free/usable 4096-byte pages and physical address limit.
+Multiply page counts by 4096 for bytes. The address limit is not RAM
+capacity. mem is an alias; no memory is allocated by this query.
+Example:
+kernel memory
+
+kernel uptime
+Time since this boot
+Read-only: seconds from the kernel timer. This is uptime, not wall-clock
+time or a measurement of performance.
+Example:
+uptime
+
+kernel tasks
+Kernel worker scheduling
+Read-only: context-switch counters for the boot CPU test workers.
+Use ps for native user applications. These are different schedulers.
+Example:
+kernel tasks
+
+kernel gpu
+Active display driver
+Read-only: names the active native framebuffer/display driver.
+A framebuffer does not imply GPU acceleration or arbitrary mode changes.
+Example:
+kernel gpu
+
+kernel devices
+Enumerated PCI devices
+Read-only PCI enumeration. A listed device can have no native driver.
+Use Up/Down for long output. pci is an alias.
+Example:
+kernel devices
+
+kernel test
+Boot isolation results
+Read-only: shows completed boot isolation checks. It does not re-run
+tests or certify system security. Individual results are in serial logs.
+Example:
+kernel test
+
+kernel security
+Session and protection status
+Read-only: current UID, root status and architecture protection state.
+Native pages use W^X and user/kernel isolation. Disks are not encrypted;
+the desktop is kernel-resident. This report is not a security audit.
+Example:
+kernel security
+
+kernel display [modes|WIDTHxHEIGHT]
+Query or change resolution
+No root: without arguments shows the current mode; modes lists candidate
+sizes. Applying a mode succeeds only if the driver and VRAM support it.
+A firmware-only framebuffer keeps its boot mode. Save with save-settings.
+Example:
+kernel display 1600x900
+
+kernel wallpaper [0|1|2]
+Query or change wallpaper
+No root: 0 contours, 1 grid, 2 solid. Omit the object to query the ID.
+Changes affect this session; save-settings persists your own preference.
+Custom image-file wallpapers are not implemented.
+Example:
+kernel wallpaper 1
+
+kernel save-settings
+Save personal display preferences
+No root for your own home. Writes display.cfg on /disk. The disk must be
+mounted and writable. RAM-only sessions cannot save persistent settings.
+A root-imposed disk lock blocks writes until root unlocks it.
+Example:
+kernel save-settings
+
+kernel fonts
+Font library status
+Read-only: counts supported Unicode scalars and raster metrics.
+ASCII printable characters, CJK, Latin, Kana, Hangul and many symbols
+are embedded. Missing glyphs use U+FFFD. No IME, bidi or shaping yet.
+Example:
+kernel fonts
+
+kernel unicode
+Render multilingual samples
+Read-only visual check for ASCII and two/three/four-byte UTF-8.
+The editor can render UTF-8 files; keyboard entry is currently ASCII.
+This displays actual glyphs; it does not install an input method.
+Example:
+kernel unicode
+
+[kernel] fs
+Mounted filesystem status
+Read-only: RAM/disk presence, free 4096-byte blocks and writable state.
+/ram is temporary. /disk persists on an existing installed MNFS volume.
+This command never formats, repairs or mounts arbitrary disks.
+Example:
+kernel fs
+
+[kernel] ls [PATH]
+List a directory
+Signed-in users can list permitted paths. Omitted PATH selects /ram.
+Entries report file/directory and byte size. Absolute volume prefixes
+select /ram or /disk. No shell globs or wildcard expansion.
+Example:
+ls /disk/home/USER
+
+[kernel] stat PATH
+Inspect a file
+Read-only subject to path permissions. Reports byte size and inode.
+Missing paths, denied access and unavailable volumes return errors.
+Example:
+stat /disk/home/USER/note.txt
+
+[kernel] cat PATH [OFFSET]
+Read a file segment
+Read-only subject to path permissions. Reads at most 512 bytes starting
+at decimal byte OFFSET (default 0). Empty output reports end-of-file.
+Control/non-ASCII bytes in this diagnostic reader are shown as dots;
+open the file in Text editor to render its UTF-8 content.
+Example:
+cat /disk/home/USER/note.txt 512
+
+[kernel] write PATH TEXT
+Replace a text file
+Own-home writes need no root. Creates a missing file, writes TEXT and
+truncates old contents to the new length. Parent directory must exist.
+TEXT is the rest of the line; quotes are literal, not shell syntax.
+Errors include read-only disk, no space and permission denied.
+Example:
+write /disk/home/USER/note.txt Hello world
+
+[kernel] writeat PATH OFFSET TEXT
+Write at a byte offset
+Own-home writes need no root. Decimal OFFSET; keeps bytes after the
+written region. Sparse gaps read as zero. Checks 64-bit offset overflow.
+Creates a missing file if its parent exists. No shell quoting.
+Example:
+writeat /disk/home/USER/note.txt 6 mnOS
+
+[kernel] mkdir PATH
+Create one directory
+Own-home writes need no root. Creates one directory; parent must exist.
+Returns an error for existing paths. There is no recursive -p flag.
+Example:
+mkdir /disk/home/USER/project
+
+[kernel] rm PATH
+Remove a file or empty directory
+Own-home writes need no root. Deletes one path; nonempty directories
+are rejected. No -r, -f or wildcard recursion. Removal is permanent
+unless recoverable from an existing MNFS snapshot.
+Example:
+rm /disk/home/USER/old.txt
+
+[kernel] mv SOURCE DESTINATION
+Rename or move within one volume
+Checks source and destination permissions. Both paths must refer to the
+same volume; cross-volume moves are rejected. Parent must exist.
+Protected system paths cannot be reached through dot-path aliases.
+Example:
+mv /disk/home/USER/a.txt /disk/home/USER/b.txt
+
+[kernel] truncate PATH SIZE
+Set logical file length
+SIZE is a decimal byte count. Own-home writes need no root. Shrinking
+discards the tail; extending creates a sparse zero-filled gap.
+64-bit sizes do not imply infinite storage or support in FAT.
+Example:
+truncate /disk/home/USER/data.bin 4096
+
+kernel disk [status|lock|unlock]
+Control persistent-volume writes
+status (also no object) is read-only and available to normal users.
+lock/unlock require root via su. Lock affects all writers, not just
+the terminal. Unlock never formats a disk or bypasses file ownership.
+Example:
+kernel disk status
+
+[kernel] snapshot save|restore|drop [/ram|/disk]
+Manage the single MNFS snapshot
+Root required; omitted volume selects /ram. save replaces the saved
+snapshot; restore replaces current contents with saved contents; drop
+removes the recovery point. Restore of /disk locks the session because
+accounts are restored too. Back up data before restoring.
+Example:
+kernel snapshot save /disk
+
+[kernel] gc [/ram|/disk]
+Collect unreferenced MNFS blocks
+Root required. Omitted volume selects /ram. Reclaims blocks no longer
+referenced by live metadata or the saved snapshot. Needs writable volume.
+This is collection, not corruption repair or disk defragmentation.
+Example:
+kernel gc /disk
+
+[kernel] exec PATH
+Launch a native ELF application
+No root: executable must be readable through your path policy. Only
+static mnOS ELF64 for the current architecture is accepted. Current
+limits: one 4 KiB RX segment plus one 4 KiB RW/NX segment; no argv,
+shared libraries or Linux syscalls. Invalid executables are rejected.
+Use ps and kill PID to inspect/stop your applications.
+Example:
+exec /ram/bin/hello
+
+[kernel] ps
+List native processes
+Normal users see their own processes; root sees all. Reports PID, UID,
+run ticks, context switches, syscall count, state and executable path.
+The built-in graphical apps are kernel services, not these user processes.
+Example:
+kernel ps
+
+[kernel] kill PID
+Stop a native user process
+PID is a decimal process ID from ps. Users may stop their own process;
+root may stop any native user process. Invalid/missing IDs are errors.
+No signal-number options yet. Kernel services cannot be killed here.
+Example:
+kernel kill 2
+
+[kernel] whoami
+Current account name
+Read-only query. Displays the authenticated session name.
+Use kernel security to also see the numeric UID and root status.
+Example:
+whoami
+
+[kernel] su
+Authenticate as root
+Requires the separate root password, not the ordinary user's password.
+Input is masked and omitted from command history/serial output.
+Failed attempts are delayed; root sessions expire after five minutes.
+Use exit to return to the previous ordinary account.
+Example:
+su
+
+[kernel] exit
+Leave an elevated session
+When root was entered through su, returns to the original ordinary
+account. Otherwise reports that no elevated session can be left.
+This does not shut down the computer or delete a user account.
+Example:
+exit
+
+[kernel] passwd [NAME]
+Change an account password
+Ordinary users change only their own password after current-password
+verification. Root can select an existing account. New passwords are
+entered twice, never as command arguments. A damaged/read-only store
+or unavailable secure entropy causes an error, not silent success.
+Example:
+passwd
+
+[kernel] useradd NAME
+Create a local account
+Root required. Prompts twice for the new password, then persists the
+account. Existing/reserved names are rejected. Native account storage
+currently has 16 slots including root; full storage is reported.
+Example:
+useradd developer
+
+[kernel] lock
+Lock the current session
+No root required. Locks desktop and terminal immediately. Further input
+goes to account authentication. logout is an alias. Unsaved documents
+remain in memory but are not a persistent backup.
+Example:
+lock
+
+[kernel] clear
+Clear terminal output
+No root required. Clears only visible output/scrollback; does not erase
+files or the current boot's serial diagnostic log.
+Example:
+clear
+
+[kernel] reboot
+Restart this machine
+Available to this signed-in local-console user. Opens the power
+confirmation: R reboot, S power off, Escape cancel. Save documents first.
+RAM files and unsaved preferences disappear after restarting.
+Example:
+kernel reboot
+
+[kernel] shutdown
+Power confirmation
+Available to the signed-in local-console user. Opens the confirmation
+dialog; S powers off, R restarts, Escape cancels. Firmware support is
+required for power-off. No automatic shutdown timer is implemented.
+Example:
+kernel shutdown
+
+tools [native|linux]
+Application environment and availability
+native lists built-in tools and the static ELF environment. linux
+explains Firefox/VS Code and APT in the Linux tools environment of the
+combined installer. Those programs do not run on this native kernel.
+No network/package manager is implemented in the native environment.
+Use the Linux tools environment for apt, compilers and Linux apps.
+Example:
+tools linux
+

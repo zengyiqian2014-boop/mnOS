@@ -80,26 +80,6 @@
     "description": "Go 语言与构建工具"
   },
   {
-    "name": "Java",
-    "category": "开发编程",
-    "icon": "applications-development",
-    "command": [
-      "java",
-      "--help"
-    ],
-    "description": "Java 运行环境"
-  },
-  {
-    "name": "Javac",
-    "category": "开发编程",
-    "icon": "applications-development",
-    "command": [
-      "javac",
-      "--help"
-    ],
-    "description": "Java 编译器"
-  },
-  {
     "name": "Node.js",
     "category": "开发编程",
     "icon": "applications-development",
@@ -1213,5 +1193,15 @@
       "mnos-help"
     ],
     "description": "英文命令帮助；help -cn 查看中文版"
+  },
+  {
+    "name": "软件包管理",
+    "category": "系统设置",
+    "icon": "system-software-install",
+    "command": [
+      "mnos-pkg",
+      "--help"
+    ],
+    "description": "查询、安装与更新签名软件包"
   }
 ]

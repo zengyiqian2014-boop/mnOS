@@ -36,10 +36,26 @@ int main(void) {
     assert(font_decode(wide,strlen(wide),&p) == 0x663e && p == 3);
     assert(font_decode("\xf0\x9f\x98\x80",4,&(size_t){0}) == 0x1f600);
     const char invalid[]={ (char)0xf0, (char)0x80, (char)0x80, 'X', 0 };
-    p=0; assert(font_decode(invalid,4,&p)=='?' && p==1);
-    p=0; assert(font_decode("\xe4",1,&p)=='?' && p==1);
+    p=0; assert(font_decode(invalid,4,&p)==0xfffd && p==1);
+    p=0; assert(font_decode("\xe4",1,&p)==0xfffd && p==1);
     struct text_cell blank=text_caret("",0,0,80);
     assert(blank.byte==0 && blank.x==0 && blank.row==0);
     assert(text_hit("abc",3,100,0,50)==3);
-    puts("TEXT PASS: proportional/monospace, UTF-8, tabs, wrapping, caret and pointer alignment");
+    for (unsigned c=32;c<127;c++) assert(font_find(c,18)->code==c);
+    const unsigned samples[]={0x4e2d,0x6587,0x3042,0x30a2,0xd55c,0xe9,0x3a9,0x416,0x2500,0x1f600,0xfffd};
+    for (unsigned i=0;i<sizeof samples/sizeof *samples;i++) {
+        assert(font_find(samples[i],18)->code==samples[i]);
+        assert(font_find(samples[i],FONT_MONO18)->code==samples[i]);
+        assert(font_find(samples[i],16)->code==samples[i]);
+    }
+    assert(font_coverage>49000);
+    unsigned char bitmap[64*64];
+    for(unsigned i=0;i<font_count;i++) assert(font_unpack(&font_glyphs[i],bitmap,sizeof bitmap));
+    struct glyph bad=*font_find('A',18);
+    assert(!font_unpack(&bad,bitmap,1));
+    bad.offset=font_pixels_size; assert(!font_unpack(&bad,bitmap,sizeof bitmap));
+    bad=*font_find('A',18); bad.bytes=0; assert(!font_unpack(&bad,bitmap,sizeof bitmap));
+    bad=*font_find('A',18); bad.width=65; assert(!font_unpack(&bad,bitmap,sizeof bitmap));
+    assert(font_find(0x10ffff,18)->code==0xfffd);
+    puts("TEXT PASS: ASCII/Unicode coverage, bounded RLE, proportional/mono, UTF-8, tabs, wrapping and caret");
 }

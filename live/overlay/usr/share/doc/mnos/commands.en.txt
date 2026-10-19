@@ -1,0 +1,228 @@
+@@help
+mnOS Linux tools environment — command reference
+
+help                         English manual (default)
+help -cn                     Chinese manual
+help [-cn] TOPIC             Read one chapter
+help --list                  List chapters
+help all | less              Read every chapter with a pager
+help TOOL / man TOOL         Read that installed tool's full upstream manual
+TOOL --help                  Inspect options for the installed tool version
+help cd                      Bash built-in documentation is preserved
+
+These instructions apply to the Linux tools entry. The original C/assembly
+kernel has its own help and ABI. Firefox/VS Code are not native-kernel ports.
+
+@@tools
+Applications and tools
+
+firefox-esr                   Browser; run as your ordinary account
+code .                        VS Code for the current project
+nano FILE                     Terminal editor; Ctrl-O save, Ctrl-X exit
+thunar                        Graphical file manager
+mnos-center                   Search applications and categorized tool icons
+mnos-tools                    Alias for the same application/tool center
+kernel help                   Kernel query/administration syntax
+mnos-pkg --help               Software package commands
+
+Firefox and official VS Code are installed inside the offline installer payload.
+Use a single installer for your CPU architecture; it installs all included
+packages together. You do not need separate browser/editor downloads. Additional
+packages/extensions need their repository or a local package with dependencies.
+
+CTF/network: nmap, tcpdump, tshark, wireshark, pwn, gdb, gdb-multiarch, readelf,
+objdump, checksec, strace, ltrace, ffuf, gobuster, sqlmap, mitmproxy, john, hashcat,
+yara, steghide, binwalk, foremost, testdisk, photorec, openssl.
+System: htop, btop, lsblk, findmnt, ip, iw, nmcli, systemctl, journalctl,
+smartctl, nvme, sensors, gparted, gnome-disks, ufw, lynis, debsums.
+Run help TOOL for full parameters. Installed tools and exact versions are listed
+in /usr/share/doc/mnos/packages.tsv and dpkg-query -W.
+Python is retained only where chosen third-party tools require it. No Java SDK
+is selected by mnOS. Our runtime utilities are compiled C/C++.
+
+@@firefox
+Firefox ESR — firefox-esr [URL]
+
+Example: firefox-esr https://example.com
+New window: firefox-esr --new-window https://example.com
+Private window: firefox-esr --private-window https://example.com
+Version/options: firefox-esr --version ; firefox-esr --help
+
+Runs as the logged-in account, without sudo. Profiles/bookmarks are in
+~/.mozilla/firefox. Installed-disk profiles persist; temporary Live sessions
+are lost on power-off unless saved elsewhere. Updates use signed Debian APT:
+sudo mnos-pkg update ; sudo mnos-pkg install firefox-esr
+
+If a window fails, run firefox-esr in Terminal to read the actual error.
+Check kernel gpu and glxinfo -B for the display driver/renderer. Use Firefox's
+Troubleshoot Mode for extension/display diagnosis; never disable the browser
+sandbox to make it start. Missing network/DNS: nmcli general status, ip route.
+
+@@code
+Visual Studio Code — code [OPTIONS] [PATH]
+
+code .                        Open the current project
+code --new-window ~/project   Open a separate window
+code --reuse-window FILE      Reuse an existing window
+code --diff OLD NEW           Compare two files
+code --wait FILE              Wait until the file closes
+code --list-extensions        List user extensions
+code --install-extension ID   Install a chosen extension in your profile
+code --install-extension FILE.vsix   Install a local extension package
+code --version / --help       Installed version and complete options
+
+Run without sudo. Settings: ~/.config/Code/User/settings.json; extensions:
+~/.vscode/extensions. User config/project edits need no root. Extensions are
+user-selected, not silently downloaded. C/C++ build tools and clangd are already
+installed; extension downloads may require Internet. For clangd diagnostics,
+export compile_commands.json with CMake (see help build).
+
+Official VS Code updates come from Microsoft's signed repository. The build
+verifies its signing-key fingerprint. Run sudo mnos-pkg update then
+sudo mnos-pkg install code. If the window fails, code --verbose shows logs;
+code --disable-extensions helps isolate a faulty extension. The graphical
+sandbox remains enabled; do not run the editor as root.
+
+@@packages
+Installing and updating additional software
+
+mnos-pkg list                 List installed package versions
+mnos-pkg check                Report partially configured/damaged package states
+mnos-pkg search WORD          Search cached signed-repository metadata
+mnos-pkg show PACKAGE         Description, dependencies and repository version
+sudo mnos-pkg update          Refresh repository metadata
+sudo mnos-pkg install PACKAGE...  Install with dependencies, confirm APT prompt
+sudo mnos-pkg remove PACKAGE...   Remove selected packages, confirm APT prompt
+sudo mnos-pkg upgrade         Upgrade installed packages, confirm APT prompt
+
+Queries run as a normal user. System package changes require explicit sudo.
+The wrapper never adds -y, bypasses signatures, downloads shell scripts or
+automatically elevates. APT resolves dependencies for the current architecture.
+To install a trusted local .deb with dependency resolution, use
+sudo apt install ./FILE.deb ; other repository dependencies may need Internet.
+APT also offers apt search, apt show, apt list --installed, apt-cache policy.
+Do not mix amd64 packages with ARM64 executables or Debian with Kali repositories.
+
+Configuration: /etc/apt/sources.list.d/debian.sources and microsoft-code.list;
+trusted keys are package-managed or the pinned Microsoft key. Avoid replacing
+HTTPS sources with unknown mirrors. If update fails, inspect the reported
+network/DNS/time/signature error. Do not disable signature verification.
+No output from mnos-pkg check means dpkg has no pending package-state problem;
+it is not a malware scan. Use debsums PACKAGE for package-file checksum checks.
+
+@@build
+Programming and build environment
+
+GCC/G++, Clang/clangd, binutils, Make, CMake, Ninja, pkg-config, Git, GDB,
+Rust/Cargo, Go, Node.js/npm are installed. C and C++ standard-library headers
+are supplied through build-essential/libc6-dev/libstdc++ development packages.
+No Java SDK is installed by the mnOS package selection.
+
+cc -Wall -Wextra -O2 hello.c -o hello       Build a C program
+c++ -std=c++20 -Wall -Wextra app.cpp -o app Build a C++ program
+./hello                                    Run your own executable
+cmake -S . -B build -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build                         Build a CMake project
+ctest --test-dir build                      Run project-defined tests
+gdb ./hello                                Debug an executable
+pkg-config --cflags --libs LIB              Get installed library build flags
+
+Build inside your own directory without root. Missing external library headers:
+search its -dev package, then sudo mnos-pkg install PACKAGE. Cargo/npm/Go modules
+may fetch project dependencies; a fully offline project must vendor its own
+external dependencies. These are Linux executables, not native mnOS ELF files.
+Original-kernel sources and ABI: /usr/src/mnos-native. Do not assume cc hello.c
+produces a program accepted by the original kernel's exec command.
+
+@@network
+Network tools and permissions
+
+nmcli device status           List network interfaces and connection state
+nmcli device wifi list        List nearby Wi-Fi networks
+nmcli --ask device wifi connect SSID  Connect, prompting for secrets
+ip address ; ip route         Read addresses and routes without root
+nmap -sT 127.0.0.1            TCP connect test of your own local machine
+
+Raw packets, capture and interface configuration may need NET_RAW/NET_ADMIN.
+The installer can authorize ONE selected ordinary account through mnos-net:
+mnos-net nmap ARGS ; mnos-net tcpdump ARGS ; mnos-net ip ARGS
+mnos-net tc ARGS ; mnos-net iw ARGS
+Default: privileged network operations require sudo. Delegation is explicit:
+sudo mnos-network-policy netadmin USER   (log out/in afterwards)
+sudo mnos-network-policy root            (also stop already delegated processes)
+Ordinary tools, DNS/HTTP and nmap -sT need no root. Never run the whole browser,
+editor or Wireshark GUI as root. Use help TOOL and mnos-net help for options.
+
+@@kernel
+Linux kernel control — kernel INSTRUCTION [OBJECT]
+
+Queries: info, cpu, memory, modules, devices, gpu, irq, log.
+kernel sysctl vm.swappiness    Read a kernel parameter
+sudo kernel set vm.swappiness=60  Change the runtime value
+sudo kernel load MODULE       Load an installed kernel module
+sudo kernel unload MODULE     Request unload; in-use modules are rejected
+sudo kernel cpu-online NUMBER Bring a supported hotplug CPU online
+sudo kernel cpu-offline NUMBER Offline a non-boot CPU when supported
+sudo kernel performance balanced|throughput|virtual  Select a TuneD profile
+
+info: kernel release, machine and online CPUs. memory: /proc/meminfo in its
+reported units. cpu: /proc/cpuinfo. modules: lsmod. devices: lspci -nnk.
+gpu: driver bound to each DRM card; it does not prove acceleration. irq:
+/proc/interrupts. log: dmesg; normal Linux restrictions still apply. sysctl
+reads the specified key only; a missing/forbidden key reports an error.
+
+Admin operations check root credentials in /usr/sbin/mnos-kernel-admin.
+/usr/bin/kernel is not setuid and never elevates by itself. Runtime sysctl
+and CPU changes reset at reboot; the TuneD profile persists. CPU hotplug,
+module loading and performance controls still depend on platform support.
+Use kernel help -cn for Chinese. This entry controls Linux; the original
+kernel exposes its own implemented command list via kernel help.
+
+@@system
+System administration and display
+
+xfce4-settings-manager        Desktop settings categories
+xfce4-display-settings        Resolution, scale and monitor configuration
+xfdesktop-settings            Wallpaper and desktop options
+pavucontrol                   Audio inputs, outputs and volume
+systemctl status UNIT         Inspect a service
+journalctl -b                 Current boot log (subject to log permissions)
+sudo systemctl restart UNIT   Restart an identified system service
+lsblk -f ; findmnt             Inspect disks/filesystems without modifying them
+htop / btop                   Interactive resource/process monitor
+kernel gpu ; glxinfo -B        Display driver and OpenGL renderer
+
+Personal display/wallpaper/editor settings need no root. System services,
+partition edits and system-owned files require sudo/Polkit authentication.
+Only operate on the intended disk in GParted/GNOME Disks. Settings availability
+depends on the actual driver and hardware. sudo uses your ordinary account
+password; direct root login is locked by the installer.
+
+@@files
+Files and editing
+
+pwd ; ls -la                  Current directory and directory listing
+cd DIRECTORY                  Change directory (Bash builtin)
+mkdir -p DIRECTORY            Create directories in your own home
+cp -i SOURCE DESTINATION      Copy with an overwrite question
+mv -i SOURCE DESTINATION      Move/rename with an overwrite question
+less FILE                     View a long text file; q exits
+nano FILE                     Edit; Ctrl-O saves, Ctrl-X exits
+find DIRECTORY -name PATTERN   Search filenames (quote wildcard patterns)
+rg TEXT DIRECTORY             Search file contents
+
+These are standard Linux commands; help COMMAND shows the installed manual.
+Own-home work needs no sudo. rm permanently removes files; the GUI trash is
+preferable when you want a recoverable deletion. Backups/snapshots are separate
+from deletion permissions. ISO Live changes are temporary until installed.
+
+@@native
+Original kernel environment
+
+The installed boot menu also contains the original C/assembly kernel for the
+matching architecture. Its graphical desktop, MNFS, authentication, kernel
+commands and native ELF ABI are independent of Linux. help / help -cn lists
+its current real commands. Its GUI and libraries do not run Firefox or VS Code.
+The native-only desktop ISO contains this environment alone. The combined
+installer includes both environments; one install writes both boot entries.
+Native hardware support is currently narrower; see /usr/src/mnos-native/README.md.

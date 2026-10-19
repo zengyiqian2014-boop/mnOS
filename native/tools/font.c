@@ -1,28 +1,64 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later
- * Build-time FreeType rasterizer. The kernel uses only the resulting atlas.
- * cc tools/font.c $(pkg-config --cflags --libs freetype2) -o build/font-gen
- * build/font-gen UI_FONT MONO_FONT src/ui.c > assets/font.c */
+ * Build-time FreeType rasterizer. No font library is linked into the kernel.
+ * font-gen NOTO_CJK.ttc DEJAVU_MONO.ttf DEJAVU_SANS.ttf src/ui.c [installer]
+ * 18px contains every supported Unicode scalar; 16/28px keep native UI metrics.
+ * RLE bytes store a 4-bit coverage and a 1..16 pixel run. CJK mono reuses pixels.
+ */
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-struct record { unsigned code, offset, w, h, advance, size; int left, top; };
-static unsigned char characters[0x110000], pixels[4000000];
-static struct record glyphs[5000];
-static unsigned used, count;
+struct record { unsigned code, offset, bytes, w, h, advance, size; int left, top; };
+static unsigned char characters[0x110000], pixels[20000000];
+static unsigned base_index[0x110000];
+static struct record glyphs[160000];
+static unsigned used, count, coverage;
 static void die(const char *s) { fprintf(stderr, "%s\n", s); exit(1); }
+static struct record raster(FT_Face face, unsigned code, unsigned size) {
+    if (FT_Load_Char(face, code, FT_LOAD_RENDER | FT_LOAD_TARGET_LIGHT)) die("Glyph load");
+    FT_GlyphSlot g = face->glyph;
+    if (g->bitmap.width > 64 || g->bitmap.rows > 64 || g->bitmap.pitch < 0 ||
+        (g->bitmap.width && g->bitmap.pixel_mode != FT_PIXEL_MODE_GRAY)) die("Unsupported bitmap");
+    struct record r = {code, used, 0, g->bitmap.width, g->bitmap.rows,
+        (unsigned)((g->linearHoriAdvance + 512) >> 10), size,
+        g->bitmap_left, (int)(size & 255) + 1 - g->bitmap_top};
+    unsigned last = 0, run = 0;
+    for (unsigned y = 0; y < r.h; y++) for (unsigned x = 0; x < r.w; x++) {
+        unsigned a = (g->bitmap.buffer[y * g->bitmap.pitch + x] + 8u) / 17u;
+        if (run && (a != last || run == 16)) {
+            if (used == sizeof pixels) die("Pixel capacity");
+            pixels[used++] = (last << 4) | (run - 1); run = 0;
+        }
+        last = a; run++;
+    }
+    if (run) { if (used == sizeof pixels) die("Pixel capacity"); pixels[used++] = (last << 4) | (run - 1); }
+    r.bytes = used - r.offset;
+    return r;
+}
+static void append(struct record r) {
+    if (count == sizeof glyphs / sizeof *glyphs) die("Glyph capacity");
+    glyphs[count++] = r;
+}
+static int compare(const void *a, const void *b) {
+    const struct record *x = a, *y = b;
+    return x->size != y->size ? (x->size > y->size ? 1 : -1) :
+        x->code != y->code ? (x->code > y->code ? 1 : -1) : 0;
+}
 int main(int argc, char **argv) {
-    if (argc != 4) die("usage: font-gen NOTO_CJK.ttc DEJAVU_MONO.ttf src/ui.c");
-    FT_Library library; FT_Face ui, mono;
+    if (argc != 5 && argc != 6) die("usage: font-gen NOTO_CJK.ttc DEJAVU_MONO.ttf DEJAVU_SANS.ttf src/ui.c [installer]");
+    int installer = argc == 6;
+    if (installer && strcmp(argv[5], "installer")) die("Unknown mode");
+    FT_Library library; FT_Face ui, mono, sans;
     if (FT_Init_FreeType(&library) || FT_New_Face(library, argv[1], 2, &ui) ||
-        FT_New_Face(library, argv[2], 0, &mono)) die("Cannot load font faces");
+        FT_New_Face(library, argv[2], 0, &mono) || FT_New_Face(library, argv[3], 0, &sans)) die("Cannot load font faces");
     for (unsigned c = 32; c < 127; c++) characters[c] = 1;
-    FILE *source = fopen(argv[3], "rb");
+    characters[0xfffd] = 1;
+    FILE *source = fopen(argv[4], "rb");
     if (!source) die("Cannot read UI source");
     int ch;
-    while ((ch = fgetc(source)) != EOF) {
+    while (!installer && (ch = fgetc(source)) != EOF) {
         unsigned c = (unsigned)ch, n = 0;
         if (c >= 0xf0) { c &= 7; n = 3; }
         else if (c >= 0xe0) { c &= 15; n = 2; }
@@ -31,35 +67,43 @@ int main(int argc, char **argv) {
         if (c >= 128 && c < sizeof characters) characters[c] = 1;
     }
     fclose(source);
-    if (FT_Set_Pixel_Sizes(mono, 0, 18) || FT_Load_Char(mono, 'M', FT_LOAD_TARGET_LIGHT))
-        die("Monospace metrics");
-    unsigned mono_advance = (unsigned)mono->glyph->advance.x;
-    const unsigned sizes[] = {16, 18, 28, 274};
-    for (unsigned s = 0; s < 4; s++) {
-        unsigned size = sizes[s] & 255;
-        if (FT_Set_Pixel_Sizes(ui, 0, size)) die("Font size");
-        for (unsigned c = 32; c < (unsigned)sizeof characters; c++) {
-            if (!characters[c]) continue;
-            FT_Face face = s == 3 && c < 128 ? mono : ui;
-            if (FT_Load_Char(face, c, FT_LOAD_RENDER | FT_LOAD_TARGET_LIGHT)) die("Glyph load");
-            FT_GlyphSlot g = face->glyph;
-            unsigned bytes = g->bitmap.width * g->bitmap.rows;
-            if (count >= sizeof glyphs / sizeof *glyphs || used + bytes > sizeof pixels) die("Atlas capacity");
-            glyphs[count++] = (struct record){c, used, g->bitmap.width, g->bitmap.rows,
-                s == 3 ? mono_advance * (c < 128 ? 1 : 2) : (unsigned)((g->linearHoriAdvance + 512) >> 10),
-                sizes[s], g->bitmap_left + (s == 3 && c >= 128 ? (int)(mono_advance / 32 - size) / 2 : 0),
-                (int)size + 1 - g->bitmap_top};
-            for (unsigned y = 0; y < g->bitmap.rows; y++)
-                for (unsigned x = 0; x < g->bitmap.width; x++)
-                    pixels[used++] = g->bitmap.buffer[y * g->bitmap.pitch + x];
+    const unsigned sizes[] = {16, 18, 28};
+    for (unsigned s = 0; s < 3; s++) {
+        unsigned size = sizes[s];
+        if (FT_Set_Pixel_Sizes(ui, 0, size) || FT_Set_Pixel_Sizes(sans, 0, size)) die("Font size");
+        for (unsigned c = 32; c < sizeof characters; c++) {
+            if ((size != 18 || installer) && !characters[c]) continue;
+            if (c >= 0xd800 && c <= 0xdfff) continue;
+            FT_Face face = FT_Get_Char_Index(ui,c) ? ui : sans;
+            if (!FT_Get_Char_Index(face,c)) continue;
+            if (size == 18) { base_index[c] = count + 1; coverage++; }
+            append(raster(face, c, size));
         }
     }
+    if (!installer) {
+        if (FT_Set_Pixel_Sizes(mono, 0, 18) || FT_Load_Char(mono, 'M', FT_LOAD_TARGET_LIGHT)) die("Monospace metrics");
+        unsigned cell = (unsigned)mono->glyph->advance.x;
+        for (unsigned c = 32; c < sizeof characters; c++) {
+            if (!base_index[c]) continue;
+            struct record r = glyphs[base_index[c] - 1];
+            if (FT_Get_Char_Index(mono,c)) {
+                r = raster(mono,c,274);
+                if (r.advance) r.advance = cell;
+            } else {
+                unsigned cells = r.advance > cell ? 2 : 1;
+                if (r.advance) { r.left += ((int)(cells * cell) - (int)r.advance) / 128; r.advance = cells * cell; }
+                r.size = 274;
+            }
+            append(r);
+        }
+    }
+    qsort(glyphs, count, sizeof *glyphs, compare);
     puts("/* Generated by tools/font.c. See FONT-LICENSE.txt and MONO-FONT-LICENSE.txt. */\n#include \"font.h\"\nconst struct glyph font_glyphs[] = {");
     for (unsigned i = 0; i < count; i++) { struct record *g = &glyphs[i];
-        printf("{%u,%u,%u,%u,%u,%u,%d,%d},\n", g->code,g->offset,g->w,g->h,g->advance,g->size,g->left,g->top); }
-    puts("};\nconst unsigned font_count = sizeof font_glyphs / sizeof *font_glyphs;\nconst unsigned char font_pixels[] = {");
-    for (unsigned i = 0; i < used; i++) printf("%u,%s", pixels[i], i % 40 == 39 ? "\n" : "");
-    puts("\n};");
-    fprintf(stderr, "%u glyphs; %u bytes\n", count, used);
-    FT_Done_Face(ui); FT_Done_Face(mono); FT_Done_FreeType(library);
+        printf("{%u,%u,%u,%u,%u,%u,%u,%d,%d},\n",g->code,g->offset,g->bytes,g->w,g->h,g->advance,g->size,g->left,g->top); }
+    printf("};\nconst unsigned font_count = sizeof font_glyphs / sizeof *font_glyphs;\nconst unsigned font_coverage = %u;\nconst unsigned char font_pixels[] = {\n", coverage);
+    for (unsigned i = 0; i < used; i++) printf("%u,%s",pixels[i],i % 40 == 39 ? "\n" : "");
+    puts("\n};\nconst unsigned font_pixels_size = sizeof font_pixels;");
+    fprintf(stderr,"%u Unicode scalars; %u metrics; %u compressed bytes\n",coverage,count,used);
+    FT_Done_Face(ui); FT_Done_Face(mono); FT_Done_Face(sans); FT_Done_FreeType(library);
 }

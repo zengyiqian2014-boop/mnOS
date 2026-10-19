@@ -3,9 +3,13 @@ CXX ?= c++
 OUT ?= build
 CXXFLAGS += -std=c++17 -O2 -Wall -Wextra -Werror -fstack-protector-strong -D_FORTIFY_SOURCE=3 -fPIE
 LDFLAGS += -pie -Wl,-z,relro,-z,now
-all: $(OUT)/mnos-center $(OUT)/first-boot $(OUT)/mnos-network-policy $(OUT)/wallpaper $(OUT)/installer
+all: $(OUT)/mnos-center $(OUT)/first-boot $(OUT)/mnos-network-policy $(OUT)/wallpaper $(OUT)/installer $(OUT)/mnos-help $(OUT)/mnos-pkg
 $(OUT):
 	mkdir -p $@
+$(OUT)/mnos-help: help.c | $(OUT)
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -fstack-protector-strong -D_FORTIFY_SOURCE=3 $< -o $@ $(LDFLAGS)
+$(OUT)/mnos-pkg: package.c | $(OUT)
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -fstack-protector-strong -D_FORTIFY_SOURCE=3 $< -o $@ $(LDFLAGS)
 $(OUT)/mnos-center: desktop.cpp | $(OUT)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS) $$(pkg-config --cflags --libs gtk+-3.0 gio-unix-2.0 json-glib-1.0)
 $(OUT)/first-boot: first-boot.cpp process.hpp | $(OUT)
@@ -17,6 +21,8 @@ $(OUT)/mnos-network-policy: network-policy.cpp process.hpp | $(OUT)
 $(OUT)/wallpaper: wallpaper.cpp | $(OUT)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS) $$(pkg-config --cflags --libs glib-2.0)
 install: all
+	install -Dm755 $(OUT)/mnos-help $(DESTDIR)/usr/bin/mnos-help
+	install -Dm755 $(OUT)/mnos-pkg $(DESTDIR)/usr/bin/mnos-pkg
 	install -Dm755 $(OUT)/installer $(DESTDIR)/usr/lib/mnos/installer
 	install -Dm755 $(OUT)/mnos-center $(DESTDIR)/usr/bin/mnos-center
 	ln -sf mnos-center $(DESTDIR)/usr/bin/mnos-tools

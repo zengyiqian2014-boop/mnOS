@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+_mnos_kernel() {
+    local current=${COMP_WORDS[COMP_CWORD]}
+    if (( COMP_CWORD == 1 )); then
+        COMPREPLY=($(compgen -W 'help info memory cpu modules devices gpu irq log sysctl load unload set cpu-online cpu-offline performance' -- "$current"))
+    elif [[ ${COMP_WORDS[1]} == performance ]]; then
+        COMPREPLY=($(compgen -W 'balanced throughput virtual' -- "$current"))
+    elif [[ ${COMP_WORDS[1]} == help ]]; then
+        COMPREPLY=($(compgen -W '-cn' -- "$current"))
+    fi
+}
+complete -F _mnos_kernel kernel

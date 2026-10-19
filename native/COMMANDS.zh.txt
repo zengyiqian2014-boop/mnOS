@@ -1,0 +1,324 @@
+help [-cn] [COMMAND|all]
+阅读命令手册
+默认使用英文；-cn 指定中文；all 展开全部条目。
+上下方向键翻阅输出，Tab 补全命令。
+示例中的 USER 要替换为你自己的账号名。
+示例：
+help -cn kernel display
+
+kernel INSTRUCTION [OBJECT]
+控制原生内核
+调用实际的 mnOS 服务。查询和个人显示设置无需 root。
+卷管理操作需要先用 su 验证管理员身份。
+下列文件、进程和账号命令也可以加 kernel 前缀。
+当前没有 Linux ABI、动态驱动模块或网络协议栈。
+示例：
+kernel info
+
+kernel info
+查看内核及架构
+只读：显示自研 C/汇编内核、CPU 名称和在线核心数。
+uname 是此命令的别名，不代表兼容 Linux 应用。
+示例：
+kernel info
+
+kernel cpu
+处理器识别状态
+只读：显示固件发现的核心数和成功启动的核心数。
+发现核心不代表核心已经在线；尚未实现热插拔。
+示例：
+kernel cpu
+
+kernel memory
+物理内存统计
+只读：空闲与可用的 4096 字节页数，以及物理地址上限。
+页数乘以 4096 为字节数。地址上限不等于实际内存容量。
+mem 是别名；查询本身不会分配物理页。
+示例：
+kernel memory
+
+kernel uptime
+本次启动的运行时间
+只读：根据内核定时器计算启动后的秒数。
+这是运行时长，不是日历时间，也不是性能测试。
+示例：
+uptime
+
+kernel tasks
+内核工作任务调度
+只读：启动核心测试工作任务的上下文切换计数。
+原生用户应用使用 ps 查看；两者不是同一组任务。
+示例：
+kernel tasks
+
+kernel gpu
+当前显示驱动
+只读：查看当前帧缓冲或显示驱动。
+帧缓冲可显示画面，并不代表已支持 GPU 加速或任意分辨率。
+示例：
+kernel gpu
+
+kernel devices
+已枚举的 PCI 设备
+只读 PCI 枚举。列出设备不代表已有原生驱动。
+输出较长时用上下键翻阅；pci 是别名。
+示例：
+kernel devices
+
+kernel test
+启动隔离测试结果
+只读：显示本次启动已经完成的隔离检查，不会重新执行测试。
+逐项结果在串口日志中；通过检查不等于安全认证。
+示例：
+kernel test
+
+kernel security
+会话与保护状态
+只读：当前 UID、管理员状态和架构保护信息。
+原生页具备 W^X 与用户隔离；磁盘尚未加密，桌面在内核运行。
+这些状态信息不等于完整安全审计。
+示例：
+kernel security
+
+kernel display [modes|WIDTHxHEIGHT]
+查询或调整分辨率
+无需 root：不带参数显示当前模式；modes 列出候选分辨率。
+仅在驱动及显存支持时才会应用；固件帧缓冲保留启动分辨率。
+用 save-settings 保存，下次登录时自动恢复。
+示例：
+kernel display 1600x900
+
+kernel wallpaper [0|1|2]
+查询或切换壁纸
+无需 root：0 流线、1 网格、2 纯色；省略参数查看当前编号。
+先改变本次会话，用 save-settings 保存个人偏好。
+尚未支持把任意图片文件设为壁纸。
+示例：
+kernel wallpaper 1
+
+kernel save-settings
+保存个人显示设置
+个人设置无需 root。写入 /disk 上个人目录的 display.cfg。
+磁盘必须已挂载且可写；只有内存卷时无法持久保存。
+root 锁定磁盘后，需要 root 解锁才可写入。
+示例：
+kernel save-settings
+
+kernel fonts
+字库状态
+只读：显示支持的 Unicode 码位及字形度量数量。
+内置可打印 ASCII、中日韩文字、拉丁字母和大量符号。
+缺字使用 U+FFFD；尚无输入法、双向排版或复杂文字塑形。
+示例：
+kernel fonts
+
+kernel unicode
+显示多语言样例
+只读显示 ASCII 与二、三、四字节 UTF-8 样例。
+编辑器可以显示 UTF-8 文件；当前键盘文字输入仍是 ASCII。
+该命令用于检查实际字形，不会安装输入法。
+示例：
+kernel unicode
+
+[kernel] fs
+已挂载文件系统状态
+只读：查看内存卷和磁盘卷、空闲 4096 字节块及可写状态。
+/ram 重启清空；已安装的 MNFS 分区挂载在 /disk。
+此命令不会格式化、修复或挂载任意磁盘。
+示例：
+kernel fs
+
+[kernel] ls [PATH]
+列出目录
+登录后列出有权访问的目录；省略路径时使用 /ram。
+输出目录或文件类型与字节数。路径前缀选择 /ram 或 /disk。
+当前不支持通配符展开。
+示例：
+ls /disk/home/USER
+
+[kernel] stat PATH
+查看文件信息
+只读，遵循路径权限；显示字节数和 inode。
+路径不存在、权限不足或未挂载对应卷时会报错。
+示例：
+stat /disk/home/USER/note.txt
+
+[kernel] cat PATH [OFFSET]
+读取文件片段
+只读，遵循路径权限；从十进制字节偏移处读取最多 512 字节。
+偏移默认 0，空内容显示文件结束。此诊断读取器把控制字符
+和非 ASCII 字节显示为点；UTF-8 文字请用文本编辑器打开。
+示例：
+cat /disk/home/USER/note.txt 512
+
+[kernel] write PATH TEXT
+替换文本文件内容
+写入个人目录无需 root。文件不存在时创建，写入后截断旧尾部。
+父目录必须存在；TEXT 为本行剩余内容，引号按普通字符保存。
+只读磁盘、空间不足、权限不足等均会返回错误。
+示例：
+write /disk/home/USER/note.txt Hello world
+
+[kernel] writeat PATH OFFSET TEXT
+按字节偏移写入
+个人目录无需 root。OFFSET 为十进制字节偏移，保留写入范围后的
+原有内容；稀疏空洞读取为零，检测 64 位偏移溢出。
+父目录存在时可创建新文件；不解释 shell 引号。
+示例：
+writeat /disk/home/USER/note.txt 6 mnOS
+
+[kernel] mkdir PATH
+创建一个目录
+在个人目录创建子目录无需 root，父目录必须已存在。
+路径已存在时返回错误；尚无递归 -p 参数。
+示例：
+mkdir /disk/home/USER/project
+
+[kernel] rm PATH
+删除文件或空目录
+删除个人目录中的文件无需 root。一次删除一个路径，拒绝非空
+目录；没有 -r、-f 或通配符递归。删除不可撤销，除非有现成快照。
+示例：
+rm /disk/home/USER/old.txt
+
+[kernel] mv SOURCE DESTINATION
+在同一卷内重命名或移动
+同时检查源和目标权限，两者必须位于同一个卷。
+拒绝跨卷移动；目标父目录必须存在。
+不允许通过点路径别名绕过系统目录保护。
+示例：
+mv /disk/home/USER/a.txt /disk/home/USER/b.txt
+
+[kernel] truncate PATH SIZE
+设置文件逻辑长度
+SIZE 为十进制字节数，个人目录无需 root。缩短会删除尾部，
+扩展形成读取为零的稀疏空洞。64 位大小不代表无限存储，
+也不代表 FAT 文件系统具备同样能力。
+示例：
+truncate /disk/home/USER/data.bin 4096
+
+kernel disk [status|lock|unlock]
+控制持久卷写入
+status 或省略参数为只读查询，普通用户可用。
+lock/unlock 需要先 su 认证 root。锁定影响所有写入路径。
+解锁不会格式化磁盘，也不会绕过文件归属权限。
+示例：
+kernel disk status
+
+[kernel] snapshot save|restore|drop [/ram|/disk]
+管理 MNFS 单个快照
+需要 root，省略卷名时选择 /ram。save 替换现有快照，restore
+将当前卷恢复为快照状态，drop 删除恢复点。
+恢复 /disk 也会恢复账号记录并锁定会话，需要重新登录。
+恢复前请备份之后新增的数据。
+示例：
+kernel snapshot save /disk
+
+[kernel] gc [/ram|/disk]
+回收 MNFS 无引用块
+需要 root。省略卷名时为 /ram，卷必须可写。
+回收不再被当前元数据或已保存快照引用的块。
+这是空间回收，不是损坏修复或磁盘碎片整理。
+示例：
+kernel gc /disk
+
+[kernel] exec PATH
+启动原生 ELF 应用
+无需 root，但必须有读取目标文件的权限。
+仅接收当前架构的静态 mnOS ELF64：一个 4 KiB RX 代码段和
+一个 4 KiB RW/NX 数据段，尚无参数、共享库和 Linux 系统调用。
+不合要求的文件会被拒绝；用 ps、kill PID 查询或停止自己的程序。
+示例：
+exec /ram/bin/hello
+
+[kernel] ps
+列出原生进程
+普通用户查看自己的进程，root 查看全部。
+输出 PID、UID、运行 tick、切换次数、系统调用数、状态和路径。
+内置图形应用属于内核服务，不在该用户进程列表中。
+示例：
+kernel ps
+
+[kernel] kill PID
+停止原生用户进程
+PID 为 ps 显示的十进制进程号。普通用户可停止自己的进程，
+root 可停止所有原生用户进程；无效或不存在的编号会报错。
+尚无信号编号选项，也不能用它终止内核服务。
+示例：
+kernel kill 2
+
+[kernel] whoami
+当前账号名
+只读查询，显示当前已认证会话的账号名。
+用 kernel security 同时查看数字 UID 和管理员状态。
+示例：
+whoami
+
+[kernel] su
+认证并切换至 root
+输入独立的 root 密码，不能用普通用户密码代替。
+密码输入被遮挡，不进入命令历史或串口输出。
+失败后有重试延迟，root 会话五分钟后到期；exit 返回原账号。
+示例：
+su
+
+[kernel] exit
+退出管理员会话
+通过 su 进入 root 后返回之前的普通账号。
+没有可退出的提权会话时显示提示；不会关机或删除账号。
+示例：
+exit
+
+[kernel] passwd [NAME]
+修改账号密码
+普通用户验证当前密码后只能修改自己的密码，root 可指定现有账号。
+新密码通过交互输入两次，不能放在命令参数中。
+凭据存储损坏、只读或缺少安全随机源时会报错，不会假装保存成功。
+示例：
+passwd
+
+[kernel] useradd NAME
+创建本地账号
+需要 root。交互输入两次新密码后持久保存账号。
+拒绝已存在或系统保留的名字。当前原生存储含 root 最多 16 个
+账号，容量用完会明确报错。
+示例：
+useradd developer
+
+[kernel] lock
+锁定当前会话
+无需 root，立即锁定桌面和终端，后续输入进入账号认证。
+logout 为别名。未保存文档仍在内存中，但不属于持久备份。
+示例：
+lock
+
+[kernel] clear
+清空终端输出
+无需 root。只清除终端输出和翻阅记录，不删除文件，
+也不会擦除本次启动的串口诊断日志。
+示例：
+clear
+
+[kernel] reboot
+重新启动机器
+本地已登录用户可用，打开电源确认：R 重启，S 关机，Esc 取消。
+请先保存文档；重启会丢失内存卷文件及未保存的偏好。
+示例：
+kernel reboot
+
+[kernel] shutdown
+关机确认
+本地已登录用户可用，打开电源确认：S 关机，R 重启，Esc 取消。
+关机依赖固件支持，尚未实现自动关机定时器。
+示例：
+kernel shutdown
+
+tools [native|linux]
+工具环境与可用状态
+native 列出内置工具和静态 ELF 环境；linux 说明集成安装包的
+Linux 工具环境中 Firefox、VS Code 和 APT 的用法。
+这些程序目前不能运行在自研内核上；原生环境暂无网络和包管理器。
+安装第三方 Linux 软件、使用完整编译器，需要进入 Linux 工具环境。
+示例：
+tools linux
+

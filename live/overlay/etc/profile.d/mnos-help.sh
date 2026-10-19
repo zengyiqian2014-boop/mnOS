@@ -3,7 +3,7 @@
 help() {
     case "${1-}" in
         ''|-cn|--help) command mnos-help "$@" ;;
-        *) if [ -n "${BASH_VERSION-}" ]; then builtin help "$@";
+        *) if [ -n "${BASH_VERSION-}" ] && builtin help "$1" >/dev/null 2>&1; then builtin help "$@";
            else command mnos-help "$@"; fi ;;
     esac
 }

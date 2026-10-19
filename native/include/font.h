@@ -7,14 +7,19 @@
 #define FONT_MONO18 274u
 /* Advance is in 1/64 pixel units, independent of the ink's bounding box. */
 struct glyph {
-    uint32_t code, offset;
+    uint32_t code, offset, bytes;
     uint16_t width, height, advance, size;
     int16_t left, top;
 };
 extern const struct glyph font_glyphs[];
 extern const unsigned font_count;
+extern const unsigned font_coverage, font_pixels_size;
 extern const unsigned char font_pixels[];
 const struct glyph *font_find(uint32_t code, unsigned size);
+unsigned font_advance(const struct glyph *, unsigned size);
+/* Bounded RLE decode; rendering never trusts bitmap lengths or offsets. */
+bool font_unpack(const struct glyph *, unsigned char *, size_t capacity);
+int font_scale(int value, const struct glyph *, unsigned size);
 uint32_t font_decode(const char *s, size_t length, size_t *position);
 size_t text_previous(const char *s, size_t position);
 int text_width(const char *s, unsigned size);

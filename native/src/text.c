@@ -13,7 +13,27 @@ static const struct glyph *lookup(uint32_t code, unsigned size) {
 }
 const struct glyph *font_find(uint32_t code, unsigned size) {
     const struct glyph *g = lookup(code, size);
-    return g ? g : lookup('?', size);
+    if (!g && size != FONT_MONO18) g = lookup(code, 18);
+    if (!g) g = lookup(0xfffd, size);
+    return g ? g : lookup(0xfffd, 18);
+}
+int font_scale(int value, const struct glyph *g, unsigned size) {
+    return value * (int)(size & 255) / (int)(g->size & 255);
+}
+unsigned font_advance(const struct glyph *g, unsigned size) {
+    return g ? (unsigned)font_scale(g->advance, g, size) : 0;
+}
+bool font_unpack(const struct glyph *g, unsigned char *out, size_t capacity) {
+    if (!g || g->width > 64 || g->height > 64 ||
+        g->offset > font_pixels_size || g->bytes > font_pixels_size - g->offset) return false;
+    size_t total = (size_t)g->width * g->height, p = 0;
+    if (total > capacity) return false;
+    for (unsigned i = 0; i < g->bytes; i++) {
+        unsigned b = font_pixels[g->offset + i], n = (b & 15) + 1;
+        if (n > total - p) return false;
+        while (n--) out[p++] = (b >> 4) * 17;
+    }
+    return p == total;
 }
 uint32_t font_decode(const char *s, size_t length, size_t *position) {
     if (*position >= length) return 0;
@@ -25,14 +45,14 @@ uint32_t font_decode(const char *s, size_t length, size_t *position) {
     if (lead >= 0xc2 && lead <= 0xdf) { count = 1; code = lead & 31; minimum = 0x80; }
     else if (lead >= 0xe0 && lead <= 0xef) { count = 2; code = lead & 15; minimum = 0x800; }
     else if (lead >= 0xf0 && lead <= 0xf4) { count = 3; code = lead & 7; minimum = 0x10000; }
-    else return '?';
-    if (length - *position < count) return '?';
+    else return 0xfffd;
+    if (length - *position < count) return 0xfffd;
     for (unsigned i = 0; i < count; i++) {
         unsigned char c = (unsigned char)s[*position + i];
-        if ((c & 0xc0) != 0x80) return '?';
+        if ((c & 0xc0) != 0x80) return 0xfffd;
         code = (code << 6) | (c & 63);
     }
-    if (code < minimum || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff)) return '?';
+    if (code < minimum || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff)) return 0xfffd;
     *position = start + count + 1;
     return code;
 }
@@ -47,7 +67,7 @@ int text_width(const char *s, unsigned size) {
     int x = 0;
     while (p < length) {
         const struct glyph *g = font_find(font_decode(s, length, &p), size);
-        if (g) x += g->advance;
+        if (g) x += font_advance(g, size);
     }
     return (x + 32) / 64;
 }
@@ -57,16 +77,16 @@ bool text_next(struct text_layout *l, struct text_cell *c) {
     c->code = font_decode(l->s, l->length, &l->position);
     c->next = l->position;
     const struct glyph *g = font_find(c->code, l->size);
-    int advance = c->code && c->code != '\n' && c->code != '\r' && g ? g->advance : 0;
+    int advance = c->code && c->code != '\n' && c->code != '\r' && g ? (int)font_advance(g, l->size) : 0;
     if (c->code == '\t') {
         const struct glyph *space = font_find(' ', l->size);
-        int stop = space ? space->advance * 4 : 32 * 64;
+        int stop = space ? (int)font_advance(space, l->size) * 4 : 32 * 64;
         advance = stop - l->x % stop;
     }
     if (l->x && advance && l->x + advance > l->width * 64) {
         l->row++;
         l->x = 0;
-        if (c->code == '\t') advance = font_find(' ', l->size)->advance * 4;
+        if (c->code == '\t') advance = (int)font_advance(font_find(' ', l->size), l->size) * 4;
     }
     c->x = l->x;
     c->row = l->row;
