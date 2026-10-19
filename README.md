@@ -17,11 +17,20 @@ run in kernel mode. Linux binary compatibility, Firefox, VS Code, native network
 Wi-Fi, USB, AHCI/NVMe, audio, accelerated GPU and APFS support remain unfinished.
 Tested hardware models and remaining limits are listed in the installation guide.
 
-The [older Linux/Xfce installer](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.2)
-is a separate Debian-based application environment. Its browser, editors and
-hardware drivers are not part of the native desktop and are not described as
-original implementations. Earlier native 0.3 releases were kernel development
-media; 0.4 adds an actual disk installation and native GUI workflow.
+The [integrated tools installer](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.3)
+includes Firefox ESR, official VS Code, nano, C/C++ build tools and headers,
+CTF/system utilities and both boot entries in one ISO per architecture. Those
+applications run in the Debian/Linux/Xfce environment; the original kernel has
+no Linux application ABI. The installer creates an ext4 system; persistent
+native files additionally require a supported MNFS volume. Earlier native 0.3
+releases were kernel development media; 0.4 adds a native disk installation.
+
+Native Preview 2 adds proportional UI text, original application icons,
+49,776 Unicode scalars and 42 documented command entries with Tab completion.
+The tools environment provides compiled C `mnos-help` and `mnos-pkg` commands:
+`help code`, `help -cn packages` and `help build` explain options, permissions,
+examples and troubleshooting. `help TOOL` opens an offline manual or the tool's
+catalogued help. Package modifications require explicit `sudo mnos-pkg`.
 
 Native programs support exec, concurrent isolated address spaces, sleep/wakeup,
 process ownership and checked MNFS file operations. Applications currently share
@@ -77,9 +86,29 @@ Separate Linux desktop and system center, captured in a development VM:
 
 ![mnOS Linux desktop](assets/linux-desktop.png)
 
-[VS Code editing a C++ file as an ordinary user](assets/linux-vscode.png).
+[VS Code editing and saving a C file as an ordinary user](assets/linux-vscode.png).
 
-The top-left **Applications & Tools** button searches installed apps and 122 named CLI tools. CLI entries open terminal help; kernel, display, wallpaper and partition controls share **System settings**. The desktop includes a new landscape wallpaper and outline-rendered text, a 34 px panel and 20 px menu icons.
+The top-left **Applications & Tools** button searches installed apps and 121 named CLI tools. CLI entries open terminal help; kernel, display, wallpaper and partition controls share **System settings**. The desktop includes a new landscape wallpaper and outline-rendered text, a 34 px panel and 20 px menu icons.
+
+In the integrated Linux tools environment, use your ordinary account to launch
+applications and read help:
+
+```sh
+firefox-esr
+code .
+help                       # English by default
+help -cn code              # Chinese VS Code instructions
+help -cn all | less        # All mnOS chapters; q exits the pager
+help nmap                  # Installed upstream manual or built-in tool help
+kernel help
+mnos-pkg search ripgrep
+```
+
+To install additional packages, refresh the signed repository indexes with
+`sudo mnos-pkg update`, then run `sudo mnos-pkg install PACKAGE`. Dependency
+resolution and the package manager's confirmation remain enabled. Internet
+access is needed unless the packages and all dependencies are available locally.
+These Linux applications do not run in the original kernel entry.
 
 ## Legacy BusyBox edition
 

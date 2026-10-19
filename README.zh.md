@@ -13,9 +13,16 @@ F1–F7 打开应用，编辑器 Ctrl-S 保存，左上角 Applications 可搜�
 Linux 二进制兼容、原生网络／Wi-Fi、USB、AHCI/NVMe、音频、加速 GPU 和 APFS
 尚未完成。具体测试设备和功能限制见安装说明，不宣称兼容全部硬件或已适合日常使用。
 
-[旧 v2.0 Linux/Xfce 安装包](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.2)
-是另一个独立的 Debian 应用环境；其中的浏览器和驱动不计入原生系统，也不标为自研。
-原生 0.3 系列是内核开发启动介质；0.4 新增了实际可安装的原生桌面流程。
+[工具集成安装包](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.3)
+每个架构一份 ISO，包含 Firefox ESR、官方 VS Code、nano、C/C++ 编译器及标准头文件、
+CTF／系统工具和两个引导入口。这些应用运行在 Debian/Linux/Xfce 环境中，自研内核
+还没有 Linux 应用兼容层。安装器创建 ext4 系统；原生文件持久化另外需要受支持的 MNFS 卷。
+原生 0.3 系列是内核开发介质；0.4 新增了实际可安装的原生桌面流程。
+
+原生 Preview 2 新增真实比例字距、原创应用图标、49,776 个 Unicode 码位和 42 项
+命令手册，支持 Tab 补全。工具环境新增 C 编写的 `mnos-help` 与 `mnos-pkg`：
+`help code`、`help -cn packages`、`help -cn build` 解释参数、权限、示例及错误排查。
+`help 工具名` 读取离线手册或该工具内置帮助；修改系统软件需要显式执行 `sudo mnos-pkg`。
 
 自研内核已有独立原生 ELF、动态进程、抢占调度、休眠／唤醒、进程所有权及文件系统调用。
 原生应用当前共享启动 CPU，采用小型静态 ABI。[原生程序说明](native/README.md#run-native-programs-from-mnfs)。
@@ -63,11 +70,29 @@ Linux 工具环境的开发版实测画面：
 
 ![mnOS Linux 桌面与系统中心](assets/linux-desktop.png)
 
-[普通账号用 VS Code 编辑 C++ 文件的实测画面](assets/linux-vscode.png)。
+[普通账号用 VS Code 编辑并保存 C 文件的实测画面](assets/linux-vscode.png)。
 
 [English](README.md) | [中文](README.zh.md)
 
-左上角 **应用与工具** 按钮可搜索已安装应用和 122 个命令行工具入口；命令行条目打开终端帮助。内核、显示、壁纸和分区管理统一放进 **系统设置**，并更新风景壁纸、字体大小和清晰度。
+左上角 **应用与工具** 按钮可搜索已安装应用和 121 个命令行工具入口；命令行条目打开终端帮助。内核、显示、壁纸和分区管理统一放进 **系统设置**，并更新风景壁纸、字体大小和清晰度。
+
+在集成的 Linux 工具环境中，以普通账号打开应用、阅读帮助：
+
+```sh
+firefox-esr
+code .
+help                       # 默认英文
+help -cn code              # VS Code 中文用法
+help -cn all | less        # 全部 mnOS 章节，按 q 退出翻页器
+help nmap                  # 随包上游手册或工具内置帮助
+kernel help
+mnos-pkg search ripgrep
+```
+
+安装其他软件时，先用 `sudo mnos-pkg update` 更新签名软件源索引，
+再用 `sudo mnos-pkg install 软件包名` 安装。保留依赖解析和软件管理器的确认提示。
+新增软件需要联网，或事先准备完整的离线软件包及依赖。这些 Linux 应用当前不能
+在自研内核入口运行。
 
 ## 原版 BusyBox 版本
 

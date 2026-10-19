@@ -9,6 +9,6 @@ mnOS 集成工具安装包 Preview 3：Firefox ESR、官方 VS Code、nano、开
 
 **Firefox、VS Code 运行在 Debian 13/Linux/Xfce 工具环境。自研内核与原生桌面是另一个引导入口，目前没有 Linux 应用兼容层。** 原生入口不是 Linux 换名；工具环境也不是自研内核。只有检测到受支持的 MNFS 卷时原生账号与文件才持久化；Linux 的 ext4 分区不属于 MNFS。原生专用桌面 ISO 提供 MNFS 安装流程，但不含 Linux 应用。
 
-这仍是开发预览版。相应发行产物必须通过 AMD64/ARM64 实际图形安装、移除 ISO 启动、账号认证、VirtIO/NVMe 磁盘、AMD64 BIOS 及应用环境检查后才发布。验证新增 Firefox 离线页面渲染、VS Code 窗口、C/C++ 编译、命令帮助与软件管理参数/权限检查。日志、截图、包清单、内核配置、SHA256 和源码提交号随发布提供。
+这仍是开发预览版。相应发行产物已通过 AMD64/ARM64 实际图形安装、移除 ISO 启动、账号认证、VirtIO/NVMe 磁盘、AMD64 BIOS 及应用环境检查。应用补充测试启动未改动的同一 ISO，以普通账号打开 VS Code，等待源码正文显示，再通过虚拟 USB 键盘编辑、保存，并从文件系统核对内容；AMD64 使用 KVM，ARM64 使用 TCG 软件模拟。Firefox 已通过无网络的无头页面渲染检查，C/C++ 编译、离线手册与软件管理参数/权限检查也已通过。日志、截图、包清单、内核配置、SHA256 和源码提交号随发布提供。
 
 UTM 推荐 QEMU 后端，取消“使用 Apple 虚拟化”；同架构来宾仍可使用 QEMU/HVF CPU 加速。没有 macOS 实机验证，不声称 Apple Virtualization.framework 已修复。实体硬件及所有型号也未逐一实测。原生入口需关闭 Secure Boot，Linux 入口保留 Debian 签名链。账号底层组件、原生应用 ABI、硬件驱动等实际限制见随镜像文档，不宣称无限长度或全面兼容。
