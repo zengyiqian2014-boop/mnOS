@@ -253,7 +253,7 @@ struct VM {
     void desktop_screen(const fs::path &path) {
         // A running xfce4-panel process can still be initializing on TCG.
         // Require its actual top panel, rather than the greeter's wallpaper.
-        for (int i=0;i<60;++i) {
+        for (int i=0;i<150;++i) {
             capture(path);
             if (image_active(path) && panel_visible(path)) return;
             pause(2);
@@ -287,9 +287,14 @@ struct VM {
 };
 static void code_editor(VM &vm,const fs::path &out) {
     size_t start=vm.output.size();
-    send_all(vm.serial,"DISPLAY=:0 code --disable-extensions --new-window /tmp/mnos-app.c >/tmp/mnos-code.log 2>&1; timeout 180 sh -c 'export DISPLAY=:0; until id=$(xdotool search --onlyvisible --name \"mnos-app.c.*Visual Studio Code\" 2>/dev/null | head -n 1) && [ -n \"$id\" ]; do sleep 1; done; xdotool windowactivate --sync \"$id\" && xdotool windowsize \"$id\" 1100 620 && xdotool windowmove \"$id\" 30 60 && xdotool getwindowname \"$id\"' && echo MNOS_CODE_DOCUMENT_READY\n");
+    // Pure TCG has no host CPU acceleration. Record application progress while
+    // allowing its first Electron/V8 initialization to finish. The rendered
+    // document and real keyboard-save checks below remain mandatory.
+    send_all(vm.serial,R"SH(DISPLAY=:0 code --verbose --disable-extensions --new-window /tmp/mnos-app.c >/tmp/mnos-code.log 2>&1 &
+timeout 600 sh -c 'export DISPLAY=:0; count=0; until id=$(xdotool search --onlyvisible --name "mnos-app.c.*Visual Studio Code" 2>/dev/null | head -n 1) && [ -n "$id" ]; do count=$((count+1)); if [ $((count%10)) -eq 1 ]; then date -u; ps -eo pid,comm,pcpu,stat --sort=-pcpu | head -12; tail -n 12 /tmp/mnos-code.log; fi; sleep 3; done; xdotool windowactivate --sync "$id" && xdotool windowsize "$id" 1100 620 && xdotool windowmove "$id" 30 60 && xdotool getwindowname "$id"' && printf '\nMNOS_CODE_DOCUMENT_READY\n'
+)SH");
     try {
-        vm.wait("\r\nMNOS_CODE_DOCUMENT_READY\r\n",240,start);
+        vm.wait("\r\nMNOS_CODE_DOCUMENT_READY\r\n",660,start);
         auto picture=out/"vscode-window.ppm";
         auto deadline=Clock::now()+120s;
         do {
@@ -308,8 +313,10 @@ static void code_editor(VM &vm,const fs::path &out) {
         check(editor_painted(picture),"Editor disappeared after saving");
         std::cout << "PASS: VS Code painted its document and saved real keyboard edits" << std::endl;
     } catch(...) {
-        send_all(vm.serial,"cat /tmp/mnos-code.log; DISPLAY=:0 xwininfo -root -tree; pgrep -a code\n");
-        vm.pause(3);
+        start=vm.output.size();
+        send_all(vm.serial,"cat /tmp/mnos-code.log; ps -eo pid,comm,pcpu,stat --sort=-pcpu | head -25; find ~/.config/Code/logs -name '*.log' -exec tail -n 25 {} \\; 2>/dev/null; printf '\\nMNOS_CODE_DIAGNOSTICS_END\\n'\n");
+        try { vm.wait("\r\nMNOS_CODE_DIAGNOSTICS_END\r\n",90,start); }
+        catch(const std::exception &) {}
         throw;
     }
 }
