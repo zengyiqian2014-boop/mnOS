@@ -300,7 +300,9 @@ static void code_editor(VM &vm,const fs::path &out) {
         } while(true);
         vm.click(600,250); vm.key("ctrl-end"); vm.key("ret"); vm.type("// MNOS UI OK"); vm.key("ctrl-s");
         start=vm.output.size();
-        send_all(vm.serial,"timeout 45 sh -c 'until grep -q \"MNOS UI OK\" /tmp/mnos-app.c; do sleep 1; done' && echo MNOS_CODE_EDIT_PASS\n");
+        // Bash may put a bracketed-paste control sequence and CR immediately
+        // before a quiet command's first output. Emit our own line boundary.
+        send_all(vm.serial,"timeout 45 sh -c 'until grep -q \"MNOS UI OK\" /tmp/mnos-app.c; do sleep 1; done' && printf '\\nMNOS_CODE_EDIT_PASS\\n'\n");
         vm.wait("\r\nMNOS_CODE_EDIT_PASS\r\n",75,start);
         vm.capture(picture);
         check(editor_painted(picture),"Editor disappeared after saving");
