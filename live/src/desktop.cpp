@@ -480,6 +480,30 @@ int main(int argc, char **argv) {
         popup = fs::path(argv[0]).filename() == "mnos-tools";
         catalog("/usr/share/mnos/tools.json");
         catalog("/usr/share/mnos/settings.json", true);
+        if (argc == 3 && std::string(argv[1]) == "--print-help") {
+            // Only run the fixed help invocation from the installed catalog.
+            // This console path needs no display and never adds sudo/a shell.
+            auto it = std::find_if(entries.begin(), entries.end(), [&](const Entry &e) {
+                return e.command.size() >= 2 && e.command[0] == "@terminal" &&
+                       e.command[1] == argv[2];
+            });
+            if (it == entries.end()) {
+                std::cerr << "No installed manual or catalog help for: " << argv[2] << '\n';
+                return 2;
+            }
+            auto args = it->command;
+            args.erase(args.begin());
+            args[0] = executable(args[0]);
+            if (args[0].empty()) {
+                std::cerr << "Tool is not installed: " << argv[2] << '\n';
+                return 2;
+            }
+            std::vector<char *> av;
+            for (auto &a : args) av.push_back(a.data());
+            av.push_back(nullptr);
+            execv(av[0], av.data());
+            return 1;
+        }
         if (argc == 3 &&
             (std::string(argv[1]) == "--help-tool" || std::string(argv[1]) == "--describe-tool")) {
             auto it = std::find_if(entries.begin(), entries.end(),

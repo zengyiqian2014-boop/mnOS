@@ -25,6 +25,13 @@ for manual in ls apt nmap tcpdump nano ip systemctl; do
     MANPAGER=cat MANWIDTH=80 mnos-help "$manual" > "$work/manual"
     test -s "$work/manual"
 done
+# Programs distributed without a man page still expose their installed help,
+# using the same fixed argument list as the graphical tool menu.
+mnos-help mnos-pkg | grep -q 'mnos-pkg list'
+mnos-help mitmproxy | grep -iq 'options'
+mnos-center --print-help gcc | grep -q 'Usage'
+if mnos-help mnos-nonexistent-command >"$work/missing" 2>&1; then exit 1; fi
+grep -q 'No installed manual' "$work/missing"
 printf '#include <stdio.h>\nint main(void){puts("C toolchain PASS");}\n' > "$work/hello.c"
 cc -Wall -Wextra -Werror "$work/hello.c" -o "$work/c-program"
 "$work/c-program"

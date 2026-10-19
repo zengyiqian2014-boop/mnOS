@@ -3,7 +3,7 @@ mnOS 集成工具安装包 Preview 3：Firefox ESR、官方 VS Code、nano、开
 - **AMD64**：Intel/AMD 64 位；**ARM64**：AArch64 UEFI。两种镜像分别匹配 CPU 架构，同一架构无需再分虚拟机版和硬件版。
 - 图形安装器先选择磁盘、输入账号、选择网络工具授权模式，确认清空整盘后安装。完成后移除 ISO，从硬盘启动。尚无保留旧系统、手动分区或安装时磁盘加密。
 - 新增 C 编写的 `mnos-pkg`：普通用户可以 `list/search/show/check`；修改软件需要显式执行 `sudo mnos-pkg update/install/remove/upgrade`。保留签名校验、依赖解析和 APT 确认，不自动提权或执行下载的安装脚本。
-- `help` 默认英文，`help -cn` 中文；`help -cn code`、`firefox`、`packages`、`build`、`network`、`kernel` 等章节解释用途、参数、权限、文件位置、示例和错误排查。`help 工具名` 阅读该软件随包安装的完整上游手册，语言取决于上游。
+- `help` 默认英文，`help -cn` 中文；`help -cn code`、`firefox`、`packages`、`build`、`network`、`kernel` 等章节解释用途、参数、权限、文件位置、示例和错误排查。`help 工具名` 阅读随包安装的上游手册，没有手册时打开该工具内置帮助；语言取决于上游。恢复基础镜像曾过滤掉的离线手册。
 - 移除主动安装的 Java SDK 和菜单项，Python 只为选中的第三方工具保留必要依赖。补齐 C/C++ 标准头文件、构建工具和开发手册；新命令和帮助使用 C，界面使用 C++。
 - 更新自研内核字库、真实字距和原创图标；49,776 个 Unicode 码位、UTF-8 1–4 字节、统一 `kernel 指令 [对象]`、Tab 补全、中英文逐条帮助和输出翻阅。原生功能及验证单独见 `native/DESKTOP-RELEASE.md`。
 
