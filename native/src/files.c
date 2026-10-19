@@ -240,7 +240,7 @@ bool files_command(const char *command, void (*print)(const char *)) {
             if (!error && got != st.size) error = MN_IO;
             if (!error) {
                 int result = process_start(bytes, got, arg);
-                if (result) emit(result == -16 ? "exec: application slot busy or boot checks pending" :
+                if (result) emit(result == -16 ? "exec: boot checks pending" :
                                  result == -8 ? "exec: invalid or unsupported ELF" :
                                  result == -13 ? "exec: permission denied" : "exec: insufficient memory");
             }

@@ -15,6 +15,7 @@
 #define USER_DATA (USER_BASE + PAGE)
 #define USER_STACK (USER_BASE + 4 * PAGE)
 #define PROBE_TASKS 8
+/* Virtual scheduler selector for the dynamically allocated application queue. */
 #define APP_TASK PROBE_TASKS
 #define MAX_TASKS (PROBE_TASKS + 1)
 #define SELFTEST_COUNT 8
@@ -116,6 +117,9 @@ struct irq_frame {
 #endif
 struct task {
     struct irq_frame frame;
+#ifdef __aarch64__
+    uint64_t thread_pointer; /* TPIDR_EL0 belongs to this user context. */
+#endif
     uint64_t cr3, code, data, stack;
     uint64_t switches;
     uint64_t wake_tick;
@@ -144,6 +148,9 @@ struct cpu {
     struct tss64 tss;
     uintptr_t irq_top, fault_top;
 };
+#ifdef MNOS_HOST_PROCESS_TEST
+struct cpu *cpu_this(void);
+#else
 static inline struct cpu *cpu_this(void) {
     struct cpu *cpu;
 #ifdef __aarch64__
@@ -153,6 +160,7 @@ static inline struct cpu *cpu_this(void) {
 #endif
     return cpu;
 }
+#endif
 #define ticks (cpu_this()->clock_ticks)
 #define tasks (cpu_this()->work)
 #define current_task (cpu_this()->current)

@@ -19,7 +19,7 @@ build/user/%.elf: user/example.c user/api.h user/app-x86.ld
 	$(CC) $(CFLAGS) -mcmodel=large -DPROGRAM_$* -c user/example.c -o build/user/$*.o
 	$(LD) -nostdlib -z max-page-size=0x1000 -T user/app-x86.ld -o $@ build/user/$*.o
 .PHONY: user-programs
-user-programs: $(addprefix build/user/,$(addsuffix .elf,hello spin fault badptr))
+user-programs: $(addprefix build/user/,$(addsuffix .elf,hello spin fault badptr isolate fpstate simdstate tlsstate))
 
 .PHONY: all host-tools host-tests
 all: build/mnos.elf
@@ -33,6 +33,8 @@ host-tests:
 	mkdir -p build
 	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -Iinclude tests/exec.c src/exec.c -o build/exec-test
 	./build/exec-test
+	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -DMNOS_HOST_PROCESS_TEST -Iinclude tests/process.c src/process.c src/exec.c -o build/process-test
+	./build/process-test
 	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -Iinclude tests/phys.c src/phys.c -o build/phys-test
 	./build/phys-test
 	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude tests/mnfs.c src/mnfs.c -o build/mnfs-test

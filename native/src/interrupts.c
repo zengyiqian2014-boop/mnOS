@@ -24,6 +24,18 @@ static void io_wait(void) {
     outb(0x80, 0);
 }
 void interrupts_cpu_init(void) {
+    /* The current ABI saves GPRs only. Trap x87/MMX/SIMD rather than expose
+     * firmware or another process's unsaved extended register state. */
+    uint64_t cr0;
+    __asm__ volatile("mov %%cr0,%0" : "=r"(cr0));
+    cr0 |= (1ULL << 2) | (1ULL << 3); /* EM + TS; no lazy FPU owner. */
+    __asm__ volatile("mov %0,%%cr0" :: "r"(cr0) : "memory");
+    /* No FS/GS TLS API yet. Keep user bases zero and reject WRFS/GSBASE. */
+    uint64_t cr4;
+    __asm__ volatile("mov %%cr4,%0" : "=r"(cr4));
+    cr4 &= ~(1ULL << 16);
+    __asm__ volatile("mov %0,%%cr4" :: "r"(cr4) : "memory");
+    __asm__ volatile("wrmsr" :: "c"(0xc0000100u), "a"(0u), "d"(0u) : "memory");
     struct cpu *cpu = cpu_this();
     struct tss64 *tss = &cpu->tss;
     if (!cpu->index) {
@@ -112,19 +124,24 @@ void tasks_init(void) { tasks_init_for(cpu_this()); }
 static struct irq_frame *schedule(struct irq_frame *frame) {
     if ((frame->cs & 3) != 3)
         return frame;
-    tasks[current_task].frame = *frame;
+    struct task *previous = current_task == APP_TASK ? process_task() : &tasks[current_task];
+    if (!previous) panic("missing current process");
+    previous->frame = *frame;
+    uint64_t previous_root = previous->cr3;
     for (;;) {
-        bool sleeping = false;
+        bool sleeping = process_sleeping();
         for (unsigned n = 1; n <= MAX_TASKS; ++n) {
             unsigned id = (current_task + n) % MAX_TASKS;
-            if (tasks[id].ready) {
+            struct task *next = id == APP_TASK ? process_choose() :
+                                tasks[id].ready ? &tasks[id] : NULL;
+            if (next) {
                 current_task = id;
-                ++tasks[id].switches;
-                cr3_set(tasks[id].cr3);
+                ++next->switches;
+                if (next->cr3 != previous_root) cr3_set(next->cr3);
                 process_reap();
-                return &tasks[id].frame;
+                return &next->frame;
             }
-            if (tasks[id].wake_tick)
+            if (id != APP_TASK && tasks[id].wake_tick)
                 sleeping = true;
         }
         if (!sleeping)
@@ -263,8 +280,8 @@ struct irq_frame *irq_dispatch(struct irq_frame *f) {
     }
     if (f->vector == 32 || f->vector == 64) {
         ++ticks;
-        process_tick();
-        for (unsigned i = 0; i < MAX_TASKS; ++i)
+        process_tick((f->cs & 3) == 3);
+        for (unsigned i = 0; i < PROBE_TASKS; ++i)
             if (tasks[i].wake_tick && tasks[i].wake_tick <= ticks) {
                 tasks[i].wake_tick = 0;
                 tasks[i].ready = true;

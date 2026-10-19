@@ -10,9 +10,10 @@ original kernel is a separate experimental boot entry; Firefox, VS Code and the
 Linux drivers have not been ported to it.
 
 The source branch now supports native `exec PATH`, `ps` and `kill PID`, with
-MNFS-backed C executables, user-fault isolation and process memory reclamation.
-Local x86_64 and ARM64 VM tests cover execution, faults, teardown and reboot.
-This is limited to one small static application and is **not yet included in
+MNFS-backed C executables, dynamically allocated concurrent processes, isolated
+address spaces, sleep/wakeup queues and process memory reclamation.
+Applications currently share the boot CPU and use a small static executable ABI.
+This source work is **not yet included in
 the linked preview.2 installer ISO**.
 [Native program usage, tests and limits](native/README.md#run-native-programs-from-mnfs).
 
