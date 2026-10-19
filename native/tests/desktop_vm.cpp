@@ -181,9 +181,13 @@ struct VM {
         auto end = Clock::now() + 10s;
         while (reply.find("\"return\"") == std::string::npos) {
             require(Clock::now() < end, "QMP response timeout: " + reply);
-            pollfd p{monitor, POLLIN, 0};
-            if (poll(&p, 1, 100) <= 0)
+            /* Keep draining the guest UART while waiting for a screendump.
+             * A burst of help output must not stall the emulated UART or QMP. */
+            pollfd p[2]={{monitor, POLLIN, 0}, {serial, POLLIN, 0}};
+            if (poll(p, 2, 100) <= 0)
                 continue;
+            if (p[1].revents & POLLIN) poll_serial();
+            if (!(p[0].revents & POLLIN)) continue;
             char b[8192];
             auto n = read(monitor, b, sizeof b);
             require(n > 0, "QMP closed");
@@ -317,7 +321,7 @@ int main(int argc, char **argv) {
             vm.command("cat /disk/home/demo/untitled.txt", "A first save must retain the untitled document.");
             vm.command("exec /ram/bin/hello",
                        "HELLO: native user ELF; initialized data and BSS OK");
-            vm.command("help -cn", "mnOS 中文帮助");
+            vm.command("help -cn", "/ram 临时；/disk 持久。F7 打开显示设置。");
             vm.screenshot(build / (arch + "-terminal.ppm"));
             vm.send("\033");
             for (unsigned i = 0; i < 20; i++)
