@@ -16,7 +16,7 @@ set timeout=0
 insmod all_video
 set gfxmode=1280x720,auto
 set gfxpayload=keep
-menuentry 'mnOS native 0.1' {
+menuentry 'mnOS native 0.4 diagnostic' {
     multiboot2 /boot/mnos.elf $args
     boot
 }

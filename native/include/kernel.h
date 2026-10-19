@@ -74,6 +74,7 @@ int memcmp(const void *, const void *, size_t);
 size_t strlen(const char *);
 bool streq(const char *, const char *);
 int strncmp(const char *, const char *, size_t);
+int strcmp(const char *, const char *);
 void log_write(const char *);
 void log_hex(uint64_t);
 void log_dec(uint64_t);

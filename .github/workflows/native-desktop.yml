@@ -1,0 +1,70 @@
+name: Native desktop installation
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Publish this verified native desktop prerelease (leave empty for QA only)
+        default: ''
+        required: false
+  pull_request:
+    paths: ['native/**', '.github/workflows/native-desktop.yml']
+permissions:
+  contents: read
+jobs:
+  desktop:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build original native kernel and test graphical installation
+        run: |
+          docker build -t mnos-native-builder -f native/Builder.Dockerfile .
+          docker run --rm --user "$(id -u):$(id -g)" --network none -v "$PWD/native:/native" -w /native mnos-native-builder bash tests/desktop_ci.sh
+      - name: Package screenshots, source identity and validation
+        run: |
+          node native/tools/screenshots.cjs native/build/desktop
+          mkdir -p release
+          cp native/build/desktop/mnOS-*.iso release/
+          cp native/build/desktop/*-desktop.png native/build/desktop/*-editor.png native/build/desktop/*-installer.png release/
+          cp native/DESKTOP-RELEASE.md release/RELEASE_NOTES.md
+          printf '%s\n' "$GITHUB_SHA" > release/SOURCE_COMMIT.txt
+          printf 'Validation: https://github.com/%s/actions/runs/%s\n' "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > release/PROVENANCE.txt
+          tar -C native/build/desktop -czf release/desktop-validation.tar.gz --wildcards '*.log' '*.png'
+          git archive --format=tar.gz -o release/native-source.tar.gz HEAD native LICENSE .github/workflows/native-desktop.yml
+          (cd release && sha256sum *.iso *.tar.gz *.png *.txt *.md > SHA256SUMS && sha256sum -c SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-desktop-logs
+          path: native/build/desktop/*.log
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-desktop-release
+          path: release/
+          retention-days: 14
+  publish:
+    needs: desktop
+    if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-desktop-release
+          path: release
+      - name: Publish the unchanged tested installation media
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9A-Za-z._-]+$ ]]
+          test "$(cat release/SOURCE_COMMIT.txt)" = "$GITHUB_SHA"
+          (cd release && sha256sum --check --strict SHA256SUMS)
+          gh release create "$RELEASE_TAG" release/* --target "$GITHUB_SHA" --prerelease --latest=false \
+            --title "mnOS Desktop 0.4 Preview 1 — 原生图形系统安装版" \
+            --notes-file release/RELEASE_NOTES.md

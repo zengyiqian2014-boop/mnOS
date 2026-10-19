@@ -1,7 +1,7 @@
 ENTRY(_start)
 PHDRS { text PT_LOAD FLAGS(5); rodata PT_LOAD FLAGS(4); data PT_LOAD FLAGS(6); }
 SECTIONS {
- . = 1M;
+ . = DEFINED(native_efi_link) ? 32M : 1M;
  kernel_start = .;
  text_start = .;
  .text : ALIGN(4K) { KEEP(*(.multiboot)) *(.text.boot) *(.text .text.*) } :text

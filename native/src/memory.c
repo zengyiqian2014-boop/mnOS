@@ -113,7 +113,7 @@ void *kernel_alloc(size_t bytes) {
     return (void *)start;
 }
 void memory_protect_low(uint64_t address, bool executable) {
-    if (address % PAGE || address >= 32 * 1024 * 1024) panic("invalid bootstrap page protection");
+    if (address % PAGE || address >= 64 * 1024 * 1024) panic("invalid bootstrap page protection");
     uint64_t *pd = table(table(kernel_pdpt)[0]);
     uint64_t *pt = table(pd[address >> 21]);
     pt[(address >> 12) & 511] = address | (executable ? 1 : (3 | NX));
@@ -189,7 +189,7 @@ void memory_init(void) {
         }
         p += (t->size + 7ULL) & ~7ULL;
     }
-    if ((uint64_t)kernel_end >= 32 * 1024 * 1024 || !phys_prepare(&physical))
+    if ((uint64_t)kernel_end >= 64 * 1024 * 1024 || !phys_prepare(&physical))
         panic("unsupported bootstrap memory layout");
     kernel_pml4 = page_alloc();
     kernel_pdpt = page_alloc();
@@ -199,7 +199,7 @@ void memory_init(void) {
         table(kernel_pdpt)[gig] = pd | 3;
         for (unsigned block = 0; block < 512; ++block) {
             uint64_t base = ((uint64_t)gig << 30) + ((uint64_t)block << 21);
-            if (base < 32 * 1024 * 1024) {
+            if (base < 64 * 1024 * 1024) {
                 uint64_t pt = page_alloc();
                 table(pd)[block] = pt | 3;
                 for (unsigned i = 0; i < 512; ++i) {

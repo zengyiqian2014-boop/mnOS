@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "kernel.h"
-static bool shift, extended;
+static bool shift, extended, control;
 static int mouse_x = 640, mouse_y = 360;
 static uint8_t packet[3];
 static unsigned mouse_bytes;
@@ -60,12 +60,17 @@ void keyboard_event(uint8_t code) {
         shift = false;
         return;
     }
+    if (code == 29 || code == 157) { control = code == 29; extended = false; return; }
     if (code & 0x80) {
         extended = false;
         return;
     }
     if (extended) {
         extended = false;
+        if (code == 75) ui_key((char)0x90);
+        if (code == 77) ui_key((char)0x91);
+        if (code == 72) ui_key((char)0x92);
+        if (code == 80) ui_key((char)0x93);
         return;
     }
     if (code >= 59 && code <= 65) {
@@ -82,8 +87,13 @@ void keyboard_event(uint8_t code) {
         [45] = 'x',  [46] = 'c', [47] = 'v', [48] = 'b',  [49] = 'n', [50] = 'm',  [51] = ',',
         [52] = '.',  [53] = '/', [57] = ' '};
     char c = normal[code];
-    if (shift && c >= 'a' && c <= 'z')
-        c -= 32;
+    if (control && c >= 'a' && c <= 'z') c -= 'a' - 1;
+    else if (shift) {
+        const char *normal_symbols = "1234567890-=[];',./`\\";
+        const char *shift_symbols = "!@#$%^&*()_+{}\":<>?~|";
+        if (c >= 'a' && c <= 'z') c -= 32;
+        else for (unsigned i=0;normal_symbols[i];i++) if (c==normal_symbols[i]) {c=shift_symbols[i];break;}
+    }
     if (c)
         ui_key(c);
 }

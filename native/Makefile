@@ -5,7 +5,7 @@ LD ?= ld
 # compiler's fortification and sanitizers; only native objects undefine it.
 CFLAGS = -std=c11 -O2 -g -ffreestanding -U_FORTIFY_SOURCE -fno-builtin -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-unwind-tables -m64 -mno-red-zone -mgeneral-regs-only -Wall -Wextra -Werror -Wno-misleading-indentation -Iinclude
 SOURCES = src/core.c src/string.c src/phys.c src/memory.c src/smp.c src/interrupts.c src/devices.c src/rng.c src/block.c src/mnfs.c src/files.c src/password.c src/auth.c src/ui.c src/exec.c assets/font.c
-SOURCES += src/process.c src/usercopy.c src/file_api.c
+SOURCES += src/process.c src/usercopy.c src/file_api.c src/disk_layout.c
 OBJECTS = $(patsubst %.c,build/%.o,$(SOURCES)) build/boot.o build/ap.o build/interrupts.o build/user.o build/exec-image.o
 
 build/user.elf: user/x86.S user/x86.ld
@@ -31,11 +31,13 @@ build/mnfs: tools/mnfs.c src/mnfs.c include/mnfs.h
 
 host-tests:
 	mkdir -p build
+	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude tests/disk_layout.c src/disk_layout.c -o build/disk-layout-test
+	./build/disk-layout-test
 	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -Iinclude tests/exec.c src/exec.c -o build/exec-test
 	./build/exec-test
 	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -DMNOS_HOST_PROCESS_TEST -Iinclude tests/process.c src/process.c src/exec.c src/usercopy.c -o build/process-test
 	./build/process-test
-	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude tests/file_api.c src/file_api.c src/usercopy.c src/files.c src/mnfs.c src/auth.c src/password.c -o build/file-api-test
+	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude tests/file_api.c src/file_api.c src/disk_layout.c src/usercopy.c src/files.c src/mnfs.c src/auth.c src/password.c -o build/file-api-test
 	./build/file-api-test
 	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -Iinclude tests/phys.c src/phys.c -o build/phys-test
 	./build/phys-test
@@ -54,3 +56,7 @@ build/%.o: %.c include/kernel.h include/phys.h include/mnfs.h include/block.h in
 build/%.o: src/%.S
 	mkdir -p $(dir $@)
 	$(CC) -m64 -ffreestanding -fno-pie -c $< -o $@
+
+build/desktop/kernel-x86_64.elf: $(OBJECTS) linker.ld
+	mkdir -p build/desktop
+	$(LD) -nostdlib -z max-page-size=0x1000 --defsym=native_efi_link=1 -e efi_kernel_entry -T linker.ld -o $@ $(OBJECTS)

@@ -110,19 +110,18 @@ static void framebuffer(struct services *bs) {
     struct gop *g = NULL;
     if (locate(&gop_guid, NULL, (void **)&g) || !g || !g->mode)
         return;
-    for (uint32_t i = 0; i < g->mode->maximum; ++i) {
-        size_t bytes = 0;
-        struct mode_info *m = NULL;
-        if (!g->query(g, i, &bytes, &m) && m) {
-            bool choose = m->width == 1280 && m->height == 720;
-            uint64_t (*free_pool)(void *) = (void *)bs->fn[6];
-            free_pool(m);
-            if (choose) {
-                g->set(g, i);
-                break;
+    unsigned best=g->mode->current,best_score=~0u;
+    for(uint32_t i=0;i<g->mode->maximum;i++) {
+        size_t bytes=0;struct mode_info *m=NULL;
+        if(!g->query(g,i,&bytes,&m)&&m) {
+            if(m->format<=1&&m->width>=1024&&m->width<=1920&&m->height>=720&&m->height<=1080) {
+                unsigned score=(m->width>1280?m->width-1280:1280-m->width)+(m->height>720?m->height-720:720-m->height);
+                if(score<best_score){best=i;best_score=score;}
             }
+            uint64_t (*free_pool)(void *)=(void *)bs->fn[6];free_pool(m);
         }
     }
+    if(best!=g->mode->current)g->set(g,best);
     struct mode_info *m = g->mode->info;
     if (!m || m->width < 640 || m->height < 480 || m->width > 2560 || m->height > 1440 ||
         m->format > 1 || m->pitch < m->width || m->pitch > 16384)

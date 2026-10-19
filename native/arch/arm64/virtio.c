@@ -257,7 +257,7 @@ bool arch_random(uint8_t *out, size_t n) {
     return ok;
 }
 static void key(unsigned code, unsigned value) {
-    static bool shift;
+    static bool shift, control;
     static const char keys[] =
         "\0\0331234567890-=\b\tqwertyuiop[]\n\0asdfghjkl;'`\0\\zxcvbnm,./\0*\0 ";
     static const char upper[] =
@@ -266,16 +266,22 @@ static void key(unsigned code, unsigned value) {
         shift = value;
         return;
     }
+    if (code == 29 || code == 97) {control=value;return;}
     if (!value)
         return;
+    if (code == 105) {ui_key((char)0x90);return;}
+    if (code == 106) {ui_key((char)0x91);return;}
+    if (code == 103) {ui_key((char)0x92);return;}
+    if (code == 108) {ui_key((char)0x93);return;}
     if (code >= 59 && code <= 65) {
         ui_key(0x81 + code - 59);
         return;
     }
     if (code < sizeof keys && keys[code])
-        ui_key(shift ? upper[code] : keys[code]);
+        ui_key(control && keys[code]>='a' && keys[code]<='z' ? keys[code]-'a'+1 : shift ? upper[code] : keys[code]);
 }
 void arm_virtio_input(void) {
+    static int mouse_x=640,mouse_y=360;static bool left;
     for (struct device *d = devices; d; d = d->next)
         if (d->kind == 18) {
             struct queue *q = &d->q;
@@ -289,8 +295,16 @@ void arm_virtio_input(void) {
                 dma_sync((uintptr_t)event, 8);
                 uint16_t type = *(uint16_t *)event, code = *(uint16_t *)(event + 2);
                 uint32_t value = *(uint32_t *)(event + 4);
-                if (type == 1)
-                    key(code, value);
+                if (type == 1 && code == 272) {left=value!=0;ui_pointer(mouse_x,mouse_y,left);}
+                else if (type == 1) key(code,value);
+                else if (type == 2 || type == 3) {
+                    if (code==0) mouse_x=type==3?(int)((uint64_t)value*(boot.fb.width-1)/32767):mouse_x+(int32_t)value;
+                    if (code==1) mouse_y=type==3?(int)((uint64_t)value*(boot.fb.height-1)/32767):mouse_y+(int32_t)value;
+                    if(mouse_x<0)mouse_x=0;if(mouse_y<0)mouse_y=0;
+                    if(mouse_x>=(int)boot.fb.width)mouse_x=(int)boot.fb.width-1;
+                    if(mouse_y>=(int)boot.fb.height)mouse_y=(int)boot.fb.height-1;
+                    ui_pointer(mouse_x,mouse_y,left);
+                }
                 submit(d, id);
                 dma_sync((uintptr_t)q->used, PAGE);
             }
