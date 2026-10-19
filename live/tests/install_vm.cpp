@@ -81,6 +81,22 @@ static bool panel_visible(const fs::path &path) {
     }
     return dark>size_t(w)*20*3/4 && launcher_color>60;
 }
+static bool editor_painted(const fs::path &path) {
+    std::ifstream f(path,std::ios::binary); std::string type; int w=0,h=0,max=0;
+    f >> type >> w >> h >> max; f.get();
+    if (!f || type!="P6" || w<1000 || w>8192 || h<680 || h>8192 || max!=255) return false;
+    size_t neutral=0, text=0;
+    for (int y=0;y<h;++y) for (int x=0;x<w;++x) {
+        unsigned char p[3]; f.read(reinterpret_cast<char *>(p),3); if (!f) return false;
+        if (x<70 || x>1080 || y<110 || y>620) continue;
+        int low=std::min({p[0],p[1],p[2]}), high=std::max({p[0],p[1],p[2]});
+        if (high-low<12 && high>15 && high<80) ++neutral;
+        if (low>145 && high-low<35) ++text;
+    }
+    // A mapped Electron helper window or the desktop wallpaper is not a
+    // rendered editor. Require its large content area and painted text.
+    return neutral>200000 && text>150;
+}
 static bool grub_menu_visible(const fs::path &path) {
     std::ifstream f(path,std::ios::binary); std::string type; int w=0,h=0,max=0;
     f >> type >> w >> h >> max; f.get();
@@ -269,9 +285,36 @@ struct VM {
         }
     }
 };
+static void code_editor(VM &vm,const fs::path &out) {
+    size_t start=vm.output.size();
+    send_all(vm.serial,"DISPLAY=:0 code --disable-extensions --new-window /tmp/mnos-app.c >/tmp/mnos-code.log 2>&1; timeout 180 sh -c 'export DISPLAY=:0; until id=$(xdotool search --onlyvisible --name \"mnos-app.c.*Visual Studio Code\" 2>/dev/null | head -n 1) && [ -n \"$id\" ]; do sleep 1; done; xdotool windowactivate --sync \"$id\" && xdotool windowsize \"$id\" 1100 620 && xdotool windowmove \"$id\" 30 60 && xdotool getwindowname \"$id\"' && echo MNOS_CODE_DOCUMENT_READY\n");
+    try {
+        vm.wait("\r\nMNOS_CODE_DOCUMENT_READY\r\n",240,start);
+        auto picture=out/"vscode-window.ppm";
+        auto deadline=Clock::now()+120s;
+        do {
+            vm.capture(picture);
+            if(editor_painted(picture)) break;
+            check(Clock::now()<deadline,"VS Code document window did not paint");
+            vm.pause(2);
+        } while(true);
+        vm.click(600,250); vm.key("ctrl-end"); vm.key("ret"); vm.type("// MNOS UI OK"); vm.key("ctrl-s");
+        start=vm.output.size();
+        send_all(vm.serial,"timeout 45 sh -c 'until grep -q \"MNOS UI OK\" /tmp/mnos-app.c; do sleep 1; done' && echo MNOS_CODE_EDIT_PASS\n");
+        vm.wait("\r\nMNOS_CODE_EDIT_PASS\r\n",75,start);
+        vm.capture(picture);
+        check(editor_painted(picture),"Editor disappeared after saving");
+        std::cout << "PASS: VS Code painted its document and saved real keyboard edits" << std::endl;
+    } catch(...) {
+        send_all(vm.serial,"cat /tmp/mnos-code.log; DISPLAY=:0 xwininfo -root -tree; pgrep -a code\n");
+        vm.pause(3);
+        throw;
+    }
+}
 int main(int argc,char **argv) {
     try {
-        check(argc==4,"Usage: install-vm amd64|arm64 ISO OUTPUT");
+        check(argc==4 || (argc==5 && std::string(argv[4])=="--live-apps"),
+              "Usage: install-vm amd64|arm64 ISO OUTPUT [--live-apps]");
         std::string arch=argv[1]; check(arch=="amd64"||arch=="arm64","architecture");
         fs::path iso=fs::absolute(argv[2]), out=fs::absolute(argv[3]); fs::create_directories(out);
         char temp[]="/tmp/mnos-install-test.XXXXXX"; check(mkdtemp(temp),"mkdtemp"); fs::path work=temp;
@@ -280,6 +323,29 @@ int main(int argc,char **argv) {
         // user-selected password, including real graphical/PAM login later.
         const std::string account="mnosqa" + std::string(58, 'a');
         const std::string password="q7";
+        if(argc==5) {
+            // Supplement the completed disk-installation matrix by exercising
+            // the exact ISO's temporary desktop. No image or account overlay.
+            VM vm(arch,iso,disk,out,work,"live-apps");
+            vm.select_entry(2);
+            vm.wait("mnos-installer login:",600);
+            vm.pause(30); vm.capture(out/"enrollment.ppm");
+            vm.type(account); vm.key("ret"); vm.pause(8);
+            vm.type(password); vm.key("ret"); vm.pause(8);
+            vm.type(password); vm.key("ret"); vm.pause(25);
+            size_t start=vm.output.size();
+            send_all(vm.serial,account+"\n"); vm.wait("Password:",90,start);
+            send_all(vm.serial,password+"\n"); vm.pause(15);
+            vm.screen(out/"live-login.ppm");
+            vm.click(640,349); vm.type(password); vm.key("ret"); vm.pause(25);
+            start=vm.output.size();
+            send_all(vm.serial,"test $(id -u) -ge 1000 && grep -qw boot=live /proc/cmdline && timeout 180 sh -c 'until pgrep -u $(id -u) xfce4-session && pgrep -u $(id -u) xfce4-panel && pgrep -u $(id -u) xfwm4; do sleep 1; done' && DISPLAY=:0 xset s off && DISPLAY=:0 xset -dpms && printf '#include <stdio.h>\\nint main(void){puts(\"BUILD_OK\");}\\n' > /tmp/mnos-app.c && echo MNOS_LIVE_APPLICATIONS_READY\n");
+            vm.wait("\r\nMNOS_LIVE_APPLICATIONS_READY\r\n",240,start);
+            vm.desktop_screen(out/"live-desktop.ppm");
+            code_editor(vm,out);
+            std::cout << "PASS: unchanged ISO live desktop application rendering and editing" << std::endl;
+            return 0;
+        }
         {
             VM vm(arch,iso,disk,out,work,"compatibility");
             vm.select_entry(1);
@@ -330,10 +396,7 @@ int main(int argc,char **argv) {
                 start=vm.output.size();
                 send_all(vm.serial,"code --version && firefox-esr --version && mnos-help -cn code && ! mnos-pkg install nano && timeout 90 firefox-esr --headless --screenshot /tmp/mnos-browser.png 'data:text/html,<h1>mnOS offline browser check</h1>' && test -s /tmp/mnos-browser.png && printf '#include <stdio.h>\\nint main(void){puts(\"BUILD_OK\");}\\n' > /tmp/mnos-app.c && cc -Wall -Werror /tmp/mnos-app.c -o /tmp/mnos-app && /tmp/mnos-app && echo MNOS_APPLICATIONS_PASS\n");
                 vm.wait("\r\nMNOS_APPLICATIONS_PASS\r\n",180,start);
-                start=vm.output.size();
-                send_all(vm.serial,"DISPLAY=:0 code --disable-extensions --new-window /tmp/mnos-app.c >/tmp/mnos-code.log 2>&1; timeout 90 sh -c 'until DISPLAY=:0 xdotool search --onlyvisible --class Code; do sleep 1; done' && echo MNOS_CODE_WINDOW_PASS\n");
-                vm.wait("\r\nMNOS_CODE_WINDOW_PASS\r\n",120,start);
-                vm.screen(out/"vscode-window.ppm");
+                code_editor(vm,out);
             }
             // Keep the echoed command distinct from the actual sudo prompt.
             send_all(vm.serial,"sudo -S -p 'QA_'\"AUTH:\" /usr/bin/systemctl poweroff\n"); vm.wait("QA_AUTH:",30);
