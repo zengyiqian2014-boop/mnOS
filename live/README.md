@@ -91,7 +91,8 @@ package manifest. VS Code and its terminal run as the ordinary user, with no
 `--no-sandbox` flag. Telemetry and AI features default off in new user settings.
 
 Included languages: C/C++ (GCC and Clang), Node.js/npm, Go,
-Rust/Cargo and Java/JDK. CMake, Ninja, pkg-config, Git, GDB, clangd, ripgrep and
+and Rust/Cargo. Java/JDK is not selected by the package lists. CMake, Ninja,
+pkg-config, Git, GDB, clangd, ripgrep and
 ShellCheck are available. Build/edit projects in your home directory without
 sudo; use project-local dependencies. VS Code extensions are
 installed per user. These applications run in the Linux entry, not directly on
@@ -128,10 +129,9 @@ the scripts do not install packages or start OS services on the host.
 Output goes to `live/out/`. Each ISO has its own SHA256 file, package/source
 version manifest and resolved kernel configuration. `OUT=/path` changes the
 output directory. A normal build does not need additional CA certificates.
-Release uploads split only images exceeding GitHub's 2 GiB per-file limit;
-the workflow artifact and local build retain the complete ISO. Download all
-`.iso.partNN` files for one image and follow `READ-SPLIT-ISOS.txt` to reconstruct
-and verify it before booting or writing to USB. Smaller images stay as `.iso`.
+The installer publisher requires one complete ISO per architecture and stops
+before publication if an image exceeds GitHub's 2 GiB per-file limit. It does
+not publish split installer parts.
 If a build network requires a private CA, set `MNOS_BUILD_CA_BUNDLE` to a PEM
 bundle containing its CA and the normal public roots. BuildKit mounts this bundle
 only during dependency downloads; it is never copied into an image layer.
