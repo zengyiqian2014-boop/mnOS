@@ -56,11 +56,14 @@ This is not Linux binary compatibility.
 Native authentication covers the local graphical/serial console and its file and
 settings operations; it is separate from Linux PAM/sudo and is not POSIX UID/ACL
 support for arbitrary native programs. Application ownership is captured at
-launch; no file or account system calls are exposed to applications yet.
+launch; the native file ABI enforces that owner's current session and home
+permissions. Account administration is not exposed as an application syscall.
 Speculation mitigations and a full
 security audit remain outstanding. No performance advantage over RHEL/Linux or
 security certification is claimed. Firefox, CTF tools and common hardware
-drivers run in the separate Linux entry on both release ISOs.
+drivers run in the separate Linux entry of the older full installer ISOs.
+The [original-system scope and implementation route](SYSTEM.md) records the
+native target, external components and remaining work.
 
 ## Help and kernel commands
 
@@ -227,8 +230,8 @@ python3 native/tools/font.py /path/NotoSansCJK-Regular.ttc native/assets/font.c
 `int 0x80`: RAX operation, RDI/RSI arguments, RAX result; other registers are
 preserved. Calls: 0 bounded console write (length ≤256), 1 yield, 2 local CPU
 ticks, 3 exit, 4 boot-probe report (test task only), 5 sleep (1–1000 ticks).
-Bad addresses return -14; invalid arguments -22; unknown calls -38. Filesystem
-operations currently run in the kernel console, not through a ring-3 file ABI.
+Bad addresses return -14; invalid arguments -22; unknown calls -38. Dynamic
+applications also use calls 6/7 for PID/UID and 8 for the native file API below.
 
 ## Native executable milestone (2026-10-16)
 
@@ -249,7 +252,7 @@ isolation and preemption, not only successful parsing. This does not test real
 hardware or Apple Virtualization.framework.
 
 The next dependencies for a broader native application environment are file
-descriptors, user file I/O, larger mappings, drivers and a general application
+descriptors, directory enumeration, larger mappings, drivers and a general application
 ABI/toolchain. The Linux installer
 release remains separate; this source milestone does not switch its default
 kernel or make Firefox/VS Code native applications.
@@ -322,7 +325,7 @@ mutated with local IRQs masked; other CPUs continue their independent boot worke
 
 Current limits: applications are **pinned to the boot CPU**, no command-line
 arguments, at most 64 KiB of ELF file input, one 4 KiB RX segment and one 4 KiB
-RW/NX segment plus one stack page. No dynamic linker, file syscalls, fork, exec
+RW/NX segment plus one stack page. No dynamic linker, file descriptors, fork, exec
 replacement, wait API, signals or Linux/POSIX binary compatibility. These are
 native development facilities, not a replacement for the Linux desktop yet.
 Only general-purpose registers are currently saved. FP/SIMD access explicitly
@@ -337,9 +340,53 @@ Application ABI (`user/api.h`): x86 uses `int 0x80`, RAX call/result and RDI/RSI
 arguments; ARM uses `svc #0`, X8 call, X0 result/first argument and X1 second
 argument. Calls: 0 console write (up to 256 bytes within one mapped page), 1 yield,
 2 tick count, 3 exit (low eight bits of status), 5 sleep (1–1000 ticks),
-6 process ID, 7 owner UID. Errors:
+6 process ID, 7 owner UID, 8 native file request. Errors:
 -14 bad user address, -22 invalid length/delay, -38 unsupported call. Output
 controls are sanitized; the buffer is read through a validated physical alias.
+
+### Native user file API
+
+This addition first ships in **v0.3-native-preview.2**; the earlier fixed
+Preview 1 release does not contain call 8. The public C ABI is `include/file_api.h`,
+with a wrapper in `user/api.h`. It is independent of Linux/POSIX file descriptors.
+
+Call 8 accepts a pointer to a 40-byte `native_file_request` and its exact size.
+The five fixed-width fields are operation, absolute path pointer, buffer pointer,
+length and offset. Unused fields must be zero. Paths are NUL-terminated, at most
+1024 bytes excluding NUL. A request or data buffer must fit within one mapped
+user page; code pages are allowed as input but never as syscall output. A read
+or write transfers at most 4096 bytes. Larger files use repeated 64-bit-offset
+operations; the file-size bound is MNFS's signed 64-bit limit.
+
+| Operation | Buffer / length | Offset | Result |
+| --- | --- | --- | --- |
+| `NATIVE_FILE_READ` | Writable buffer / requested bytes | Byte offset | Bytes read; 0 at EOF |
+| `NATIVE_FILE_WRITE` | Readable buffer / bytes | Byte offset | Bytes committed; file must already exist |
+| `NATIVE_FILE_CREATE`, `NATIVE_FILE_MKDIR`, `NATIVE_FILE_REMOVE` | Zero / zero | Zero | 0 on success |
+| `NATIVE_FILE_TRUNCATE` | Zero / zero | New size | 0 on success |
+| `NATIVE_FILE_STAT` | Writable `native_file_stat` / 24 | Zero | 0; fills size, inode, directory flag |
+| `NATIVE_FILE_HOME` | Writable path buffer / capacity; path field zero | 0 RAM, 1 disk | Path length excluding NUL; missing disk returns -2 |
+
+Each call checks the process's captured UID against the signed-in account. The
+same canonical-path policy as the console applies: ordinary users mutate only
+children of their own home; other homes, `/root` and protected `/system` data
+are denied. Root still cannot read raw credential records through this ABI.
+No filesystem operation formats media, changes ownership or bypasses a volume
+lock. Requests and input bytes are copied before mutation; read output is copied
+only after successful checksum-checked I/O. Operations currently run synchronously
+on the boot CPU with interrupts masked; async/blocking-driver scheduling remains
+future work. The ARM PE build uses pre-mapped 64 KiB kernel stacks without a
+Windows CRT stack-growth helper.
+
+Errors are negative: -2 absent, -5 I/O/corruption, -12 memory, -13 permission,
+-14 user address, -17 exists, -20 not-directory, -21 is-directory, -22 invalid,
+-28 space, -30 read-only, -36 path too long, -39 nonempty directory.
+
+The `filetest` native C application uses the calling user's home, writes and
+reads binary data across a block boundary above 32 TiB, verifies stat/EOF and
+permission failures, and checks persisted bytes on the next boot. Host tests
+exercise the production account policy, MNFS and user-copy code under ASan/UBSan;
+the lifecycle QEMU test runs the same ELF on both architectures and boots twice.
 
 Reproducible native-only QA (C/C++/assembly/shell, no Python test driver):
 

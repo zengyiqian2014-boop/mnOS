@@ -4,6 +4,7 @@
 #include "kernel.h"
 #include "process.h"
 #include "auth.h"
+#include "usercopy.h"
 #include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -25,6 +26,10 @@ struct cpu *cpu_this(void) { return &cpu; }
 bool auth_logged_in(void) { return logged; }
 bool auth_admin(void) { return logged && !uid; }
 uint32_t auth_uid(void) { return uid; }
+int64_t file_request(const struct task *t, uint32_t owner, uint64_t ptr, uint64_t size) {
+    assert(t == process_task() && owner == 1000 && ptr == USER_DATA && size == 40);
+    return -2; /* Filesystem/auth integration is exercised by file_api.c and QEMU. */
+}
 bool streq(const char *a, const char *b) { return !strcmp(a, b); }
 void number(char *s, uint64_t n) { sprintf(s, "%" PRIu64, n); }
 void log_write(const char *s) {
@@ -187,6 +192,7 @@ static void sleeping(void) {
 static void permissions(void) {
     assert(!start()); struct task *t = choose(); uint64_t id = pid();
     assert(call(99, 0, 0, false) == -38);
+    assert(call(8, USER_DATA, 40, false) == -2);
     assert(call(0, UINT64_MAX - 1, 8, false) == -14);
     assert(call(0, USER_BASE + PAGE - 1, 2, false) == -14);
     assert(call(0, USER_BASE, 257, false) == -22);

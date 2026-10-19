@@ -133,7 +133,7 @@ void files_session(void) {
     make_directory(&ram,auth_admin()?"/root":path);
     if(disk_present&&!disk_locked&&!disk.poisoned)disk.writable=true;
 }
-static struct mnfs *volume(const char **path) {
+struct mnfs *files_volume(const char **path) {
     const char *p = *path;
     if (strlen(p) >= 4 && !memcmp(p, "/ram", 4) && (!p[4] || p[4] == '/')) {
         *path = p[4] ? p + 4 : "/"; return &ram;
@@ -215,7 +215,7 @@ bool files_command(const char *command, void (*print)(const char *)) {
     memcpy(buffer, command, length + 1);
     char *cursor = buffer, *cmd = word(&cursor), *arg = word(&cursor);
     const char *p = *arg ? arg : "/ram";
-    struct mnfs *f = volume(&p); int error = MN_OK;
+    struct mnfs *f = files_volume(&p); int error = MN_OK;
     output = print;
     bool recognized=streq(cmd,"fs")||streq(cmd,"disk")||streq(cmd,"ls")||streq(cmd,"stat")||streq(cmd,"cat")||
         streq(cmd,"write")||streq(cmd,"writeat")||streq(cmd,"mkdir")||streq(cmd,"rm")||streq(cmd,"truncate")||
@@ -291,12 +291,12 @@ bool files_command(const char *command, void (*print)(const char *)) {
         uint64_t size; error = !decimal(word(&cursor), &size) ? MN_INVALID :
             f ? mnfs_truncate(f, p, size) : MN_NOENT;
     } else if (streq(cmd, "mv")) {
-        const char *dest = word(&cursor); struct mnfs *other = volume(&dest);
+        const char *dest = word(&cursor); struct mnfs *other = files_volume(&dest);
         if(!auth_path(dest,true)) {emit("Permission denied: destination is protected");return true;}
         error = !*dest || !f || f != other ? MN_INVALID : mnfs_rename(f, p, dest);
     } else if (streq(cmd, "snapshot")) {
         const char *target = word(&cursor); if (!*target) target = "/ram";
-        f = volume(&target);
+        f = files_volume(&target);
         unsigned action = streq(arg, "save") ? 0 : streq(arg, "restore") ? 1 : streq(arg, "drop") ? 2 : 3;
         error = f ? mnfs_snapshot(f, action) : MN_NOENT;
         if (!error) {emit("snapshot committed");if(action==1&&f==&disk) {accounts_init();emit("Sign in again after restoring account data");}}

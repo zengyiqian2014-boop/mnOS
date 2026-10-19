@@ -3,6 +3,8 @@
 #include "exec.h"
 #include "auth.h"
 #include "process.h"
+#include "usercopy.h"
+#include "file_api.h"
 #ifdef __aarch64__
 #include "../arch/arm64/platform.h"
 #endif
@@ -192,6 +194,7 @@ int64_t process_syscall(uint64_t call, uint64_t arg, uint64_t length, bool *resc
     }
     case 6: return (int64_t)p->pid;
     case 7: return p->uid;
+    case NATIVE_FILE_CALL: return file_request(&p->task, p->uid, arg, length);
     default: return -38;
     }
 }
@@ -200,22 +203,8 @@ int64_t process_write(uint64_t ptr, uint64_t length) {
     if (!p || p->state != RUNNABLE) return -13;
     if (length > 256) return -22;
     if (!length) return 0;
-    struct task *t = &p->task;
-    uint64_t pa = 0, offset = 0;
-    const uint64_t va[] = {USER_BASE, USER_DATA,
-#ifdef __aarch64__
-        USER_STACK
-#else
-        USER_STACK - PAGE
-#endif
-    };
-    const uint64_t physical[] = {t->code, t->data, t->stack};
-    for (unsigned i = 0; i < 3; ++i)
-        if (ptr >= va[i] && ptr - va[i] < PAGE && length <= PAGE - (ptr - va[i])) {
-            pa = physical[i]; offset = ptr - va[i]; break;
-        }
-    if (!pa) return -14;
-    const unsigned char *s = phys_pointer(pa + offset);
+    const unsigned char *s = user_buffer(&p->task, ptr, length, false);
+    if (!s) return -14;
     char line[100]; size_t at = 0;
     for (uint64_t i = 0; i < length; ++i) {
         if (s[i] == '\n' || at == sizeof line - 1) {
