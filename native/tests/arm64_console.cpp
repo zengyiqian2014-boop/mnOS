@@ -170,6 +170,11 @@ struct VM {
         }
         wait(expected, start);
     }
+    void terminal() {
+        const size_t start = output.size();
+        call("send-key", "{\"keys\":[{\"type\":\"qcode\",\"data\":\"f5\"}]}");
+        wait("UI: page 4", start);
+    }
     void quit() {
         call("quit");
         int status;
@@ -200,8 +205,7 @@ int main(int argc, char **argv) {
                 vm.command("demo", "AUTH PROMPT: Password:");
                 vm.command("ordinarytest491", "Signed in as an ordinary user.");
             }
-            vm.call("send-key", "{\"keys\":[{\"type\":\"qcode\",\"data\":\"f5\"}]}");
-            vm.wait("UI: page 4");
+            vm.terminal();
             vm.command("kernel info", "mnOS native / aarch64");
             vm.command("help", "mnOS command guide (English)");
             vm.command("help -cn", "mnOS 中文帮助");
@@ -213,8 +217,10 @@ int main(int argc, char **argv) {
                            "written and flushed");
                 vm.command("su", "Root password:");
                 vm.command("rootadmintest785", "Root session:");
+                vm.terminal();
                 vm.command("write /disk/root/secret root-only", "written and flushed");
                 vm.command("exit", "ordinary user");
+                vm.terminal();
             }
             vm.command("cat /disk/root/secret", "Permission denied");
             vm.command("cat /disk/system/accounts.bin", "Permission denied");
