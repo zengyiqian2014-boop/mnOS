@@ -24,7 +24,7 @@ jobs:
         run: |
           mkdir -p release
           cp native/build/desktop/mnOS-*.iso release/
-          cp native/build/desktop/*-desktop.png native/build/desktop/*-editor.png native/build/desktop/*-installer.png native/build/desktop/*-applications.png native/build/desktop/*-terminal.png release/
+          cp native/build/desktop/*-desktop.png native/build/desktop/*-editor.png native/build/desktop/*-installer.png native/build/desktop/*-applications.png native/build/desktop/*-terminal.png native/build/desktop/*-unicode.png release/
           cp native/DESKTOP-RELEASE.md release/RELEASE_NOTES.md
           printf '%s\n' "$GITHUB_SHA" > release/SOURCE_COMMIT.txt
           printf 'Validation: https://github.com/%s/actions/runs/%s\n' "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > release/PROVENANCE.txt
@@ -65,5 +65,5 @@ jobs:
           test "$(cat release/SOURCE_COMMIT.txt)" = "$GITHUB_SHA"
           (cd release && sha256sum --check --strict SHA256SUMS)
           gh release create "$RELEASE_TAG" release/* --target "$GITHUB_SHA" --prerelease --latest=false \
-            --title "mnOS Desktop 0.4 Preview 2 — 字距与图标渲染修正" \
+            --title "mnOS Desktop 0.4 Preview 2 — Unicode、内核命令与原生界面" \
             --notes-file release/RELEASE_NOTES.md

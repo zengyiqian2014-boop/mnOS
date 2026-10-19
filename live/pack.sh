@@ -48,16 +48,16 @@ sed -i -E '/^userAutoLogin:/d; s/^doAutologin:.*/doAutologin: false/; s/^setRoot
 cp /source/overlay/usr/share/doc/mnos/guide.zh.txt "$ROOT/usr/share/doc/mnos/guide.zh.txt"
 # Include the original kernel source and font license with the bootable binary.
 mkdir -p "$ROOT/usr/src/mnos-native"
-cp -a /native/src /native/include /native/tests /native/tools /native/arch /native/Makefile /native/linker.ld /native/README.md /native/FILESYSTEM.md "$ROOT/usr/src/mnos-native/"
+cp -a /native/src /native/include /native/tests /native/tools /native/arch /native/user /native/installer /native/Makefile /native/linker.ld /native/README.md /native/FILESYSTEM.md "$ROOT/usr/src/mnos-native/"
 mkdir -p "$ROOT/usr/src/mnos-admin"
 cp /source/src/kernel.c /source/src/kernel-admin.c /source/src/kernel-common.h "$ROOT/usr/src/mnos-admin/"
 cp /source/src/net-admin.c "$ROOT/usr/src/mnos-admin/"
 mkdir -p "$ROOT/usr/src/mnos-desktop"
-cp /source/src/*.cpp /source/src/*.hpp /source/src/Makefile "$ROOT/usr/src/mnos-desktop/"
+cp /source/src/*.cpp /source/src/*.hpp /source/src/*.c /source/src/Makefile "$ROOT/usr/src/mnos-desktop/"
 find "$ROOT/usr/src/mnos-desktop" -type d -exec chmod 755 {} +
 find "$ROOT/usr/src/mnos-desktop" -type f -exec chmod 644 {} +
 mkdir -p "$ROOT/usr/src/mnos-native/assets"
-cp /native/assets/font.c /native/assets/FONT-LICENSE.txt "$ROOT/usr/src/mnos-native/assets/"
+cp /native/assets/*.c /native/assets/*LICENSE.txt "$ROOT/usr/src/mnos-native/assets/"
 find "$ROOT/usr/src/mnos-native" -type d -exec chmod 755 {} +
 find "$ROOT/usr/src/mnos-native" "$ROOT/usr/src/mnos-admin" -type f -exec chmod 644 {} +
 printf '127.0.0.1 localhost\n127.0.1.1 mnos-%s\n::1 localhost ip6-localhost ip6-loopback\n' "$PROFILE" > "$ROOT/etc/hosts"

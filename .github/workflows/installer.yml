@@ -58,6 +58,10 @@ jobs:
             /tmp/enrollment-test
             c++ -std=c++17 -O2 -Wall -Wextra -Werror /source/tests/console-login.cpp -lutil -o /tmp/console-login-test
             /tmp/console-login-test'
+      - name: Verify bundled applications, compiler headers and detailed manuals
+        run: |
+          docker run --rm --network none -v "$PWD/live:/source:ro" \
+            'mnos-live:installer-${{ matrix.arch }}' sh /source/tests/tool-environment.sh
       - name: Install to a blank disk and boot without the ISO
         run: |
           set -euo pipefail

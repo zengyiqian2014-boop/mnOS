@@ -118,13 +118,14 @@ static void text(int x, int y, const char *s, unsigned size, uint32_t c) {
     int advance = 0;
     while (p < length && x + advance / 64 < (int)width - 20) {
         const struct glyph *g = font_find(font_decode(s, length, &p), size);
-        if (!g)
+        unsigned char bitmap[64 * 64];
+        if (!font_unpack(g, bitmap, sizeof bitmap))
             continue;
         for (unsigned j = 0; j < g->height; j++)
             for (unsigned i = 0; i < g->width; i++) {
                 int px = x + (advance + 32) / 64 + g->left + (int)i,
                     py = y + g->top + (int)j;
-                unsigned a = font_pixels[g->offset + j * g->width + i];
+                unsigned a = bitmap[j * g->width + i];
                 if (a && px >= 0 && py >= 0 && px < (int)width && py < (int)height) {
                     uint32_t bg = rgb(pixels[(size_t)py * pitch + px]);
                     unsigned r = (((c >> 16) & 255) * a + ((bg >> 16) & 255) * (255 - a)) / 255,

@@ -5,11 +5,12 @@
 #include "process.h"
 #include "font.h"
 #include "icons.h"
+#include "commands.h"
 static uint32_t canvas[2560 * 1440] __attribute__((aligned(4096)));
 static int width, height, page = -1, cursor_x = 640, cursor_y = 360, old_x = 640, old_y = 360;
 static bool ready, dirty = true, cursor_dirty, left_down, power_dialog;
-static char command[256], history[14][100];
-static unsigned command_length, history_count;
+static char command[256], history[512][240];
+static unsigned command_length, history_count, history_scroll, terminal_rows = 16;
 static unsigned wallpaper;
 static char setting_status[100];
 static const unsigned modes[][2] = {
@@ -51,12 +52,14 @@ static void rounded(int x, int y, int w, int h, uint32_t color) {
                     pixel(xx[a], yy[b], blend(color, canvas[yy[b]*width+xx[a]], coverage*255/16));
         }
 }
-static void glyph_draw(int x, int y, const struct glyph *g, uint32_t color) {
-    if (!g) return;
-    for (unsigned j = 0; j < g->height; ++j)
-        for (unsigned i = 0; i < g->width; ++i) {
-            unsigned a = font_pixels[g->offset + j * g->width + i];
-            int px = x + g->left + (int)i, py = y + g->top + (int)j;
+static void glyph_draw(int x, int y, const struct glyph *g, unsigned size, uint32_t color) {
+    unsigned char bitmap[64 * 64];
+    if (!font_unpack(g, bitmap, sizeof bitmap)) return;
+    unsigned w = (unsigned)font_scale(g->width, g, size), h = (unsigned)font_scale(g->height, g, size);
+    for (unsigned j = 0; j < h; ++j)
+        for (unsigned i = 0; i < w; ++i) {
+            unsigned a = bitmap[(j * g->height / h) * g->width + i * g->width / w];
+            int px = x + font_scale(g->left,g,size) + (int)i, py = y + font_scale(g->top,g,size) + (int)j;
             if (a && px >= 0 && py >= 0 && px < width && py < height)
                 pixel(px, py, blend(color, canvas[py * width + px], a));
         }
@@ -67,8 +70,8 @@ static void text(int x, int y, const char *s, unsigned size, uint32_t color) {
     while (p < length && x + advance / 64 < width - 8) {
         const struct glyph *g = font_find(font_decode(s, length, &p), size);
         if (!g) continue;
-        glyph_draw(x + (advance + 32) / 64, y, g, color);
-        advance += g->advance;
+        glyph_draw(x + (advance + 32) / 64, y, g, size, color);
+        advance += font_advance(g, size);
     }
 }
 static void text_fit(int x, int y, const char *s, unsigned size, uint32_t color, int limit) {
@@ -77,9 +80,9 @@ static void text_fit(int x, int y, const char *s, unsigned size, uint32_t color,
     int advance = 0, dots = text_width("...", size);
     while (p < length) {
         const struct glyph *g = font_find(font_decode(s, length, &p), size);
-        if (!g || (advance + g->advance + 32) / 64 + dots > limit) break;
-        glyph_draw(x + (advance + 32) / 64, y, g, color);
-        advance += g->advance;
+        if (!g || (advance + (int)font_advance(g,size) + 32) / 64 + dots > limit) break;
+        glyph_draw(x + (advance + 32) / 64, y, g, size, color);
+        advance += font_advance(g, size);
     }
     if (dots <= limit) text(x + (advance + 32) / 64, y, "...", size, color);
 }
@@ -148,22 +151,27 @@ static void line(int x, int y, int w, const char *label, const char *value) {
     rect(x, y + 34, w, 1, 0x2c3641);
 }
 static void add_line(const char *s) {
-    log_write("OUT: ");
-    log_write(s);
-    log_write("\n");
-    if (history_count == ARRAY_SIZE(history)) {
-        for (unsigned i = 1; i < history_count; ++i)
-            memcpy(history[i - 1], history[i], sizeof history[i]);
-        --history_count;
-    }
-    size_t length = strlen(s), i = 0, end = 0;
-    while (i < length) {
-        font_decode(s, length, &i);
-        if (i >= sizeof history[0]) break;
-        end = i;
-    }
-    memcpy(history[history_count], s, end);
-    history[history_count++][end] = 0;
+    log_write("OUT: "); log_write(s); log_write("\n");
+    size_t length = strlen(s), p = 0;
+    do {
+        if (history_count == ARRAY_SIZE(history)) {
+            for (unsigned i = 1; i < history_count; i++)
+                memcpy(history[i-1], history[i], sizeof history[i]);
+            history_count--;
+        }
+        size_t start = p, end = p;
+        unsigned advance = 0;
+        while (p < length) {
+            size_t next = p;
+            uint32_t c = font_decode(s,length,&next);
+            unsigned a = font_advance(font_find(c,FONT_MONO18),FONT_MONO18);
+            if (p > start && (next-start >= sizeof history[0] || advance+a > 64*11*64)) break;
+            advance += a; p = next; end = p;
+        }
+        memcpy(history[history_count],s+start,end-start);
+        history[history_count++][end-start]=0;
+    } while (p < length);
+    history_scroll = 0;
 }
 static void add_number(const char *label, uint64_t n) {
     char row[100], num[24];
@@ -246,45 +254,32 @@ void ui_load_settings(void) {
     log_dec(wallpaper);
     log_write("\n");
 }
-static void help(bool chinese) {
-    if (chinese) {
-        add_line("mnOS 中文帮助：help -cn；英文帮助：help");
-        add_line("普通用户：查询、个人目录读写、显示设置；管理卷需要 root。");
-        add_line("whoami / passwd / su / exit / logout；root 可用 useradd 用户名。");
-        add_line("info / memory / cpu / gpu / devices / test：查看状态");
-        add_line("kernel display 1600x900：调整受支持的显示模式");
-        add_line("kernel wallpaper 0|1|2：流线、网格、纯色");
-        add_line("kernel save-settings：保存显示设置到 MNFS 磁盘");
-        add_line("fs / ls / stat / cat：文件系统信息、列表及读取");
-        add_line("exec /ram/bin/hello；ps；kill PID");
-        add_line("write 路径 内容；writeat 路径 偏移 内容");
-        add_line("mkdir / rm / mv / truncate：创建、删除、移动、截断");
-        add_line("disk unlock|lock：root 开启或关闭 /disk 写入");
-        add_line("snapshot save|restore|drop /disk：保存、恢复、删除快照");
-        add_line("/ram 临时；/disk 持久。F7 打开显示设置。");
-    } else {
-        add_line("mnOS command guide (English); help -cn for Chinese.");
-        add_line(
-            "Users: queries, own-home files and display settings. Volume administration: root.");
-        add_line("whoami / passwd / su / exit / logout; root: useradd NAME, passwd NAME");
-        add_line("kernel info|memory|cpu|gpu|devices|test|help");
-        add_line("kernel display WIDTHxHEIGHT / wallpaper 0|1|2 / save-settings");
-        add_line("help  uname  mem  tasks  pci  test  uptime  clear  reboot  shutdown");
-        add_line("fs  ls [PATH]  stat PATH  cat PATH [OFFSET]");
-        add_line("exec PATH: run a native ELF; ps: process; kill PID: stop your process");
-        add_line("write PATH TEXT / writeat PATH OFFSET TEXT / truncate PATH SIZE");
-        add_line("mkdir PATH / rm PATH / mv FROM TO / gc [/ram|/disk]");
-        add_line("disk unlock|lock; snapshot save|restore|drop [/ram|/disk]");
-        add_line("/ram is temporary; /disk is persistent. Sign in to write your own files.");
-        add_line("F1-F7: apps; Ctrl-S: editor save; kernel help -cn: Chinese.");
-    }
+static void tools_help(const char *cmd) {
+    if (streq(cmd,"tools") || streq(cmd,"tools native")) {
+        add_line("Native tools: Files, Text editor, Terminal, Monitor, Devices, Settings.");
+        add_line("Native executable ABI: static mnOS ELF64 for " MNOS_ARCH ".");
+        add_line("exec /ram/bin/hello  /  ps  /  kill PID");
+        add_line("Build-host SDK: native/user/api.h; make -C native user-programs");
+        add_line("No native network stack, APT, dynamic linker or Linux ABI yet.");
+        add_line("Firefox and VS Code require the Linux tools environment.");
+        add_line("Use tools linux for that environment's commands.");
+    } else if (streq(cmd,"tools linux")) {
+        add_line("The combined Linux installer includes Firefox ESR and official VS Code.");
+        add_line("Those applications cannot run in this native desktop ISO.");
+        add_line("In the Linux tools environment, as an ordinary user:");
+        add_line("  firefox-esr     code .     nano file.txt");
+        add_line("  apt search NAME     apt show PACKAGE");
+        add_line("  sudo apt update     sudo apt install PACKAGE");
+        add_line("  cc file.c -o app     c++ file.cpp -o app     make");
+        add_line("Read help -cn tools in that environment for packages and permissions.");
+    } else add_line("Usage: tools [native|linux]");
 }
 static void kernel_command(const char *cmd) {
-    if (!*cmd || streq(cmd, "help"))
-        help(false);
-    else if (streq(cmd, "help -cn"))
-        help(true);
-    else if (streq(cmd, "info")) {
+    if (!*cmd || streq(cmd,"help")) command_help("",add_line);
+    else if (!strncmp(cmd,"help ",5)) command_help(cmd+5,add_line);
+    else if (auth_command(cmd, add_line)) {}
+    else if (streq(cmd,"exit")) add_line("No elevated session to leave. Use lock to lock the session.");
+    else if (streq(cmd, "info") || streq(cmd,"uname")) {
         add_line("mnOS native / " MNOS_ARCH " / original C + assembly kernel");
         add_line(cpu_brand);
         add_number("Online CPUs: ", cpu_online_count());
@@ -292,96 +287,89 @@ static void kernel_command(const char *cmd) {
         add_line(cpu_brand);
         add_number("Discovered CPUs: ", cpu_count());
         add_number("Online CPUs: ", cpu_online_count());
-    } else if (streq(cmd, "memory")) {
+    } else if (streq(cmd, "memory") || streq(cmd,"mem")) {
         add_number("Free physical pages (4 KiB): ", pages_free());
         add_number("Usable physical pages (4 KiB): ", pages_total());
         add_number("Physical address limit (bytes): ", memory_limit());
-    } else if (streq(cmd, "gpu"))
-        add_line(graphics_driver());
-    else if (streq(cmd, "devices")) {
+    } else if (streq(cmd,"uptime")) add_number("Uptime (seconds): ",ticks/PIT_HZ);
+    else if (streq(cmd,"tasks")) {
+        add_number("Task 0 switches: ", tasks[0].switches);
+        add_number("Task 1 switches: ", tasks[1].switches);
+    } else if (streq(cmd,"security")) {
+        add_line("W^X / NX / separate user page tables; kernel-resident desktop.");
+        add_number("Session UID: ",auth_uid());
+        add_line(auth_admin()?"Session privilege: root":"Session privilege: ordinary user");
+#ifndef __aarch64__
+        add_line(cpu_smep?"SMEP: enabled":"SMEP: unavailable");
+        add_line(cpu_smap?"SMAP: enabled":"SMAP: unavailable");
+#else
+        add_line("AArch64 EL0/EL1 separation; user mappings checked by kernel.");
+#endif
+        add_line("No disk encryption. This status is not a security certification.");
+    } else if (streq(cmd,"fonts")) {
+        add_number("Supported Unicode scalars: ",font_coverage);
+        add_number("Raster metrics: ",font_count);
+        add_number("Compressed bitmap bytes: ",font_pixels_size);
+        add_line("ASCII 32..126; UTF-8 1..4 bytes; Noto CJK + DejaVu.");
+        add_line("Missing glyph: U+FFFD. IME, bidi and complex shaping not implemented.");
+    } else if (streq(cmd,"unicode")) {
+        add_line("ASCII: ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz");
+        add_line("Digits/punctuation: 0123456789 !@#$%^&*()_+-=[]{};:'\"\\|,.<>/?");
+        add_line("中文：自研内核，文件管理，安全与效率。");
+        add_line("日本語：こんにちは。 한국어: 안녕하세요.");
+        add_line("Latin: café naïve Ångström  Greek: αβγ Ω  Cyrillic: Привет");
+        add_line("Symbols: ← → ↑ ↓ ✓ ∑ ∞ ≠ ≤ ≥  Box: ┌─┐ │ └─┘  😀");
+    } else if (streq(cmd, "gpu")) add_line(graphics_driver());
+    else if (streq(cmd, "devices") || streq(cmd,"pci")) {
+        if(!pci_count) add_line("No PCI devices enumerated on this platform.");
         for (unsigned i = 0; i < pci_count; ++i) {
-            char row[100];
-            pci_read_line(i, row, sizeof row);
-            add_line(row);
+            char row[100]; pci_read_line(i,row,sizeof row); add_line(row);
         }
     } else if (streq(cmd, "test")) {
         add_number("Boot CPU isolation checks: ", test_passed);
-        add_line("Per-CPU results are in the serial log.");
+        add_line("Per-CPU results are in the serial log; this query does not rerun tests.");
     } else if (streq(cmd, "display")) {
-        char mode[32];
-        resolution_text(mode);
-        add_line(mode);
+        char mode[32]; resolution_text(mode); add_line(mode);
+    } else if (streq(cmd,"display modes")) {
+        add_line("Candidate modes: 1024x768 1280x720 1600x900 1920x1080 2560x1440");
+        add_line("Only modes supported by this driver and available VRAM can be applied.");
     } else if (!strncmp(cmd, "display ", 8)) {
         bool matched = false;
         for (unsigned i = 0; i < ARRAY_SIZE(modes); ++i) {
-            char mode[32];
-            number(mode, modes[i][0]);
-            size_t n = strlen(mode);
-            mode[n++] = 'x';
-            number(mode + n, modes[i][1]);
-            if (streq(cmd + 8, mode)) {
-                matched = true;
-                add_line(set_resolution(modes[i][0], modes[i][1]) ? "Display mode applied."
-                                                                  : "Display mode unavailable.");
+            char mode[32]; number(mode,modes[i][0]); size_t n=strlen(mode);
+            mode[n++]='x'; number(mode+n,modes[i][1]);
+            if (streq(cmd+8,mode)) {
+                matched=true;
+                add_line(set_resolution(modes[i][0],modes[i][1]) ? "Display mode applied." : "Display mode unavailable.");
                 break;
             }
         }
-        if (!matched)
-            add_line("Modes: 1024x768 1280x720 1600x900 1920x1080 2560x1440");
-    } else if (!strncmp(cmd, "wallpaper ", 10) && cmd[10] >= '0' && cmd[10] <= '2' && !cmd[11]) {
-        change_wallpaper(cmd[10] - '0');
-        add_line("Wallpaper applied.");
-    } else if (streq(cmd, "save-settings")) {
-        save_settings();
-        add_line(setting_status);
-    } else if (!files_command(cmd, add_line))
-        add_line("Unknown instruction or invalid object. Type kernel help.");
+        if(!matched) add_line("Invalid display object. Use help display or kernel display modes.");
+    } else if (streq(cmd,"wallpaper")) add_number("Wallpaper ID: ",wallpaper);
+    else if (!strncmp(cmd,"wallpaper ",10) && cmd[10]>='0' && cmd[10]<='2' && !cmd[11]) {
+        change_wallpaper(cmd[10]-'0'); add_line("Wallpaper applied.");
+    } else if (streq(cmd,"save-settings")) {save_settings(); add_line(setting_status);}
+    else if (streq(cmd,"disk") || streq(cmd,"disk status")) files_command("fs",add_line);
+    else if (streq(cmd,"tools") || !strncmp(cmd,"tools ",6)) tools_help(cmd);
+    else if (streq(cmd,"clear")) {history_count=history_scroll=0;}
+    else if (streq(cmd,"reboot") || streq(cmd,"shutdown")) power_dialog=true;
+    else if (!files_command(cmd,add_line)) add_line("Unknown instruction or invalid object. Type help COMMAND or kernel help.");
 }
 static void execute(void) {
-    command[command_length] = 0;
+    while(command_length && command[command_length-1]==' ') command[--command_length]=0;
+    size_t skip=0;while(command[skip]==' ')skip++;
+    if(skip){for(size_t i=skip;i<=command_length;i++)command[i-skip]=command[i];command_length-=skip;}
+    unsigned before=history_count;
     add_line(command);
-    if (auth_command(command, add_line)) {
-    } else if (streq(command, "help"))
-        help(false);
-    else if (streq(command, "help -cn"))
-        help(true);
-    else if (streq(command, "kernel"))
-        kernel_command("");
-    else if (!strncmp(command, "kernel ", 7))
-        kernel_command(command + 7);
-    else if (streq(command, "uname"))
-        add_line("mnOS Desktop 0.4 / " MNOS_ARCH " / freestanding C + assembly");
-    else if (streq(command, "mem")) {
-        add_number("Free physical pages: ", pages_free());
-        add_number("Usable physical pages: ", pages_total());
-    } else if (streq(command, "uptime"))
-        add_number("Uptime (seconds): ", ticks / PIT_HZ);
-    else if (streq(command, "tasks")) {
-        add_number("Task 0 switches: ", tasks[0].switches);
-        add_number("Task 1 switches: ", tasks[1].switches);
-    } else if (streq(command, "pci")) {
-        for (unsigned i = 0; i < pci_count && i < 10; ++i) {
-            char row[100];
-            pci_read_line(i, row, sizeof row);
-            add_line(row);
-        }
-    } else if (streq(command, "test")) {
-        add_number("Boot isolation checks passed: ", test_passed);
-        add_line("Expected: 8. See serial log for individual checks.");
-    } else if (streq(command, "clear"))
-        history_count = 0;
-    else if (streq(command, "reboot"))
-        reboot();
-    else if (streq(command, "shutdown"))
-        power_dialog = true;
-    else if (files_command(command, add_line)) {
-    } else if (command_length)
-        add_line("Unknown command. Type help.");
-    log_write("CONSOLE: ");
-    log_write(command);
-    log_write("\n");
-    command_length = 0;
-    command[0] = 0;
+    const char *instruction=command;
+    if(streq(command,"kernel")) instruction="";
+    else if(!strncmp(command,"kernel ",7)) instruction=command+7;
+    if(command_length) kernel_command(instruction);
+    /* Long manuals start at their first line instead of discarding the beginning. */
+    if(!strncmp(instruction,"help",4) || streq(command,"kernel"))
+        history_scroll=history_count>before+terminal_rows?history_count-before-terminal_rows:0;
+    log_write("CONSOLE: ");log_write(command);log_write("\n");
+    command_length=0;command[0]=0;
 }
 /* Original kernel-resident desktop: independent windows and a shared canvas.
  * Apps use the same authenticated MNFS service as the native file syscall. */
@@ -761,7 +749,7 @@ static void editor_content(struct window *v) {
             int xx = x + 14 + (cell.x + 32) / 64;
             int yy = y + 82 + (int)(cell.row - edit_scroll) * 25;
             if (cell.code && cell.code != '\n' && cell.code != '\r' && cell.code != '\t')
-                glyph_draw(xx, yy, font_find(cell.code, 18), FG);
+                glyph_draw(xx, yy, font_find(cell.code, 18), 18, FG);
             if (cell.byte == edit_cursor) rect(xx, yy + 3, 1, 21, ACCENT);
         }
     }
@@ -857,9 +845,11 @@ static void window_content(unsigned app) {
     } else if (app == 4) {
         rounded(x, y, w, v->h - 87, 0x0c1720);
         text_fit(x + 14, y + 5, auth_name(), FONT_MONO18, ACCENT, w - 28);
-        unsigned max = (unsigned)(v->h - 174) / 25,
-                 start = history_count > max ? history_count - max : 0;
-        for (unsigned i = start; i < history_count; i++) {
+        unsigned max = (unsigned)(v->h - 174) / 25;
+        terminal_rows = max;
+        unsigned end = history_count > history_scroll ? history_count-history_scroll : 0;
+        unsigned start = end > max ? end-max : 0;
+        for (unsigned i = start; i < end; i++) {
             text_fit(x + 14, y + 40 + (int)(i - start) * 25, history[i], FONT_MONO18, FG, w - 28);
         }
         text(x + 14, v->y + v->h - 61, ">", FONT_MONO18, ACCENT);
@@ -1186,6 +1176,9 @@ void ui_key(char key) {
     if (page == 4) {
         if (key == '\n' || key == '\r')
             execute();
+        else if (k == 0x92) {if(history_scroll+1<history_count) history_scroll++;}
+        else if (k == 0x93) {if(history_scroll) history_scroll--;}
+        else if (key == '\t') {command_complete(command,sizeof command,add_line);command_length=strlen(command);}
         else if (key == '\b' || key == 127) {
             if (command_length)
                 command[--command_length] = 0;

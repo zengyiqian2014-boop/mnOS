@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+_mnos_pkg() {
+    local current=${COMP_WORDS[COMP_CWORD]}
+    if (( COMP_CWORD == 1 )); then
+        COMPREPLY=($(compgen -W 'list check search show update upgrade install remove' -- "$current"))
+    elif [[ ${COMP_WORDS[1]} == @(install|remove|show) ]]; then
+        COMPREPLY=($(compgen -W "$(apt-cache pkgnames "$current" 2>/dev/null)" -- "$current"))
+    fi
+}
+complete -F _mnos_pkg mnos-pkg

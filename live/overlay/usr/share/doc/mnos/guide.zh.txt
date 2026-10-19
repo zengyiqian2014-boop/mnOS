@@ -1,170 +1,40 @@
-mnOS Desktop 2.0 Preview
-=======================
+mnOS 集成工具安装包
+==================
 
-这是什么
---------
-同一张 ISO 提供两个独立的运行环境：
-mnOS native：用 C 和汇编编写的自研实验内核，提供中文图形界面、
-最高 64 TiB 物理地址管理、动态多核调度、用户态隔离、MNFS 文件系统和
-启动自检。已测 32 核和 33 TiB 稀疏 QEMU 内存，暂不支持 Linux 应用。
-Linux 工具环境：Debian 13、Linux 6.12 LTS、Xfce，用于浏览器、CTF、
-系统管理和常见硬件驱动。你现在看到的系统中心属于这个环境。
-Python 保留，供 Pwntools、mitmproxy 和系统工具等使用。
+按 CPU 架构选择一份 ISO，离线安装时一起写入桌面、Firefox ESR、官方 VS Code、
+nano、开发编译环境、CTF/网络/系统工具、驱动固件和自研内核入口。
+AMD64 面向 Intel/AMD 64 位，ARM64 面向 AArch64 UEFI；每种架构同一份镜像
+包含虚拟机和常见硬件支持，未测试的硬件仍不能承诺兼容。
 
-帮助命令
---------
-help 默认显示英文，help -cn 才显示中文。两种环境都支持：
-  help
-  help -cn
-  kernel help
-  kernel help -cn
-Linux Bash 中 help cd 等内建命令帮助仍保留；脚本也可运行 mnos-help。
+默认桌面工具环境使用 Debian 13/Linux 6.12 LTS/Xfce。自研 C/汇编内核是
+另一个引导入口，有自己的原生 GUI、文件系统和账号；不支持 Linux 应用 ABI。
+不要把 Firefox/VS Code 说成已运行在自研内核上。
 
-内核管理命令格式：kernel <指令> [对象]
-Linux 普通用户查询：kernel info、kernel memory、kernel cpu、kernel gpu、
-kernel modules、kernel devices、kernel irq、kernel log、kernel sysctl 参数名。
-受限制的日志和参数仍由 Linux 检查访问权限，必要时由授权管理员通过 sudo 查询。
-管理操作才需要 sudo：load、unload、set、cpu-online、cpu-offline、performance。
-例如 sudo kernel performance balanced。CPU 热插拔还需要系统和硬件支持。
-/usr/bin/kernel 是用户入口；/usr/sbin/mnos-kernel-admin 执行管理操作并检查
-真实及有效 UID 均为 0。目录位置不授予权限，两者均无 setuid，不会自动提权。
-运行时 sysctl 参数和 CPU 状态重启后恢复；TuneD 配置选择会保留。
-原生内核首次创建普通用户及 root 密码，之后需要登录。su 切换 root，exit 返回，
-passwd 修改个人密码，logout 锁定；root 可用 useradd 添加账号。个人目录可自由
-读写，账号管理和整卷管理需要 root。账号与 Linux 分开，有 MNFS 磁盘才会持久保存。
+完整英文命令手册：help
+完整中文命令手册：help -cn
+具体章节：help -cn code / firefox / packages / build / network / kernel
+具体软件：help 工具名（随软件安装的上游手册，语言取决于软件）
+自研入口：help -cn all，逐条列出实际实现的原生命令。
 
-编辑文件和开发
---------------
-nano 文件名：终端编辑器；Mousepad：图形文本编辑器；Thunar：图形文件管理器。
-code 项目目录：官方 Visual Studio Code，支持图形编辑、终端和用户扩展。
-在自己的主目录中新建、修改、删除文件和编译项目都不需要 root。
-预装 GCC/G++、Clang/clangd、Node.js/npm、Go、Rust/Cargo、Java/JDK，
-以及 Git、CMake、Ninja、GDB、ripgrep、ShellCheck。
-系统中心、工具菜单、首次建号、壁纸配置和网络授权使用 C++ 编译程序；
-Python 仅作为所选第三方应用的依赖保留，默认不主动安装 Python 开发包、pytest、pipx。
-VS Code 使用微软签名的软件源更新。新账号默认关闭遥测和 AI 功能。
-这些应用运行在 Linux 桌面入口；自研内核尚无运行 VS Code 的应用 ABI。
+图形安装器先选磁盘、创建普通账号和网络权限模式，再确认整盘清空。
+当前是自动整盘分区安装，不支持保留旧系统、手动分区或安装时加密。
+安装完成关机、移除 ISO、从硬盘启动。没有默认密码，直接 root 登录锁定。
+日常应用、个人文件和桌面设置使用普通用户，系统修改使用 sudo/Polkit。
+Live 会话写入是临时的，只有安装到硬盘后的个人文件和设置才持久保存。
 
-网络工具权限
-------------
-安装器的“网络工具权限”页可选择：默认特权操作需要 sudo，或向本次创建的普通
-账号开放 NET_ADMIN/NET_RAW。开放后使用 mnos-net nmap、mnos-net tcpdump、
-mnos-net ip、mnos-net tc、mnos-net iw，账号 UID 仍非 root。
-这种权限可以抓包、发送原始报文和修改网卡/路由，不只限于扫描。工具启动的子进程
-可能继承网络能力。其他账号不会自动获得权限，Wireshark 图形界面仍以普通用户运行。
-普通联网、HTTP 请求和 nmap -sT 本来就不需要 root。
-安装后管理员可配置：sudo mnos-network-policy netadmin 用户名；重新登录后生效。
-关闭授权：sudo mnos-network-policy root；已有网络工具进程也需要退出。
+工具环境不安装 Java SDK。Python 仅为已选第三方工具的必需依赖保留。
+系统中心、安装界面、内核管理、软件管理和命令帮助使用编译的 C/C++。
+详细工具/包版本在 /usr/share/doc/mnos/packages.tsv。
 
-显示与文件系统
---------------
-Linux：系统中心“系统设置”页可调分辨率、多屏、缩放、壁纸、键鼠、声音等。
-glxinfo -B 和 vulkaninfo --summary 可查看渲染器，kernel gpu 查看绑定驱动。
-原生：F7 打开显示设置，R 切换分辨率，W 切换壁纸，S 保存到 MNFS 磁盘。
-支持 QEMU/Bochs DISPI 2D；其他显卡保留启动帧缓冲，原生暂不支持 3D 加速。
+软件管理：mnos-pkg list/search/show/check；管理员显式使用 sudo mnos-pkg
+update/install/remove/upgrade。保留签名校验、依赖解析及 APT 的确认提示。
+不会开机自动扫描网络，不会自动为浏览器或编辑器提权，不关闭应用沙箱。
 
-MNFS 是自研 CoW 文件系统，有 CRC32C、64 位稀疏文件和一个保存快照，支持
-超过 4 GiB 的文件，使用独立格式，不兼容 APFS。/ram 临时；/disk 是可选的
-MNFS ATA 镜像。校验并登录后可写自己的目录；root 可用 disk lock/unlock 控制整卷
-写入，启动不会格式化已有磁盘。原生显示偏好保存在 /disk/home/用户名/display.cfg。
-Linux 安装仍使用成熟的 Linux 文件系统。
-Linux 中 mnfs 工具可操作 MNFS 镜像；format 只创建新文件，不覆盖已有路径。
-MNFS 有本地会话访问检查，尚无磁盘 POSIX ACL、加密或成熟修复工具。
-原生源码与详细说明位于 /usr/src/mnos-native。
+UTM 先使用 QEMU 后端：取消“使用 Apple 虚拟化”，ARM64 主机运行 ARM64
+来宾仍可在 QEMU 设置中启用 HVF CPU 加速。Apple Virtualization.framework
+与 QEMU/HVF 是不同后端，前者目前未验证。原生内核未签名，需要关闭
+Secure Boot；Linux 工具入口使用 Debian 的签名引导链。
 
-两个镜像
---------
-qemu：包含 VirtIO 内核驱动、QEMU Guest Agent、SPICE 桌面集成。
-hardware：增加 Intel/AMD 微码、常见无线网卡和 GPU 固件、蓝牙工具。
-x86_64 的两版支持 BIOS 与 UEFI，含自研内核和 Linux 双启动；ARM64 的两版
-使用 UEFI，目前仅含 Linux 环境。四版使用相同图形安装器与自研 C/C++ 工具。
-ARM64 开发板还需要对应型号的启动固件和设备树，通用 ISO 不保证直接启动。
-启动菜单和安装后的菜单均保留两个入口，默认进入 Linux 工具环境。
-自研内核尚未签名，需要关闭 Secure Boot；Linux 入口使用 Debian 签名链。
-ARM、32 位机器及所有具体硬件组合不在本次验证范围内。
-
-首次使用
---------
-1. 启动后在本机控制台创建用户名与密码，至少 12 个字符。
-2. 在图形登录界面输入刚才创建的密码。
-3. 系统中心提供系统设置、网络与安全入口。
-
-没有默认密码，没有 root 自动登录。管理员通过 sudo / Polkit 提权。
-Live 会话的写入层位于内存。关机后文件、密码、设置和更新都会丢失。
-请将需要保留的文件复制到外部磁盘，或运行安装器安装到磁盘。
-
-安装到磁盘
-----------
-在系统中心选择“安装 mnOS”。安装器会显示磁盘、分区、加密和账户设置。
-最后的分区摘要列出将发生的修改；确认后才开始写入。
-请先备份目标磁盘。加密口令无法找回，请妥善保存。
-安装器使用镜像中的根文件系统，不会复制 Live 会话中新建的文件。
-
-管理系统
---------
-系统管理：Cockpit 本地桌面模式。网络命名空间隔离，不启用远程管理端口。
-账户 / 服务 / 日志 / 更新 / 存储：系统中心内有直接入口。
-软件：Synaptic，或 sudo apt update && sudo apt full-upgrade。
-图形设置：Xfce 设置管理器，支持显示器、字体、主题和快捷键。
-磁盘：GNOME Disks 与 GParted；检查操作对象后再执行写入。
-进程：Xfce 任务管理器、htop、btop、iotop。
-输入法：Fcitx 5，默认使用 Ctrl+Space 切换输入。
-
-网络与安全工具
---------------
-Nmap、Wireshark、tcpdump、tshark、mtr、dig、iperf3、openssl、Lynis、debsums。
-这些工具不会开机自动扫描网络或开启监听服务。
-
-Wireshark 以普通用户运行。若需实时抓包，推荐：
-  sudo tcpdump -i 网卡名称 -w /tmp/capture.pcap
-结束抓包后：
-  sudo chown "$USER":"$USER" /tmp/capture.pcap
-  wireshark /tmp/capture.pcap
-不要用 sudo 启动整个 Wireshark 图形界面。
-
-检查安全基线：sudo mnos-security-check
-完整本机审计：sudo lynis audit system
-查看入站策略：sudo ufw status verbose
-为特定服务开放端口前，确认服务的认证与监听地址。
-
-安全范围
---------
-root 账户锁定；没有空口令或 NOPASSWD sudo；默认拒绝入站和转发。
-AppArmor、审计日志、内核 ASLR / NX / CPU 漏洞缓解措施保留。
-定时获取安全更新，不自动重启。Live 模式更新不会永久写回镜像。
-本镜像提供安全基线和检查脚本，不代表通过等保、CIS 或其他正式认证。
-Secure Boot 使用 Debian 的 shim、GRUB 和内核签名链；不验证整个 Live
-根文件系统。下载时还应核对发布页上的 SHA256，镜像被篡改不能靠这条
-启动链完整防范。硬件固件设置和受信任证书也会影响启动兼容性。
-
-性能与维护
-----------
-按需启动工具；QEMU 默认关闭桌面合成，实体硬件默认开启。
-zram 使用 LZ4，容量为内存的一半、最多 4 GiB；不是额外物理内存。
-保持内核调度、驱动和 CPU 安全缓解默认值。没有关闭安全功能换取跑分。
-QEMU 优先使用 KVM 与 host CPU，无法使用时回退 TCG。
-硬件性能取决于 CPU、存储、显卡和负载，不能仅凭内核文件大小判断。
-
-故障排查
---------
-黑屏：从启动菜单选择 safe graphics，再检查显卡驱动和显示设置。
-无线网卡不可用：lspci -nnk / lsusb / journalctl -b，确认所需固件。
-服务失败：systemctl --failed，journalctl -b -p warning。
-安装日志：/root/.cache/calamares/session.log（需要管理员权限）。
-系统中心没有打开：在终端执行 mnos-center 查看错误输出。
-
-源码与许可证
-------------
-mnOS 自有代码遵循 GPL-3.0-or-later；第三方组件遵循各自许可证。
-每个包的许可证位于 /usr/share/doc/包名/copyright。
-本次版本、源码包名记录在 /usr/share/doc/mnos/packages.tsv。
-内核配置位于 /boot/config-*，源代码可通过 Debian 的源代码仓库获取。
-构建脚本、配置和测试记录随 mnOS 仓库一起发布。
-
-应用与工具
-----------
-桌面左上角按钮打开可搜索的分类列表。命令行条目打开终端帮助，
-VS Code、Firefox、Mousepad 等打开图形窗口。内核、显示、壁纸、
-分区与账号管理归入系统设置。系统会同时读取新增软件的应用菜单入口。
-屏幕清晰度：在系统设置选择显示器原生分辨率；高 DPI 屏幕可调整
-Xfce 外观中的字体 DPI 或整数缩放，避免把低分辨率画面强行拉伸。
+原生文档和源码：/usr/src/mnos-native。
+原生 MNFS 目前支持 ATA PIO（AMD64）或 VirtIO-MMIO（ARM64）磁盘，
+未识别到 MNFS 卷时账号和文件只在内存中；不要把 Linux ext4 分区当 MNFS。

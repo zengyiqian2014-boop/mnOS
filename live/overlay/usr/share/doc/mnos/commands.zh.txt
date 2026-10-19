@@ -1,0 +1,213 @@
+@@help
+mnOS Linux 工具环境 — 详细命令手册
+
+help                         默认英文手册
+help -cn                     中文手册
+help [-cn] 主题               查看某一章
+help --list                  列出章节
+help -cn all | less           用翻页器阅读全部章节，q 退出
+help 工具名 / man 工具名       打开随软件安装的完整上游手册
+工具名 --help                查看当前版本的参数
+help cd                      保留 Bash 内建命令帮助
+
+本手册针对 Linux 工具环境。自研 C/汇编内核有自己的 help 和应用接口。
+Firefox、VS Code 当前不是运行在自研内核上的移植版。
+
+@@tools
+预装软件和工具
+
+firefox-esr                   浏览器，以普通账号运行
+code .                        在 VS Code 打开当前项目
+nano 文件                     终端编辑器，Ctrl-O 保存、Ctrl-X 退出
+thunar                        图形文件管理器
+mnos-center / mnos-tools       搜索应用、查看分类工具图标
+kernel help                   内核查询与管理命令
+mnos-pkg --help               软件安装和更新入口
+
+Firefox 和官方 VS Code 包含在离线安装载荷内。按 CPU 架构下载一份安装 ISO，
+安装时一起写入所有内置软件，不需要再单独下载浏览器和编辑器。
+新增软件和扩展需要能访问相应软件源，或准备完整的离线包和依赖。
+
+网安和 CTF：nmap、tcpdump、tshark、wireshark、pwn、gdb、gdb-multiarch、
+readelf、objdump、checksec、strace、ltrace、ffuf、gobuster、sqlmap、
+mitmproxy、john、hashcat、yara、steghide、binwalk、foremost、testdisk、
+photorec、openssl。系统管理：htop、btop、lsblk、findmnt、ip、iw、nmcli、
+systemctl、journalctl、smartctl、nvme、sensors、gparted、gnome-disks、ufw、lynis。
+每个工具的完整选项用 help 工具名 查看，上游手册的语言取决于该软件。
+准确安装版本在 /usr/share/doc/mnos/packages.tsv 和 dpkg-query -W 中。
+Python 只为已选第三方工具保留必要依赖；mnOS 不主动安装 Java SDK。
+本项目运行时工具使用编译后的 C/C++ 程序。
+
+@@firefox
+Firefox ESR：firefox-esr [网址]
+
+firefox-esr https://example.com            打开网址
+firefox-esr --new-window https://example.com 新窗口
+firefox-esr --private-window https://example.com 隐私窗口
+firefox-esr --version / --help             查看版本及全部参数
+
+使用普通用户，无需 sudo。书签和配置在 ~/.mozilla/firefox。
+安装到硬盘后配置可持久保存；临时 Live 会话关机后丢失。
+更新通过 Debian 签名软件源：sudo mnos-pkg update，随后
+sudo mnos-pkg install firefox-esr。不要从不明脚本安装浏览器。
+
+打不开窗口时，从终端运行 firefox-esr 获取真实错误信息；用 kernel gpu、
+glxinfo -B 查看驱动和渲染器。Firefox 的故障排除模式可检查扩展或显示问题，
+不能靠关闭浏览器沙箱解决启动问题。联网失败时检查 nmcli general status、
+ip route 和错误信息里的 DNS 状态。
+
+@@code
+Visual Studio Code：code [参数] [路径]
+
+code .                        打开当前目录为项目
+code --new-window ~/project   新窗口打开项目
+code --reuse-window 文件      复用已有窗口
+code --diff 旧文件 新文件     比较两个文件
+code --wait 文件              等文件关闭后命令才返回
+code --list-extensions        列出用户扩展
+code --install-extension 标识 安装你选定的扩展
+code --install-extension 文件.vsix 安装本地扩展包
+code --version / --help       当前版本与完整参数
+
+以普通账号运行。配置在 ~/.config/Code/User/settings.json，扩展在
+~/.vscode/extensions。个人配置、编辑和构建项目均不需要 root。
+C/C++ 编译工具和 clangd 已安装；编辑器扩展由用户选择，不会暗中下载。
+扩展下载可能需要联网；clangd 的编译数据库示例见 help -cn build。
+
+官方软件使用微软签名仓库，构建时校验签名密钥指纹。更新：
+sudo mnos-pkg update，随后 sudo mnos-pkg install code。
+窗口出错时用 code --verbose 看日志，用 code --disable-extensions 排除
+扩展问题。保留图形应用沙箱，不应把编辑器作为 root 运行。
+
+@@packages
+安装和更新其他软件
+
+mnos-pkg list                 已安装软件及版本
+mnos-pkg check                检查 dpkg 是否有未完成的配置状态
+mnos-pkg search 关键词        搜索本机缓存的软件源元数据
+mnos-pkg show 软件包          查看描述、依赖及版本
+sudo mnos-pkg update          更新签名软件源的索引
+sudo mnos-pkg install 包...   安装软件及依赖，保留 APT 的确认提示
+sudo mnos-pkg remove 包...    移除指定软件，保留确认提示
+sudo mnos-pkg upgrade         更新已安装软件，保留确认提示
+
+查询不需要 root，系统安装与修改需要明确执行 sudo。
+本程序不自动加 -y，不绕过签名，不执行远程下载脚本，也不自动提权。
+APT 按当前机器架构解析依赖。可信的本地 .deb 可以使用：
+sudo apt install ./文件.deb；若依赖没有准备好，仍可能需要联网下载。
+也可以使用标准 apt search、apt show、apt list --installed、apt-cache policy。
+不能把 amd64 可执行文件当 ARM64 程序，不能混装 Debian 与 Kali 软件源。
+
+源配置在 /etc/apt/sources.list.d/debian.sources 和 microsoft-code.list，
+可信密钥由系统包维护或由构建时固定指纹的微软密钥提供。
+更新失败时应检查报出的网络、DNS、时钟或签名错误，不要关闭签名验证。
+mnos-pkg check 没有输出表示 dpkg 未发现待处理的安装状态，不等于恶意软件扫描。
+核对已安装文件校验和可以使用 debsums 软件包。
+
+@@build
+编程和编译环境
+
+已安装 GCC/G++、Clang/clangd、binutils、Make、CMake、Ninja、pkg-config、
+Git、GDB、Rust/Cargo、Go、Node.js/npm。build-essential、libc6-dev 与
+C++ 开发包提供标准头文件和链接库。mnOS 软件清单不选择 Java SDK。
+
+cc -Wall -Wextra -O2 hello.c -o hello       编译 C 程序
+c++ -std=c++20 -Wall -Wextra app.cpp -o app 编译 C++ 程序
+./hello                                    运行自己的程序
+cmake -S . -B build -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build                         编译 CMake 项目
+ctest --test-dir build                      执行项目提供的测试
+gdb ./hello                                调试可执行程序
+pkg-config --cflags --libs 库名             查询库的编译和链接参数
+
+在个人目录中构建不需要 root。外部库缺少头文件时，搜索对应 -dev 包，再使用
+sudo mnos-pkg install 包名。Cargo/npm/Go 项目的第三方依赖可能需要联网，
+完全离线项目要自己准备依赖。这些编译命令产生的是 Linux 程序。
+自研内核源码和应用接口在 /usr/src/mnos-native。不能把 cc hello.c 的默认
+输出直接当成自研内核 exec 命令支持的原生 ELF。
+
+@@network
+网络设置与工具权限
+
+nmcli device status           查看网卡及连接状态
+nmcli device wifi list        列出附近 Wi-Fi
+nmcli --ask device wifi connect SSID  连接并交互输入密码
+ip address ; ip route         普通用户查看地址和路由
+nmap -sT 127.0.0.1            对本机做 TCP connect 检查
+
+原始报文、抓包和网卡配置可能需要 NET_RAW / NET_ADMIN。
+安装器可以为指定普通账号开启 mnos-net 授权，命令包括：
+mnos-net nmap 参数；mnos-net tcpdump 参数；mnos-net ip 参数；
+mnos-net tc 参数；mnos-net iw 参数。
+默认特权操作需要 sudo。管理员后续开启：
+sudo mnos-network-policy netadmin 用户名，退出后重新登录生效。
+关闭：sudo mnos-network-policy root，并退出已获得权限的工具进程。
+普通联网、DNS/HTTP 和 nmap -sT 原本就不需要 root。
+浏览器、编辑器、Wireshark 图形界面应以普通用户运行。
+详细权限说明用 mnos-net help；具体参数用 help 工具名。
+
+@@kernel
+Linux 内核控制：kernel 指令 [对象]
+
+查询：info、cpu、memory、modules、devices、gpu、irq、log。
+kernel sysctl vm.swappiness    读取参数
+sudo kernel set vm.swappiness=60 修改运行时参数
+sudo kernel load 模块名        加载已安装的驱动模块
+sudo kernel unload 模块名      请求卸载，使用中的模块会拒绝
+sudo kernel cpu-online 编号    上线支持热插拔的核心
+sudo kernel cpu-offline 编号   下线非启动核心，仍需硬件支持
+sudo kernel performance balanced|throughput|virtual 选择 TuneD 策略
+
+info 显示版本、架构和在线 CPU；memory 显示 /proc/meminfo，单位以输出为准。
+cpu 为 /proc/cpuinfo，modules 为 lsmod，devices 为 lspci -nnk。
+gpu 显示 DRM 显卡绑定的驱动，不等于已验证加速；irq 为 /proc/interrupts。
+log 读取 dmesg，仍遵循日志权限；sysctl 只读指定键，不存在或无权读取会报错。
+
+管理命令由 /usr/sbin/mnos-kernel-admin 检查 root 身份；/usr/bin/kernel
+不是 setuid，也不会自动提权。运行时参数和 CPU 状态重启后恢复，TuneD
+配置会保留。热插拔、模块和性能功能仍受内核与设备支持范围限制。
+这个入口控制 Linux；自研内核进入自身环境后用 kernel help 查询实际功能。
+
+@@system
+系统管理与显示设置
+
+xfce4-settings-manager        系统设置分类
+xfce4-display-settings        分辨率、缩放、多屏配置
+xfdesktop-settings            壁纸和桌面选项
+pavucontrol                   声音输入、输出和音量
+systemctl status 服务名       查看服务
+journalctl -b                 当前启动日志，遵循日志权限
+sudo systemctl restart 服务名 重启指定服务
+lsblk -f ; findmnt             查看磁盘、文件系统和挂载
+htop / btop                   交互式资源与进程监控
+kernel gpu ; glxinfo -B        显示驱动与 OpenGL 渲染器
+
+个人显示、壁纸、编辑器设置不需要 root；系统服务、分区编辑、系统文件需要
+sudo/Polkit 认证。分区工具操作前确认目标磁盘。功能取决于实际驱动和硬件。
+sudo 使用当前管理员普通账号的密码，安装器默认锁定直接 root 登录。
+
+@@files
+文件操作与编辑
+
+pwd ; ls -la                  当前目录与详细文件列表
+cd 目录                       切换目录，属于 Bash 内建命令
+mkdir -p 目录                 在个人空间创建多层目录
+cp -i 源 目标                复制，覆盖前询问
+mv -i 源 目标                移动或改名，覆盖前询问
+less 文件                     阅读长文本，q 退出
+nano 文件                     编辑，Ctrl-O 保存，Ctrl-X 退出
+find 目录 -name '模式'        查找文件名，通配模式加引号
+rg 文字 目录                  搜索文件内容
+
+这些是标准 Linux 命令，help 命令名 打开已安装的完整手册。
+个人目录操作无需 sudo。rm 永久删除文件；希望方便恢复时可用文件管理器垃圾桶。
+删除权限与备份、快照属于不同功能。ISO 临时会话的改动不会自动保存到硬盘。
+
+@@native
+自研内核环境
+
+安装后的启动菜单也包含对应架构的原生 C/汇编内核。其图形桌面、MNFS、账号、
+内核命令及原生 ELF 接口独立于 Linux，help 与 help -cn 列出实际命令。
+当前自研内核不能运行 Firefox 或 VS Code。
+原生桌面专用 ISO 只包含原生环境；集成安装 ISO 同时包含两套环境，一次安装
+写入两个引导入口。原生硬件支持仍较少，详见 /usr/src/mnos-native/README.md。

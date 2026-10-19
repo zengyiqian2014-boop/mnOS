@@ -323,6 +323,26 @@ int main(int argc, char **argv) {
                        "HELLO: native user ELF; initialized data and BSS OK");
             vm.command("help -cn", "/ram 临时；/disk 持久。F7 打开显示设置。");
             vm.screenshot(build / (arch + "-terminal.ppm"));
+            vm.command("kernel help -cn display", "kernel display 1600x900");
+            vm.command("kernel fonts", "Supported Unicode scalars: 49776");
+            vm.command("kernel unicode", "Symbols:");
+            vm.screenshot(build / (arch + "-unicode.ppm"));
+            vm.command("kernel disk status", "/disk writable");
+            vm.command("kernel disk lock", "Permission denied: root required");
+            vm.command("kernel display invalid", "Invalid display object");
+            vm.command("kernel wallpaper 9", "Unknown instruction or invalid object");
+            vm.command("kernel snapshot save /disk/invalid", "Volume must be /ram or /disk");
+            m=vm.send("ker\tsec\t\n");
+            vm.wait("Session privilege: ordinary user",m);
+            vm.command("kernel tools", "No native network stack, APT");
+            vm.command("kernel su", "Root password:");
+            vm.command("rootadmintest785", "Root session:");
+            vm.send(std::string(1,(char)0x85));
+            vm.command("kernel disk lock", "/disk read-only");
+            vm.command("kernel disk unlock extra", "Invalid arguments");
+            vm.command("kernel disk status", "/disk read-only");
+            vm.command("kernel disk unlock", "/disk writes enabled");
+            vm.command("kernel exit", "Returned to ordinary user");
             vm.send("\033");
             for (unsigned i = 0; i < 20; i++)
                 vm.mouse_move(-100, -100);

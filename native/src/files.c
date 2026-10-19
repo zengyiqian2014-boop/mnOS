@@ -231,6 +231,22 @@ bool files_command(const char *command, void (*print)(const char *)) {
         streq(cmd,"write")||streq(cmd,"writeat")||streq(cmd,"mkdir")||streq(cmd,"rm")||streq(cmd,"truncate")||
         streq(cmd,"mv")||streq(cmd,"snapshot")||streq(cmd,"gc")||streq(cmd,"exec");
     if(!recognized)return false;
+    unsigned argc=0;bool in_word=false;
+    for(const char *q=command;*q;q++){if(*q==' ')in_word=false;else if(!in_word){argc++;in_word=true;}}
+    bool syntax = streq(cmd,"fs") ? argc==1 :
+        streq(cmd,"ls") ? argc<=2 : streq(cmd,"cat") ? argc==2||argc==3 :
+        streq(cmd,"write") ? argc>=2 : streq(cmd,"writeat") ? argc>=3 :
+        streq(cmd,"mv")||streq(cmd,"truncate") ? argc==3 :
+        streq(cmd,"snapshot") ? argc==2||argc==3 :
+        streq(cmd,"gc") ? argc<=2 : argc==2;
+    if(!syntax) {emit("Invalid arguments. Use help COMMAND for syntax.");return true;}
+    if(streq(cmd,"gc") && *arg && !streq(arg,"/ram") && !streq(arg,"/disk")) {
+        emit("Volume must be /ram or /disk");return true;
+    }
+    if(streq(cmd,"snapshot")) {
+        const char *v=cursor;while(*v==' ')v++;
+        if(*v && !streq(v,"/ram") && !streq(v,"/disk")) {emit("Volume must be /ram or /disk");return true;}
+    }
     if(!auth_logged_in()) {emit("Permission denied: sign in first");return true;}
     if(streq(cmd,"disk")||streq(cmd,"snapshot")||streq(cmd,"gc")) {
         if(!auth_admin()) {emit("Permission denied: root required for volume administration");return true;}

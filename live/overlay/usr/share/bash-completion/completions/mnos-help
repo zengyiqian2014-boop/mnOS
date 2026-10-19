@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+_mnos_help() { COMPREPLY=($(compgen -W '-cn all help tools firefox code packages build network kernel system files native' -- "${COMP_WORDS[COMP_CWORD]}")); }
+complete -F _mnos_help mnos-help

@@ -5,7 +5,6 @@ npm
 golang-go
 rustc
 cargo
-default-jdk
 clang
 clangd
 lld
@@ -17,3 +16,6 @@ nano
 ripgrep
 fd-find
 shellcheck
+
+build-essential
+manpages-dev
