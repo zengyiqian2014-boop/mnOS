@@ -282,7 +282,25 @@ int main(int argc, char **argv) {
             vm.send("n");
             vm.send("hello.txt\n");
             vm.wait("UI: page 2", m);
-            vm.send("Hello from the original mnOS desktop.\nSaved by the native editor.");
+            vm.send("Hello from the original mnOS desktop.\nSaved by the native editor.\n\n"
+                    "Letters stay together. Spaces belong between words.\n"
+                    "The terminal uses a monospace font.\n\nTask\tState\nFont\tReady\nIcons\tReady");
+            /* Place the caret with the real pointer, then exercise real arrow
+             * and backspace keys. Verify the resulting bytes below and on reboot. */
+            std::ifstream screen(build / (arch + "-desktop.ppm"));
+            std::string magic;
+            int screen_width = 0, screen_height = 0;
+            screen >> magic >> screen_width >> screen_height;
+            require(magic == "P6" && screen_width >= 800 && screen_height >= 600, "screen size");
+            int text_left = (screen_width > 1100 ? (screen_width - 900) / 2 : 144) + 24 + 32;
+            for (unsigned i = 0; i < 20; i++) vm.mouse_move(-100, -100);
+            vm.mouse_move(text_left + 1, 225);
+            vm.mouse_click();
+            vm.send("Note: ");
+            vm.key("left");
+            vm.key("backspace");
+            vm.send(":");
+            vm.key("right");
             m = vm.output.size();
             vm.key("ctrl-s");
             vm.wait("EDITOR: saved /disk/home/demo/hello.txt", m);
@@ -295,9 +313,11 @@ int main(int argc, char **argv) {
             m = vm.send(std::string(1, (char)0x85));
             vm.wait("UI: page 4", m);
             vm.command("cat /disk/home/demo/hello.txt", "Saved by the native editor.");
+            vm.wait("Note: Hello from the original mnOS desktop.");
             vm.command("cat /disk/home/demo/untitled.txt", "A first save must retain the untitled document.");
             vm.command("exec /ram/bin/hello",
                        "HELLO: native user ELF; initialized data and BSS OK");
+            vm.screenshot(build / (arch + "-terminal.ppm"));
             vm.send("\033");
             for (unsigned i = 0; i < 20; i++)
                 vm.mouse_move(-100, -100);
@@ -305,6 +325,7 @@ int main(int argc, char **argv) {
             m = vm.output.size();
             vm.mouse_click();
             vm.wait("DESKTOP: launcher opened by pointer", m);
+            vm.screenshot(build / (arch + "-applications.ppm"));
             m = vm.send("files\n");
             vm.wait("UI: page 1", m);
             vm.screenshot(build / (arch + "-files.ppm"));
@@ -316,6 +337,7 @@ int main(int argc, char **argv) {
             auto m = vm.send("t");
             vm.wait("UI: page 4", m);
             vm.command("cat /disk/home/demo/hello.txt", "Saved by the native editor.");
+            vm.wait("Note: Hello from the original mnOS desktop.");
             vm.command("cat /disk/home/demo/untitled.txt", "A first save must retain the untitled document.");
             vm.command("write /disk/root/denied.txt blocked", "Permission denied");
             vm.screenshot(build / (arch + "-reboot.ppm"));
@@ -323,7 +345,7 @@ int main(int argc, char **argv) {
         fs::remove_all(work);
         std::cout << "DESKTOP PASS " << arch
                   << ": ISO install, no-ISO disk boot, native GUI, account persistence, editor "
-                     "save, settings restore, native ELF and access controls\n";
+                     "save, pointer caret, arrow/backspace edits, settings restore, native ELF and access controls\n";
         return 0;
     } catch (const std::exception &e) {
         std::cerr << e.what() << "\n";
