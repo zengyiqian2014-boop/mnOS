@@ -85,17 +85,22 @@ static bool editor_painted(const fs::path &path) {
     std::ifstream f(path,std::ios::binary); std::string type; int w=0,h=0,max=0;
     f >> type >> w >> h >> max; f.get();
     if (!f || type!="P6" || w<1000 || w>8192 || h<680 || h>8192 || max!=255) return false;
-    size_t neutral=0, text=0;
+    size_t neutral=0, text=0, source_text=0;
     for (int y=0;y<h;++y) for (int x=0;x<w;++x) {
         unsigned char p[3]; f.read(reinterpret_cast<char *>(p),3); if (!f) return false;
         if (x<70 || x>1080 || y<110 || y>620) continue;
         int low=std::min({p[0],p[1],p[2]}), high=std::max({p[0],p[1],p[2]});
         if (high-low<12 && high>15 && high<80) ++neutral;
         if (low>145 && high-low<35) ++text;
+        // The workbench draws its tab and breadcrumb before constructing the
+        // text editor. Require glyphs inside the source lines, below both,
+        // before sending input; a title/tab alone can otherwise lose keystrokes.
+        if (x>=150 && x<=700 && y>=148 && y<=230 && high>110 && high-low<180)
+            ++source_text;
     }
     // A mapped Electron helper window or the desktop wallpaper is not a
     // rendered editor. Require its large content area and painted text.
-    return neutral>200000 && text>150;
+    return neutral>200000 && text>150 && source_text>250;
 }
 static bool grub_menu_visible(const fs::path &path) {
     std::ifstream f(path,std::ios::binary); std::string type; int w=0,h=0,max=0;
@@ -314,7 +319,7 @@ timeout 600 sh -c 'export DISPLAY=:0; count=0; until id=$(xdotool search --onlyv
             check(Clock::now()<deadline,"VS Code document window did not paint");
             vm.pause(2);
         } while(true);
-        vm.click(600,250); vm.key("ctrl-end"); vm.key("ret"); vm.type("// MNOS UI OK"); vm.key("ctrl-s");
+        vm.click(600,250); vm.pause(3); vm.key("ctrl-end"); vm.key("ret"); vm.type("// MNOS UI OK"); vm.key("ctrl-s");
         start=vm.output.size();
         // Bash may put a bracketed-paste control sequence and CR immediately
         // before a quiet command's first output. Emit our own line boundary.
