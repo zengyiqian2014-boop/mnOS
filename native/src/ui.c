@@ -3,13 +3,8 @@
 #include "kernel.h"
 #include "mnfs.h"
 #include "process.h"
-struct glyph {
-    uint32_t code, offset;
-    uint16_t width, height, advance, size;
-};
-extern const struct glyph font_glyphs[];
-extern const unsigned font_count;
-extern const unsigned char font_pixels[];
+#include "font.h"
+#include "icons.h"
 static uint32_t canvas[2560 * 1440] __attribute__((aligned(4096)));
 static int width, height, page = -1, cursor_x = 640, cursor_y = 360, old_x = 640, old_y = 360;
 static bool ready, dirty = true, cursor_dirty, left_down, power_dialog;
@@ -40,62 +35,53 @@ static void rect(int x, int y, int w, int h, uint32_t color) {
             canvas[j * width + i] = color;
 }
 static void rounded(int x, int y, int w, int h, uint32_t color) {
+    if (w < 12 || h < 12) { rect(x, y, w, h, color); return; }
     rect(x + 6, y, w - 12, h, color);
     rect(x, y + 6, w, h - 12, color);
     for (int j = 0; j < 6; ++j)
-        for (int i = 0; i < 6; ++i)
-            if ((i - 5) * (i - 5) + (j - 5) * (j - 5) <= 25) {
-                pixel(x + i, y + j, color);
-                pixel(x + w - 1 - i, y + j, color);
-                pixel(x + i, y + h - 1 - j, color);
-                pixel(x + w - 1 - i, y + h - 1 - j, color);
+        for (int i = 0; i < 6; ++i) {
+            unsigned coverage = 0;
+            for (int sy = 0; sy < 4; sy++) for (int sx = 0; sx < 4; sx++) {
+                int dx = i * 8 + sx * 2 + 1 - 48, dy = j * 8 + sy * 2 + 1 - 48;
+                coverage += dx * dx + dy * dy <= 48 * 48;
             }
-}
-static uint32_t utf8(const char **text) {
-    const uint8_t *s = (const uint8_t *)*text;
-    uint32_t c = *s++;
-    unsigned n = 0;
-    if (c >= 0xc0 && c < 0xe0) {
-        c &= 31;
-        n = 1;
-    } else if (c >= 0xe0 && c < 0xf0) {
-        c &= 15;
-        n = 2;
-    } else if (c >= 0xf0) {
-        c = '?';
-    }
-    while (n--) {
-        if ((*s & 0xc0) != 0x80) {
-            c = '?';
-            break;
+            int xx[] = {x+i, x+w-1-i}, yy[] = {y+j, y+h-1-j};
+            for (unsigned a = 0; a < 2; a++) for (unsigned b = 0; b < 2; b++)
+                if (xx[a] >= 0 && xx[a] < width && yy[b] >= 0 && yy[b] < height)
+                    pixel(xx[a], yy[b], blend(color, canvas[yy[b]*width+xx[a]], coverage*255/16));
         }
-        c = (c << 6) | (*s++ & 63);
-    }
-    *text = (const char *)s;
-    return c;
+}
+static void glyph_draw(int x, int y, const struct glyph *g, uint32_t color) {
+    if (!g) return;
+    for (unsigned j = 0; j < g->height; ++j)
+        for (unsigned i = 0; i < g->width; ++i) {
+            unsigned a = font_pixels[g->offset + j * g->width + i];
+            int px = x + g->left + (int)i, py = y + g->top + (int)j;
+            if (a && px >= 0 && py >= 0 && px < width && py < height)
+                pixel(px, py, blend(color, canvas[py * width + px], a));
+        }
 }
 static void text(int x, int y, const char *s, unsigned size, uint32_t color) {
-    while (*s && x < width - 8) {
-        uint32_t c = utf8(&s);
-        const struct glyph *g = NULL;
-        for (unsigned i = 0; i < font_count; ++i)
-            if (font_glyphs[i].code == c && font_glyphs[i].size == size) {
-                g = &font_glyphs[i];
-                break;
-            }
-        if (!g) {
-            x += size / 2;
-            continue;
-        }
-        for (unsigned j = 0; j < g->height; ++j)
-            for (unsigned i = 0; i < g->width; ++i) {
-                unsigned a = font_pixels[g->offset + j * g->width + i];
-                int px = x + (int)i, py = y + (int)j;
-                if (a && px >= 0 && py >= 0 && px < width && py < height)
-                    pixel(px, py, blend(color, canvas[py * width + px], a));
-            }
-        x += g->advance;
+    size_t p = 0, length = strlen(s);
+    int advance = 0;
+    while (p < length && x + advance / 64 < width - 8) {
+        const struct glyph *g = font_find(font_decode(s, length, &p), size);
+        if (!g) continue;
+        glyph_draw(x + (advance + 32) / 64, y, g, color);
+        advance += g->advance;
     }
+}
+static void text_fit(int x, int y, const char *s, unsigned size, uint32_t color, int limit) {
+    if (text_width(s, size) <= limit) { text(x, y, s, size, color); return; }
+    size_t p = 0, length = strlen(s);
+    int advance = 0, dots = text_width("...", size);
+    while (p < length) {
+        const struct glyph *g = font_find(font_decode(s, length, &p), size);
+        if (!g || (advance + g->advance + 32) / 64 + dots > limit) break;
+        glyph_draw(x + (advance + 32) / 64, y, g, color);
+        advance += g->advance;
+    }
+    if (dots <= limit) text(x + (advance + 32) / 64, y, "...", size, color);
 }
 static void numeric(int x, int y, uint64_t n, unsigned size, uint32_t color) {
     char b[24];
@@ -111,13 +97,37 @@ static void display_rect(int x, int y, int w, int h) {
                                                           ((c & 255) << boot.fb.blue);
         }
 }
+static bool cursor_polygon(int x, int y, const int points[7][2]) {
+    bool in = false;
+    for (unsigned a = 0, b = 6; a < 7; b = a++) {
+        int ax = points[a][0]*8, ay = points[a][1]*8;
+        int bx = points[b][0]*8, by = points[b][1]*8;
+        if ((ay > y) != (by > y) && x < ax + (bx-ax)*(y-ay)/(by-ay)) in = !in;
+    }
+    return in;
+}
 static void cursor(void) {
-    for (int j = 0; j < 19; ++j)
-        for (int i = 0; i <= j / 2; ++i) {
+    static const int outline[7][2] = {{0,0},{0,23},{6,17},{10,26},{14,24},{10,16},{19,16}};
+    static const int fill[7][2] = {{1,2},{1,20},{6,15},{11,24},{12,23},{8,15},{16,15}};
+    for (int j = 0; j < 27; ++j)
+        for (int i = 0; i < 20; ++i) {
             int x = cursor_x + i, y = cursor_y + j;
             if (x < 0 || y < 0 || x >= width || y >= height)
                 continue;
-            uint32_t c = i == 0 || i == j / 2 || j == 18 ? 0x14202b : 0xe9f3f5;
+            unsigned dark = 0, light = 0;
+            for (int sy = 0; sy < 4; sy++) for (int sx = 0; sx < 4; sx++) {
+                int xx = i*8+sx*2+1, yy = j*8+sy*2+1;
+                if (cursor_polygon(xx,yy,fill)) light++;
+                else if (cursor_polygon(xx,yy,outline)) dark++;
+            }
+            uint32_t c = canvas[y*width+x], result = 0;
+            for (unsigned shift = 0; shift < 24; shift += 8) {
+                unsigned channel = (((0xe9f3f5u>>shift)&255)*light +
+                                    ((0x101d28u>>shift)&255)*dark +
+                                    ((c>>shift)&255)*(16-light-dark))/16;
+                result |= channel << shift;
+            }
+            c = result;
             boot.fb.pixels[y * (boot.fb.pitch / 4) + x] = (((c >> 16) & 255) << boot.fb.red) |
                                                           (((c >> 8) & 255) << boot.fb.green) |
                                                           ((c & 255) << boot.fb.blue);
@@ -387,9 +397,8 @@ static const char *app_desc[] = {"Your native desktop",           "Browse your h
                                  "Create and edit text files",    "Memory and kernel status",
                                  "Commands and native programs",  "Detected hardware",
                                  "Display, wallpaper and session"};
-static const uint32_t app_colors[] = {0x83d5bc, 0x6cadf1, 0xe9bb73, 0xb8a5ef,
-                                      0x98b7ca, 0x72d6c9, 0xa9b9db};
 static char search[40], notice[120];
+static uint64_t notice_until;
 static unsigned search_len;
 struct file_item {
     char name[256];
@@ -413,6 +422,7 @@ static void copy_string(char *out, size_t cap, const char *in) {
 }
 static void announce(const char *s) {
     copy_string(notice, sizeof notice, s);
+    notice_until = ticks + 4 * PIT_HZ;
     dirty = true;
     log_write("DESKTOP: ");
     log_write(s);
@@ -421,25 +431,19 @@ static void announce(const char *s) {
 static bool inside(int x, int y, int a, int b, int w, int h) {
     return x >= a && y >= b && x < a + w && y < b + h;
 }
-static void icon(int x, int y, unsigned app, bool large) {
-    int n = large ? 38 : 20;
-    uint32_t c = app_colors[app];
-    if (app == 1) {
-        rect(x, y + 3, n / 2, 5, c);
-        rounded(x, y + 7, n, n * 2 / 3, c);
-        rect(x + 3, y + 11, n - 6, 2, 0xaed4fb);
-    } else if (app == 4) {
-        rounded(x, y, n, n * 3 / 4, 0x456177);
-        text(x + 2, y - 6, ">", 18, FG);
-        rect(x + n / 2, y + n / 2, n / 4, 2, FG);
-    } else {
-        rounded(x, y, n, n, c);
-        int k = n / 4;
-        rect(x + k, y + k, n - 2 * k, 2, 0x23343f);
-        rect(x + k, y + k + 5, n - 2 * k, 2, 0x23343f);
-        if (large)
-            rect(x + k, y + k + 10, n - 2 * k, 2, 0x23343f);
+static void app_icon(int x, int y, unsigned app, unsigned size) {
+    unsigned group = size == 20 ? 0 : size == 24 ? 1 : size == 40 ? 2 : 3;
+    if (app >= 7) return;
+    const struct icon_asset *asset = &icon_assets[group * 7 + app];
+    for (unsigned j = 0; j < asset->size; j++) for (unsigned i = 0; i < asset->size; i++) {
+        uint32_t c = icon_pixels[asset->offset + j * asset->size + i];
+        int px = x + (int)i, py = y + (int)j;
+        if (c >> 24 && px >= 0 && px < width && py >= 0 && py < height)
+            pixel(px, py, blend(c, canvas[py * width + px], c >> 24));
     }
+}
+static void icon(int x, int y, unsigned app, bool large) {
+    app_icon(x, y, app, large ? 40 : 20);
 }
 static void button(int x, int y, int w, const char *label, bool on) {
     rounded(x, y, w, 32, on ? 0x30584f : 0x2a3b4a);
@@ -727,8 +731,9 @@ static void background(void) {
     const unsigned shortcuts[] = {1, 2, 4, 6};
     for (unsigned i = 0; i < 4; i++) {
         int y = 77 + (int)i * 98;
-        icon(33, y, shortcuts[i], true);
-        text(21, y + 40, app_names[shortcuts[i]], 18, FG);
+        app_icon(40, y, shortcuts[i], 48);
+        text(64 - text_width(app_names[shortcuts[i]], 16) / 2,
+             y + 49, app_names[shortcuts[i]], 16, FG);
     }
 }
 static void editor_content(struct window *v) {
@@ -739,51 +744,48 @@ static void editor_content(struct window *v) {
          edit_changed ? 0xe9bb73 : MUTED);
     char path[75];
     copy_string(path, sizeof path, *edit_path ? edit_path : "New document");
-    text(x, y + 40, path, 18, MUTED);
+    text_fit(x, y + 40, path, 16, MUTED, w);
     rounded(x, y + 77, w, v->h - 155, 0x101b25);
-    unsigned cols = (unsigned)(w - 36) / 11, rows = (unsigned)(v->h - 178) / 25;
-    if (!cols)
-        cols = 1;
-    size_t line = 0, col = 0, cursor_line = 0;
-    for (size_t i = 0; i < edit_cursor; i++) {
-        if (edit_buffer[i] == '\n' || ++col >= cols) {
-            line++;
-            col = 0;
+    unsigned rows = (unsigned)(v->h - 178) / 25;
+    if (!rows) rows = 1;
+    struct text_cell caret = text_caret(edit_buffer, edit_size, edit_cursor, w - 32);
+    if (caret.row < edit_scroll) edit_scroll = caret.row;
+    if (caret.row >= edit_scroll + rows) edit_scroll = caret.row - rows + 1;
+    struct text_layout layout = {.s=edit_buffer, .length=edit_size, .width=w-32, .size=18};
+    struct text_cell cell;
+    while (text_next(&layout, &cell)) {
+        if (cell.row >= edit_scroll + rows) break;
+        if (cell.row >= edit_scroll) {
+            int xx = x + 14 + (cell.x + 32) / 64;
+            int yy = y + 82 + (int)(cell.row - edit_scroll) * 25;
+            if (cell.code && cell.code != '\n' && cell.code != '\r' && cell.code != '\t')
+                glyph_draw(xx, yy, font_find(cell.code, 18), FG);
+            if (cell.byte == edit_cursor) rect(xx, yy + 3, 1, 21, ACCENT);
         }
     }
-    cursor_line = line;
-    if (cursor_line < edit_scroll)
-        edit_scroll = cursor_line;
-    if (cursor_line >= edit_scroll + rows)
-        edit_scroll = cursor_line - rows + 1;
-    line = col = 0;
-    for (size_t i = 0; i <= edit_size; i++) {
-        if (line >= edit_scroll && line < edit_scroll + rows) {
-            int xx = x + 14 + (int)col * 11, yy = y + 82 + (int)(line - edit_scroll) * 25;
-            if (i == edit_cursor)
-                rect(xx, yy + 5, 2, 20, ACCENT);
-            if (i < edit_size && edit_buffer[i] != '\n') {
-                char c[2] = {edit_buffer[i] == '\t' ? ' ' : edit_buffer[i], 0};
-                text(xx, yy, c, 18, FG);
-            }
-        }
-        if (i < edit_size && (edit_buffer[i] == '\n' || ++col >= cols)) {
-            line++;
-            col = 0;
-        }
-    }
-    text(x, v->y + v->h - 32, "Ctrl-S save   Ctrl-N new   Arrow keys move   Esc desktop", 18,
+    text(x, v->y + v->h - 32, "Ctrl-S save   Ctrl-N new   Arrow keys move   Esc desktop", 16,
          MUTED);
 }
 static void window_content(unsigned app) {
     struct window *v = &windows[app];
     int x = v->x + 20, y = v->y + 52, w = v->w - 40;
-    rect(v->x + 5, v->y + 9, v->w, v->h, 0x0b151e);
-    rounded(v->x, v->y, v->w, v->h, PANEL);
+    for (int spread = 8; spread > 0; spread--)
+        for (int yy = v->y + 5; yy < v->y + v->h + spread + 5; yy++)
+            for (int xx = v->x - spread; xx < v->x + v->w + spread; xx++) {
+                if (xx == v->x && yy < v->y + v->h) xx += v->w;
+                if (xx >= 0 && xx < width && yy >= 36 && yy < height)
+                    pixel(xx, yy, blend(0x050d14, canvas[yy*width+xx], 13));
+            }
+    rounded(v->x, v->y, v->w, v->h, page == (int)app ? 0x466071 : 0x304352);
+    rounded(v->x+1, v->y+1, v->w-2, v->h-2, PANEL);
     rect(v->x + 1, v->y + 35, v->w - 2, 1, 0x354452);
-    text(x, v->y + 2, app_names[app], 18, page == (int)app ? FG : MUTED);
-    text(v->x + v->w - 78, v->y + 2, "_", 18, MUTED);
-    text(v->x + v->w - 37, v->y + 2, "x", 18, 0xefb4ab);
+    app_icon(v->x+13, v->y+7, app, 20);
+    text(v->x+42, v->y+4, app_names[app], 16, page == (int)app ? FG : MUTED);
+    rect(v->x+v->w-74, v->y+18, 11, 1, MUTED);
+    for (int i = 0; i < 9; i++) {
+        pixel(v->x+v->w-34+i, v->y+13+i, MUTED);
+        pixel(v->x+v->w-34+i, v->y+21-i, MUTED);
+    }
     if (app == 0) {
         text(x + 8, y + 8, "A desktop of our own.", 28, FG);
         text(x + 8, y + 60, "mnOS / original C and assembly kernel", 18, ACCENT);
@@ -799,7 +801,7 @@ static void window_content(unsigned app) {
                  : i == 1 ? "A simple native editor"
                  : i == 2 ? "help / help -cn"
                           : "Make it yours",
-                 18, MUTED);
+                 16, MUTED);
         }
         const char *p = "/disk";
         bool installed = files_volume(&p) != NULL;
@@ -815,9 +817,9 @@ static void window_content(unsigned app) {
         button(x + 372, y, 82, "Delete", false);
         char path[75];
         copy_string(path, sizeof path, folder);
-        text(x, y + 40, path, 18, ACCENT);
-        text(x + 12, y + 81, "NAME", 18, MUTED);
-        text(x + w - 180, y + 81, "SIZE", 18, MUTED);
+        text_fit(x, y + 40, path, 16, ACCENT, w);
+        text(x + 12, y + 81, "NAME", 16, MUTED);
+        text(x + w - 180, y + 81, "SIZE", 16, MUTED);
         rect(x, y + 113, w, 1, 0x354452);
         unsigned visible = (unsigned)(v->h - 212) / 35;
         for (unsigned i = item_scroll; i < item_count && i < item_scroll + visible; i++) {
@@ -827,7 +829,7 @@ static void window_content(unsigned app) {
             icon(x + 10, yy + 7, items[i].st.directory ? 1 : 2, false);
             char name[65];
             copy_string(name, sizeof name, items[i].name);
-            text(x + 42, yy + 1, name, 18, FG);
+            text_fit(x + 42, yy + 1, name, 18, FG, w - 235);
             if (items[i].st.directory)
                 text(x + w - 180, yy + 1, "Folder", 18, MUTED);
             else
@@ -835,7 +837,7 @@ static void window_content(unsigned app) {
         }
         if (!item_count)
             text(x + 12, y + 135, "This folder is empty. Create your first file.", 18, MUTED);
-        text(x, v->y + v->h - 33, "Click a file to open. N new file / D folder / Backspace up", 18,
+        text(x, v->y + v->h - 33, "Click a file to open. N new file / D folder / Backspace up", 16,
              MUTED);
     } else if (app == 2)
         editor_content(v);
@@ -852,21 +854,22 @@ static void window_content(unsigned app) {
         text(x, y + 390, "Desktop services currently run inside the kernel.", 18, MUTED);
     } else if (app == 4) {
         rounded(x, y, w, v->h - 87, 0x0c1720);
-        text(x + 14, y + 5, auth_name(), 18, ACCENT);
+        text_fit(x + 14, y + 5, auth_name(), FONT_MONO18, ACCENT, w - 28);
         unsigned max = (unsigned)(v->h - 174) / 25,
                  start = history_count > max ? history_count - max : 0;
         for (unsigned i = start; i < history_count; i++) {
             char row[105];
-            unsigned limit = (unsigned)(w - 28) / 10;
+            unsigned limit = (unsigned)(w - 28) / text_width("M", FONT_MONO18);
             if (limit > 99)
                 limit = 99;
             copy_string(row, limit + 1, history[i]);
-            text(x + 14, y + 40 + (int)(i - start) * 25, row, 18, FG);
+            text(x + 14, y + 40 + (int)(i - start) * 25, row, FONT_MONO18, FG);
         }
-        text(x + 14, v->y + v->h - 61, ">", 18, ACCENT);
-        size_t view = (size_t)(w - 65) / 11;
+        text(x + 14, v->y + v->h - 61, ">", FONT_MONO18, ACCENT);
+        size_t view = (size_t)(w - 65) / text_width("M", FONT_MONO18);
         const char *visible = command_length > view ? command + command_length - view : command;
-        text(x + 36, v->y + v->h - 61, visible, 18, FG);
+        text(x + 36, v->y + v->h - 61, visible, FONT_MONO18, FG);
+        rect(x + 36 + text_width(visible, FONT_MONO18), v->y + v->h - 57, 1, 20, ACCENT);
     } else if (app == 5) {
         text(x, y, "Detected devices", 28, FG);
         text(x, y + 51, graphics_driver(), 18, ACCENT);
@@ -892,6 +895,12 @@ static void window_content(unsigned app) {
         text(x, y + 390, "Saved settings belong to your account.", 18, MUTED);
     }
 }
+static int task_width(void) {
+    unsigned count = 0;
+    for (unsigned i = 0; i < 7; i++) count += windows[i].open;
+    int w = (width - 365) / (int)(count ? count : 1);
+    return w > 150 ? 150 : w;
+}
 static void draw(void) {
     background();
     if (auth_prompting()) {
@@ -911,17 +920,30 @@ static void draw(void) {
         if (windows[order[i]].open && !windows[order[i]].minimized)
             window_content(order[i]);
     rect(0, 0, width, 36, 0x101923);
-    text(14, 1, "m  Applications", 18, ACCENT);
+    app_icon(12, 6, 0, 24);
+    text(45, 4, "Applications", 16, FG);
     unsigned slot = 0;
+    int task = task_width();
     for (unsigned i = 0; i < 7; i++)
         if (windows[i].open) {
-            int x = 185 + (int)slot++ * 142;
+            int x = 185 + (int)slot++ * task;
             if (page == (int)i && !windows[i].minimized)
-                rect(x, 1, 138, 34, 0x293b47);
-            text(x + 9, 1, app_names[i], 18, FG);
+                rect(x, 1, task - 4, 34, 0x293b47);
+            app_icon(x + 7, 8, i, 20);
+            if (task > 65) text_fit(x + 34, 4, app_names[i], 16, FG, task - 42);
+            if (page == (int)i && !windows[i].minimized)
+                rect(x + 7, 33, task - 18, 2, ACCENT);
         }
-    text(width - 185, 1, auth_name(), 18, MUTED);
-    numeric(width - 72, 1, ticks / PIT_HZ, 18, MUTED);
+    text_fit(width - 171, 4, auth_name(), 16, MUTED, 86);
+    char uptime[16];
+    uint64_t minutes = ticks / PIT_HZ / 60;
+    number(uptime, minutes / 60);
+    size_t clock_end = strlen(uptime);
+    uptime[clock_end++] = ':';
+    uptime[clock_end++] = '0' + minutes % 60 / 10;
+    uptime[clock_end++] = '0' + minutes % 10;
+    uptime[clock_end] = 0;
+    text(width - 70, 4, uptime, 16, MUTED);
     if (menu_open) {
         rounded(8, 44, 370, 525, 0x20313f);
         text(26, 54, "Applications", 28, FG);
@@ -931,15 +953,17 @@ static void draw(void) {
         for (unsigned i = 0; i < 7; i++)
             if (search_match(app_names[i])) {
                 int y = 160 + (int)row++ * 51;
-                icon(27, y + 7, i, false);
-                text(64, y, app_names[i], 18, FG);
-                text(64, y + 23, app_desc[i], 18, MUTED);
+                app_icon(27, y + 3, i, 40);
+                text(80, y, app_names[i], 18, FG);
+                text_fit(80, y + 24, app_desc[i], 16, MUTED, 280);
             }
-        text(25, 529, "Esc close / Enter open first result", 18, MUTED);
+        text(25, 529, "Esc close / Enter open first result", 16, MUTED);
     }
     if (*notice) {
-        rounded(12, height - 49, width - 24, 38, 0x2c414a);
-        text(24, height - 47, notice, 18, FG);
+        int w = text_width(notice, 16) + 32;
+        if (w > width - 32) w = width - 32;
+        rounded(width - w - 16, height - 48, w, 32, 0x2c414a);
+        text_fit(width - w, height - 46, notice, 16, FG, w - 32);
     }
     if (power_dialog || dialog) {
         int x = (width - 650) / 2, y = (height - 230) / 2;
@@ -972,9 +996,9 @@ void ui_init(void) {
     height = (int)boot.fb.height;
     if (width > 2560 || height > 1440)
         return;
-    int w = width > 1100 ? 900 : width - 110, h = height > 740 ? 590 : height - 104;
+    int w = width > 1100 ? 900 : width - 176, h = height > 740 ? 590 : height - 104;
     for (unsigned i = 0; i < 7; i++) {
-        windows[i].x = (width - w) / 2 + (int)(i % 3) * 12;
+        windows[i].x = (width > 1100 ? (width - w) / 2 : 144) + (int)(i % 3) * 12;
         windows[i].y = 58 + (int)(i % 3) * 16;
         windows[i].w = w;
         windows[i].h = h;
@@ -993,6 +1017,10 @@ void ui_init(void) {
 void ui_tick(void) {
     if (!ready)
         return;
+    if (*notice && ticks >= notice_until) {
+        notice[0] = 0;
+        dirty = true;
+    }
     auth_tick(ticks / PIT_HZ);
     process_session_check();
     static uint32_t last_user = UINT32_MAX;
@@ -1043,7 +1071,7 @@ void ui_tick(void) {
     if (dirty && ticks % 5 == 0)
         draw();
     else if (cursor_dirty && ticks % 3 == 0) {
-        display_rect(old_x, old_y, 12, 21);
+        display_rect(old_x, old_y, 20, 27);
         cursor();
     }
 }
@@ -1120,45 +1148,29 @@ void ui_key(char key) {
             return;
         }
         if (k == 0x90) {
-            if (edit_cursor)
-                edit_cursor--;
+            edit_cursor = text_previous(edit_buffer, edit_cursor);
             return;
         }
         if (k == 0x91) {
-            if (edit_cursor < edit_size)
-                edit_cursor++;
+            font_decode(edit_buffer, edit_size, &edit_cursor);
             return;
         }
         if (k == 0x92 || k == 0x93) {
-            size_t col = 0, p = edit_cursor;
-            while (p && edit_buffer[p - 1] != '\n') {
-                p--;
-                col++;
-            }
-            if (k == 0x92 && p) {
-                size_t end = p - 1, start = end;
-                while (start && edit_buffer[start - 1] != '\n')
-                    start--;
-                edit_cursor = start + (col < end - start ? col : end - start);
-            } else if (k == 0x93) {
-                size_t end = edit_cursor;
-                while (end < edit_size && edit_buffer[end] != '\n')
-                    end++;
-                if (end < edit_size) {
-                    size_t start = ++end;
-                    while (end < edit_size && edit_buffer[end] != '\n')
-                        end++;
-                    edit_cursor = start + (col < end - start ? col : end - start);
-                }
-            }
+            int wrap = windows[2].w - 68;
+            struct text_cell c = text_caret(edit_buffer, edit_size, edit_cursor, wrap);
+            if (k == 0x93 || c.row)
+                edit_cursor = text_hit(edit_buffer, edit_size,
+                    k == 0x92 ? c.row - 1 : c.row + 1, c.x, wrap);
             return;
         }
         if (key == '\b' || key == 127) {
             if (edit_cursor) {
+                size_t previous = text_previous(edit_buffer, edit_cursor);
+                size_t removed = edit_cursor - previous;
                 for (size_t i = edit_cursor; i <= edit_size; i++)
-                    edit_buffer[i - 1] = edit_buffer[i];
-                edit_cursor--;
-                edit_size--;
+                    edit_buffer[i - removed] = edit_buffer[i];
+                edit_cursor = previous;
+                edit_size -= removed;
                 edit_changed = true;
             }
         } else if ((key >= 32 && key < 127) || key == '\n' || key == '\r' || key == '\t') {
@@ -1279,7 +1291,8 @@ void ui_pointer(int x, int y, bool pressed) {
                 unsigned slot = 0;
                 for (unsigned i = 0; i < 7; i++)
                     if (windows[i].open) {
-                        if (inside(x, y, 185 + (int)slot * 142, 0, 138, 36)) {
+                        int task = task_width();
+                        if (inside(x, y, 185 + (int)slot * task, 0, task - 4, 36)) {
                             focus_app(i);
                             break;
                         }
@@ -1372,11 +1385,16 @@ void ui_pointer(int x, int y, bool pressed) {
                             open_file(i);
                         }
                     }
-                } else if (hit == 2 && yy >= -5 && yy < 30) {
-                    if (xx < 75)
-                        begin_name(false);
-                    else if (xx < 170)
-                        save_document();
+                } else if (hit == 2) {
+                    if (yy >= -5 && yy < 30) {
+                        if (xx < 75) begin_name(false);
+                        else if (xx < 170) save_document();
+                    } else if (y >= v->y+129 && y < v->y+v->h-78 &&
+                               x >= v->x+32 && x < v->x+v->w-18) {
+                        size_t row = edit_scroll + (unsigned)(y-v->y-129) / 25;
+                        edit_cursor = text_hit(edit_buffer, edit_size, row,
+                                               (x-v->x-32)*64, v->w-68);
+                    }
                 } else if (hit == 6) {
                     if (yy >= 116 && yy < 148 && xx < 235)
                         change_resolution();

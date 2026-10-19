@@ -15,7 +15,7 @@ cp build/arm64/BOOTAA64.EFI build/desktop/arm64/BOOTAA64.EFI
 for arch in amd64 arm64; do
     case "$arch" in amd64) target=x86_64-unknown-windows; machine=x64; efi=BOOTX64.EFI;; arm64) target=aarch64-unknown-windows; machine=arm64; efi=BOOTAA64.EFI;; esac
     objects=''
-    for source in installer/main.c src/string.c src/mnfs.c src/disk_layout.c assets/font.c; do
+    for source in installer/main.c src/string.c src/mnfs.c src/disk_layout.c src/text.c assets/font.c; do
         object="build/desktop/$arch/$(basename "$source" .c).obj"
         clang-19 --target="$target" $flags -c "$source" -o "$object"
         objects="$objects $object"

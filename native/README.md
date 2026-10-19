@@ -191,33 +191,24 @@ not APFS-compatible. FAT may still be used for the standard EFI boot partition.
 
 ## Build and verification
 
-On an x86_64 host with GCC, binutils, make and Docker:
+For the current original graphical installer, use the C/C++ test suite and
+the native builder (separate from the historical Linux live-image builder):
 
 ```sh
-make -C native -j4 all host-tools
-make -C native host-tests
-docker build -t mnos-live-builder -f live/Builder.Dockerfile live
-docker run --rm --network none --memory=6g --cpus=4 \
-  -v "$PWD/native:/native:ro" -v "$PWD/native/build:/out" \
-  mnos-live-builder bash -c '
-    set -e
-    bash /native/pack.sh test
-    python3 /native/tests/boot.py /out/native-test.iso
-    python3 /native/tests/smp.py /out/native-test.iso
-    python3 /native/tests/large_memory.py /out/native-test.iso
-    bash /native/pack.sh demo
-    python3 /native/tests/ui.py /out/native-demo.iso
-    python3 /native/tests/ui.py /out/native-demo.iso --gpu virtio --uefi
-    python3 /native/tests/persistence.py /out/native-demo.iso
-  '
+docker build -t mnos-native-builder -f native/Builder.Dockerfile .
+docker run --rm --user "$(id -u):$(id -g)" --network none \
+  -v "$PWD/native:/native" -w /native \
+  mnos-native-builder bash tests/desktop_ci.sh
 ```
 
-Host tests run ASan/UBSan against allocation, large files, B-tree splits,
-snapshots, ENOSPC rollback, damaged data/metadata, torn writes and reordered
-write caches. VM tests require per-CPU `SELFTEST PASS 8/8`, the expected online
-count and debug-exit 33, or explicit UI/filesystem interaction results. They also
-verify ATA writes across a VM power cut, saved display preferences and host
-remount. See [validation record](../live/VALIDATION.md) for coverage and limits.
+Host tests run ASan/UBSan against font layout, allocation, large files, B-tree
+splits, snapshots, ENOSPC rollback, damaged data/metadata, torn writes and reordered
+write caches. VM tests install to a fresh disk, boot without the ISO, exercise
+the editor and account boundaries, and verify saved files/settings after reboot.
+The same gate runs process isolation, native file ABI and ARM console regressions.
+See [desktop validation and limits](DESKTOP.md). Historical Python diagnostics
+remain for old BIOS/Linux releases; the current native build, QA and publication
+path does not invoke Python, Java or Node.js.
 
 The standalone demo remains interactive after checks. Full dual-boot ISOs use
 `./live/build.sh qemu` or `./live/build.sh hardware`. Secure Boot must be off for
@@ -226,8 +217,18 @@ boot chain. The source and font are included in `/usr/src/mnos-native` on both
 full ISOs. Normal builds use the checked-in font atlas. After editing UI text:
 
 ```sh
-python3 native/tools/font.py /path/NotoSansCJK-Regular.ttc native/assets/font.c
+cd native
+cc -std=c11 -O2 tools/font.c $(pkg-config --cflags --libs freetype2) -o build/font-gen
+build/font-gen /path/NotoSansCJK-Regular.ttc /path/DejaVuSansMono.ttf src/ui.c > assets/font.c
+cc -std=c11 -O2 tools/icons.c -lm -o build/icon-gen
+build/icon-gen > assets/icons.c
 ```
+
+The C generators run only on the build host. The kernel uses the checked-in
+coverage atlases, fixed-point font metrics and its own drawing/layout routines;
+FreeType and Python are not runtime dependencies. Noto UI faces use proportional
+advances, the terminal uses DejaVu Sans Mono, and each original application icon
+is rasterized separately at 20, 24, 40 and 48 pixels with 8x coverage sampling.
 
 ## System-call ABI
 

@@ -2,7 +2,7 @@
 
 [English](README.md) | [中文](README.zh.md)
 
-[Native graphical desktop installer: AMD64 / ARM64](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.4-desktop-preview.1)
+[Native graphical desktop installer: AMD64 / ARM64](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.4-desktop-preview.2)
 · [Install, use and reproduce the tests](native/DESKTOP.md)
 
 **mnOS Desktop 0.4 installs and boots the original C/assembly mnOS kernel and its

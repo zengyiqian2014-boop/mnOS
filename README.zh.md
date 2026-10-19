@@ -1,6 +1,6 @@
 # mnOS
 
-[下载原生图形系统安装 ISO：AMD64 / ARM64](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.4-desktop-preview.1)
+[下载原生图形系统安装 ISO：AMD64 / ARM64](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.4-desktop-preview.2)
 · [安装、操作与测试说明](native/DESKTOP.md)
 
 **mnOS Desktop 0.4 安装后直接启动自研 C／汇编内核和原生图形桌面。**

@@ -39,6 +39,11 @@ Esc 显示桌面并最小化窗口，再点顶栏可恢复。编辑器未保存�
 编辑器目前为 16 KiB 文本文档编辑器；文件系统本身仍支持 64 位稀疏文件。
 当前目录缓存最多 64 项，尚无完整的大目录分页功能。
 
+Preview 2 使用比例字体的真实字宽排版正文，保留 1/64 像素精度；终端采用真正的等宽字体。
+编辑器支持点击定位光标、按可见行上下移动、Tab 制表位，以及 UTF-8 文本的整字符移动和退格。
+键盘输入目前仍为 ASCII，中文文本显示不代表已实现中文输入法。七款应用各有独立图标，
+使用针对目标尺寸生成的抗锯齿图像；原生渲染器不使用 Python、浏览器或外部桌面框架。
+
 ## 已验证配置
 
 | 架构 | 固件／机器 | 存储 | 显示和输入 |
@@ -64,7 +69,7 @@ Secure Boot 签名和原生 AHCI/NVMe、USB、网络、Wi-Fi、音频及加速 G
 旧 `v2.0-installer-preview.2` 提供的是独立的 Debian/Linux/Xfce 应用环境，与这里的
 原生系统不能混称。没有把它的浏览器、驱动或兼容性计入本版本。
 
-原生源代码采用 GPL-3.0-or-later。Noto 字体是保留许可证的外部字体；编译器、QEMU、
+原生源代码采用 GPL-3.0-or-later。Noto 和 DejaVu 字体是保留许可证的外部字体；编译器、QEMU、
 镜像打包工具仅用于构建／测试，不是运行内核。新桌面安装路径使用本项目的 UEFI 加载器，
 无需 GRUB；旧 BIOS 诊断介质仍使用 GRUB。
 
@@ -74,7 +79,6 @@ Secure Boot 签名和原生 AHCI/NVMe、USB、网络、Wi-Fi、音频及加速 G
 docker build -t mnos-native-builder -f native/Builder.Dockerfile .
 docker run --rm --user "$(id -u):$(id -g)" --network none -v "$PWD/native:/native" -w /native \
   mnos-native-builder bash tests/desktop_ci.sh
-node native/tools/screenshots.cjs native/build/desktop
 ```
 
 输出在 `native/build/desktop/`。验证需要 QEMU、OVMF 和 ARM64 UEFI；没有执行 Python。

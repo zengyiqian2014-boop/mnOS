@@ -13,3 +13,5 @@ done
 bash tests/process_ci.sh 2>&1 | tee build/desktop/process-regression.log
 c++ -std=c++17 -O2 -Wall -Wextra -Werror tests/arm64_console.cpp -o build/arm64/console-test
 build/arm64/console-test build/arm64 2>&1 | tee build/desktop/arm64-console-regression.log
+cc -std=c11 -O2 -Wall -Wextra -Werror tools/screenshots.c -lz -o build/screenshots
+build/screenshots build/desktop

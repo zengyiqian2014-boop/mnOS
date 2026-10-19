@@ -5,14 +5,8 @@
 #include "disk_layout.h"
 #include "efi.h"
 #include "mnfs.h"
+#include "font.h"
 extern const uint8_t system_payload[], system_payload_end[];
-struct glyph {
-    uint32_t code, offset;
-    uint16_t width, height, advance, size;
-};
-extern const struct glyph font_glyphs[];
-extern const unsigned font_count;
-extern const uint8_t font_pixels[];
 struct media {
     uint32_t id;
     uint8_t removable, present, logical, readonly, caching;
@@ -120,19 +114,16 @@ static void rect(int x, int y, int w, int h, uint32_t c) {
 static void text(int x, int y, const char *s, unsigned size, uint32_t c) {
     if (!pixels)
         return;
-    while (*s && x < (int)width - 20) {
-        unsigned char ch = *s++;
-        const struct glyph *g = NULL;
-        for (unsigned i = 0; i < font_count; i++)
-            if (font_glyphs[i].code == ch && font_glyphs[i].size == size) {
-                g = &font_glyphs[i];
-                break;
-            }
+    size_t p = 0, length = strlen(s);
+    int advance = 0;
+    while (p < length && x + advance / 64 < (int)width - 20) {
+        const struct glyph *g = font_find(font_decode(s, length, &p), size);
         if (!g)
             continue;
         for (unsigned j = 0; j < g->height; j++)
             for (unsigned i = 0; i < g->width; i++) {
-                int px = x + (int)i, py = y + (int)j;
+                int px = x + (advance + 32) / 64 + g->left + (int)i,
+                    py = y + g->top + (int)j;
                 unsigned a = font_pixels[g->offset + j * g->width + i];
                 if (a && px >= 0 && py >= 0 && px < (int)width && py < (int)height) {
                     uint32_t bg = rgb(pixels[(size_t)py * pitch + px]);
@@ -142,7 +133,7 @@ static void text(int x, int y, const char *s, unsigned size, uint32_t c) {
                     pixels[(size_t)py * pitch + px] = rgb((r << 16) | (gc << 8) | b);
                 }
             }
-        x += g->advance;
+        advance += g->advance;
     }
 }
 static void draw(void) {
