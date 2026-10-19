@@ -29,7 +29,7 @@ jobs:
           cp native/DESKTOP-RELEASE.md release/RELEASE_NOTES.md
           printf '%s\n' "$GITHUB_SHA" > release/SOURCE_COMMIT.txt
           printf 'Validation: https://github.com/%s/actions/runs/%s\n' "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > release/PROVENANCE.txt
-          tar -C native/build/desktop -czf release/desktop-validation.tar.gz --wildcards '*.log' '*.png'
+          (cd native/build/desktop && tar -czf ../../../release/desktop-validation.tar.gz -- *.log *.png)
           git archive --format=tar.gz -o release/native-source.tar.gz HEAD native LICENSE .github/workflows/native-desktop.yml
           (cd release && sha256sum *.iso *.tar.gz *.png *.txt *.md > SHA256SUMS && sha256sum -c SHA256SUMS)
       - uses: actions/upload-artifact@v4
