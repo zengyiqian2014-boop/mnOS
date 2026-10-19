@@ -110,7 +110,7 @@ static bool grub_menu_visible(const fs::path &path) {
     return cyan>size_t(w)*10 && black>size_t(w)*h*3/4;
 }
 struct VM {
-    pid_t pid=-1; int serial=-1, qmp=-1; std::string output; fs::path log;
+    pid_t pid=-1; int serial=-1, qmp=-1; bool pointer_tick=false; std::string output; fs::path log;
     VM(const std::string &arch, const fs::path &iso, const fs::path &disk, const fs::path &out,
        const fs::path &work, const std::string &phase, bool nvme=false, bool bios=false) : log(out/(phase+".log")) {
         auto sock=work/(phase+".serial"), q=work/(phase+".qmp"), vars=work/(phase+".fd");
@@ -181,7 +181,7 @@ struct VM {
             if(n>0) { output.append(b,size_t(n)); std::ofstream(log)<<output; }
         }
     }
-    void wait(const std::string &text,int seconds=480,size_t after=0,bool keep_display=false) {
+    void wait(const std::string &text,int seconds=480,size_t after=0,bool keep_display=false,bool user_activity=false) {
         std::cout << log.stem().string() << ": waiting for " << text << std::endl;
         auto end=Clock::now()+std::chrono::seconds(seconds);
         auto capture_at=Clock::now()+20s;
@@ -197,6 +197,7 @@ struct VM {
                 }
             }
             if (Clock::now() >= capture_at) {
+                if (user_activity) move_pointer();
                 auto picture=log.parent_path()/(log.stem().string()+"-current.ppm");
                 capture(picture);
                 if (keep_display) check(image_active(picture),"Installer display became inactive: "+picture.string());
@@ -223,6 +224,14 @@ struct VM {
             else if(c=='-') key("minus"); else if(c==' ') key("spc");
             else key(std::string(1,c));
         }
+    }
+    void move_pointer() {
+        // Real USB input keeps the guest's idle timer honest. Xfce's power
+        // manager may apply its policy after an early `xset -dpms`; serial
+        // diagnostics do not count as local input and can run for minutes.
+        pointer_tick=!pointer_tick;
+        call("input-send-event","{\"events\":[{\"type\":\"abs\",\"data\":{\"axis\":\"x\",\"value\":"+
+            std::to_string((pointer_tick?12:13)*32767/1279)+"}},{\"type\":\"abs\",\"data\":{\"axis\":\"y\",\"value\":31899}}]}");
     }
     void click(int x, int y) {
         call("input-send-event", "{\"events\":[{\"type\":\"abs\",\"data\":{\"axis\":\"x\",\"value\":"+
@@ -254,6 +263,7 @@ struct VM {
         // A running xfce4-panel process can still be initializing on TCG.
         // Require its actual top panel, rather than the greeter's wallpaper.
         for (int i=0;i<150;++i) {
+            if(i%10==0) move_pointer();
             capture(path);
             if (image_active(path) && panel_visible(path)) return;
             pause(2);
@@ -294,10 +304,11 @@ static void code_editor(VM &vm,const fs::path &out) {
 timeout 600 sh -c 'export DISPLAY=:0; count=0; until id=$(xdotool search --onlyvisible --name "mnos-app.c.*Visual Studio Code" 2>/dev/null | head -n 1) && [ -n "$id" ]; do count=$((count+1)); if [ $((count%10)) -eq 1 ]; then date -u; ps -eo pid,comm,pcpu,stat --sort=-pcpu | head -12; tail -n 12 /tmp/mnos-code.log; fi; sleep 3; done; xdotool windowactivate --sync "$id" && xdotool windowsize "$id" 1100 620 && xdotool windowmove "$id" 30 60 && xdotool getwindowname "$id"' && printf '\nMNOS_CODE_DOCUMENT_READY\n'
 )SH");
     try {
-        vm.wait("\r\nMNOS_CODE_DOCUMENT_READY\r\n",660,start);
+        vm.wait("\r\nMNOS_CODE_DOCUMENT_READY\r\n",660,start,false,true);
         auto picture=out/"vscode-window.ppm";
         auto deadline=Clock::now()+120s;
         do {
+            vm.move_pointer();
             vm.capture(picture);
             if(editor_painted(picture)) break;
             check(Clock::now()<deadline,"VS Code document window did not paint");
@@ -314,7 +325,7 @@ timeout 600 sh -c 'export DISPLAY=:0; count=0; until id=$(xdotool search --onlyv
         std::cout << "PASS: VS Code painted its document and saved real keyboard edits" << std::endl;
     } catch(...) {
         start=vm.output.size();
-        send_all(vm.serial,"cat /tmp/mnos-code.log; ps -eo pid,comm,pcpu,stat --sort=-pcpu | head -25; find ~/.config/Code/logs -name '*.log' -exec tail -n 25 {} \\; 2>/dev/null; printf '\\nMNOS_CODE_DIAGNOSTICS_END\\n'\n");
+        send_all(vm.serial,"DISPLAY=:0 xset q; cat /tmp/mnos-code.log; ps -eo pid,comm,pcpu,stat --sort=-pcpu | head -25; find ~/.config/Code/logs -name '*.log' -exec tail -n 25 {} \\; 2>/dev/null; printf '\\nMNOS_CODE_DIAGNOSTICS_END\\n'\n");
         try { vm.wait("\r\nMNOS_CODE_DIAGNOSTICS_END\r\n",90,start); }
         catch(const std::exception &) {}
         throw;
