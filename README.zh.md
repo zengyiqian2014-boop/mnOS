@@ -1,5 +1,8 @@
 # mnOS
 
+[下载自研内核预览版：AMD64 / ARM64](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.3-native-preview.2)
+· [原生系统自研范围和后续验收](native/SYSTEM.md)
+
 [下载 amd64 / ARM64 离线安装 ISO](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.2)
 · [启动与验证记录](live/VALIDATION.md)
 
@@ -9,6 +12,8 @@
 源码主线已新增原生 `exec PATH`、`ps`、`kill PID`：自研内核可从 MNFS 启动独立
 编译的 C 程序，并发运行多个进程，隔离各自地址空间，支持休眠、唤醒和退出后
 内存回收。进程按可用内存动态分配，目前共享启动 CPU，使用小型静态程序 ABI。
+原生 0.3 Preview 2 还补上了受权限检查的原生程序文件接口，可创建、读写、查询、截断、
+删除文件和创建目录。之前的原生 Preview 1 包含多进程里程碑，尚无这些文件调用。
 这些源码新增功能尚未包含在上方的 **preview.2 安装 ISO** 中。
 [原生程序使用方式、测试和限制](native/README.md#run-native-programs-from-mnfs)。
 
@@ -23,8 +28,8 @@
 
 两个架构均集成 C／汇编自研内核的实验入口，与独立的 Debian 13／Linux 6.12 LTS
 应用环境。原生入口用于内核和文件系统开发；Firefox、VS Code、CTF、Wi-Fi 和日常
-系统管理使用 Linux 环境。旧的约十几 MB 原生启动盘及 Desktop .5 Live 镜像是历史
-发布，不能代替本次安装镜像。[ARM64 原生内核说明](native/arch/arm64/README.md)。
+系统管理使用 Linux 环境。原生内核 ISO 是开发测试介质，尚不能代替完整安装镜像。
+[ARM64 原生内核说明](native/arch/arm64/README.md)。
 
 | 环境 | 当前功能 |
 | --- | --- |

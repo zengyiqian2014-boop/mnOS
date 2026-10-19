@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later
  * Local-console accounts. All exposed filesystem and UI entry points check this
- * session; ring-3 probes have no filesystem/account syscalls. No Linux ABI claim.
+ * session; native file requests also verify the process's captured UID.
+ * Account administration stays in the console. No Linux ABI claim.
  */
 #include "auth.h"
 #include <string.h>

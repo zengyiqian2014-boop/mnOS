@@ -200,6 +200,8 @@ void input_init(void);
 void ui_init(void);
 void files_init(void);
 void files_session(void);
+struct mnfs;
+struct mnfs *files_volume(const char **);
 bool files_command(const char *, void (*)(const char *));
 void ui_tick(void);
 void ui_key(char);

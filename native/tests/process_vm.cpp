@@ -154,7 +154,7 @@ int main(int argc, char **argv) {
         require(run({tool, "format", disk.string(), "32"}) == 0, "format");
         mnfs({"mkdir", "/bin"}); mnfs({"mkdir", "/root"});
         auto programs = build / (arch == "arm64" ? "arm64/user" : "user");
-        for (auto name: {"hello", "fault", "badptr", "isolate", "fpstate", "simdstate", "tlsstate"})
+        for (auto name: {"hello", "fault", "badptr", "isolate", "fpstate", "simdstate", "tlsstate", "filetest"})
             mnfs({"import", std::string("/bin/") + name, (programs / (std::string(name)+".elf")).string()});
         mnfs({"import", "/root/hidden", (programs / "hello.elf").string()});
         require(run({tool, disk.string(), "import", "/bin/hello", (programs / "hello.elf").string()}) != 0,
@@ -170,6 +170,11 @@ int main(int argc, char **argv) {
         for (unsigned phase = 1; phase <= 2; ++phase) {
             VM vm(build, work, disk, arch, phase); vm.login(phase == 1);
             vm.hello("/disk/bin/hello"); vm.hello("/ram/bin/hello");
+            auto file_mark = vm.command("exec /disk/bin/filetest", "FILE: native user read/write, sparse offsets and permissions passed");
+            auto file_pid = vm.launched(file_mark);
+            vm.wait("PROCESS " + file_pid + " exited status=0", file_mark);
+            vm.wait("PROCESS reaped; pages restored=1 pid=" + file_pid + "\n", file_mark);
+            if (phase == 2) vm.wait("FILE: previous boot data present", file_mark);
             if (phase == 1) {
                 auto free = vm.pages();
                 for (unsigned i=0;i<12;i++) vm.hello("/disk/bin/hello");

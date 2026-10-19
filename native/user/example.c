@@ -6,6 +6,51 @@
 #else
 #define BASE 0x100000000ULL
 #endif
+#ifdef PROGRAM_filetest
+static unsigned char bytes[64];
+static char path[96];
+static const unsigned char payload[] = {0, 255, 'm', 'n', 'O', 'S', 1};
+static void check(int ok) { if (!ok) native_exit(110); }
+_Noreturn void _start(void) {
+    int64_t home = native_file(NATIVE_FILE_HOME, 0, path, sizeof path, 1);
+    check(home > 0 && home < 64);
+    const char suffix[] = "/native-file.bin";
+    for (unsigned i = 0; i < sizeof suffix; ++i) path[home + i] = suffix[i];
+    uint64_t offset = (1ULL << 45) + 4094;
+    int64_t created = native_file(NATIVE_FILE_CREATE, path, 0, 0, 0);
+    check(created == 0 || created == -17);
+    if (!created) {
+        check(native_file(NATIVE_FILE_WRITE, path, (void *)payload, sizeof payload, offset) == sizeof payload);
+    } else {
+        static const char persisted[] = "FILE: previous boot data present\n";
+        native_write(persisted, sizeof persisted - 1);
+    }
+    check(native_file(NATIVE_FILE_READ, path, bytes, sizeof payload, offset) == sizeof payload);
+    for (unsigned i = 0; i < sizeof payload; ++i) check(bytes[i] == payload[i]);
+    struct native_file_stat st;
+    check(!native_file(NATIVE_FILE_STAT, path, &st, sizeof st, 0));
+    check(st.size == offset + sizeof payload && st.inode && !st.directory);
+    check(native_file(NATIVE_FILE_READ, path, bytes, 1, st.size) == 0);
+    check(native_file(NATIVE_FILE_READ, path, (void *)(uintptr_t)BASE, 1, offset) == -14);
+    check(native_file(NATIVE_FILE_WRITE, path, (void *)(uintptr_t)(BASE + 8191), 2, 0) == -14);
+    check(native_call(NATIVE_FILE_CALL, BASE + 8192, sizeof(struct native_file_request)) == -14);
+    check(native_file(NATIVE_FILE_READ, "/disk/system/accounts.bin", bytes, 1, 0) == -13);
+    check(native_file(NATIVE_FILE_READ, "/disk/root/hidden", bytes, 1, 0) == -13);
+    check(native_file(NATIVE_FILE_CREATE, "/disk/home/demo/../root/escape", 0, 0, 0) == -13);
+    home = native_file(NATIVE_FILE_HOME, 0, path, sizeof path, 0);
+    check(home > 0 && home < 64);
+    for (unsigned i = 0; i < sizeof suffix; ++i) path[home + i] = suffix[i];
+    check(!native_file(NATIVE_FILE_CREATE, path, 0, 0, 0));
+    check(native_file(NATIVE_FILE_WRITE, path, (void *)payload, sizeof payload, 0) == sizeof payload);
+    check(!native_file(NATIVE_FILE_TRUNCATE, path, 0, 0, 3));
+    check(native_file(NATIVE_FILE_READ, path, bytes, sizeof bytes, 0) == 3);
+    check(!native_file(NATIVE_FILE_REMOVE, path, 0, 0, 0));
+    check(native_file(NATIVE_FILE_READ, path, bytes, 1, 0) == -2);
+    static const char ok[] = "FILE: native user read/write, sparse offsets and permissions passed\n";
+    native_write(ok, sizeof ok - 1);
+    native_exit(0);
+}
+#endif
 #ifdef PROGRAM_hello
 static volatile unsigned initialized = 42;
 static volatile unsigned bss[16];

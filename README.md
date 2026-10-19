@@ -2,6 +2,9 @@
 
 [English](README.md) | [中文](README.zh.md)
 
+[Download the original kernel preview: AMD64 / ARM64](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.3-native-preview.2)
+· [Original-system scope and next milestones](native/SYSTEM.md)
+
 [Download the amd64 / ARM64 offline installers](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.2)
 · [Boot and validation record](live/VALIDATION.md)
 
@@ -13,6 +16,9 @@ The source branch now supports native `exec PATH`, `ps` and `kill PID`, with
 MNFS-backed C executables, dynamically allocated concurrent processes, isolated
 address spaces, sleep/wakeup queues and process memory reclamation.
 Applications currently share the boot CPU and use a small static executable ABI.
+Native 0.3 Preview 2 also adds permission-checked native user file operations:
+create, read, write, stat, truncate, remove and mkdir. The earlier native
+Preview 1 publishes the process milestone without these file calls.
 This source work is **not yet included in
 the linked preview.2 installer ISO**.
 [Native program usage, tests and limits](native/README.md#run-native-programs-from-mnfs).
@@ -31,8 +37,8 @@ installer, creates an account and installs to a chosen disk. Shut down, remove
 the ISO, and boot from that disk. Both installers include an experimental entry
 for the matching original kernel. [Installation instructions and limits](live/INSTALLER.md)
 describe the whole-disk erase flow, UEFI/BIOS requirements and VM display setup.
-The older small native-only ISOs and Desktop .5 live images remain historical
-releases; they are not the new installation media.
+Native-only kernel ISOs are development media; they are not the full Linux
+installation media. Older native/Desktop releases remain separately archived.
 
 | Environment | Current capabilities |
 | --- | --- |

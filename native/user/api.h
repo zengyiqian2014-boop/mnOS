@@ -3,6 +3,7 @@
 #define MNOS_USER_API_H
 #include <stdint.h>
 #include <stddef.h>
+#include "../include/file_api.h"
 static inline int64_t native_call(uint64_t op, uint64_t arg, uint64_t len) {
 #ifdef __aarch64__
     register uint64_t x8 __asm__("x8") = op;
@@ -21,6 +22,11 @@ static inline int64_t native_write(const char *p, size_t n) {
 }
 static inline int64_t native_getpid(void) { return native_call(6, 0, 0); }
 static inline int64_t native_getuid(void) { return native_call(7, 0, 0); }
+static inline int64_t native_file(unsigned op, const char *path, void *buffer,
+                                  size_t length, uint64_t offset) {
+    struct native_file_request request = {op, (uintptr_t)path, (uintptr_t)buffer, length, offset};
+    return native_call(NATIVE_FILE_CALL, (uintptr_t)&request, sizeof request);
+}
 static inline _Noreturn void native_exit(unsigned status) {
     native_call(3, status, 0);
     for (;;) {}
