@@ -156,12 +156,14 @@ static void add_line(const char *s) {
             memcpy(history[i - 1], history[i], sizeof history[i]);
         --history_count;
     }
-    unsigned i = 0;
-    while (s[i] && i < sizeof history[0] - 1) {
-        history[history_count][i] = s[i];
-        ++i;
+    size_t length = strlen(s), i = 0, end = 0;
+    while (i < length) {
+        font_decode(s, length, &i);
+        if (i >= sizeof history[0]) break;
+        end = i;
     }
-    history[history_count++][i] = 0;
+    memcpy(history[history_count], s, end);
+    history[history_count++][end] = 0;
 }
 static void add_number(const char *label, uint64_t n) {
     char row[100], num[24];
@@ -858,12 +860,7 @@ static void window_content(unsigned app) {
         unsigned max = (unsigned)(v->h - 174) / 25,
                  start = history_count > max ? history_count - max : 0;
         for (unsigned i = start; i < history_count; i++) {
-            char row[105];
-            unsigned limit = (unsigned)(w - 28) / text_width("M", FONT_MONO18);
-            if (limit > 99)
-                limit = 99;
-            copy_string(row, limit + 1, history[i]);
-            text(x + 14, y + 40 + (int)(i - start) * 25, row, FONT_MONO18, FG);
+            text_fit(x + 14, y + 40 + (int)(i - start) * 25, history[i], FONT_MONO18, FG, w - 28);
         }
         text(x + 14, v->y + v->h - 61, ">", FONT_MONO18, ACCENT);
         size_t view = (size_t)(w - 65) / text_width("M", FONT_MONO18);

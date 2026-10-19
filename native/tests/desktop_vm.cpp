@@ -317,6 +317,7 @@ int main(int argc, char **argv) {
             vm.command("cat /disk/home/demo/untitled.txt", "A first save must retain the untitled document.");
             vm.command("exec /ram/bin/hello",
                        "HELLO: native user ELF; initialized data and BSS OK");
+            vm.command("help -cn", "mnOS 中文帮助");
             vm.screenshot(build / (arch + "-terminal.ppm"));
             vm.send("\033");
             for (unsigned i = 0; i < 20; i++)
