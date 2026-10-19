@@ -1,7 +1,14 @@
 FROM debian:trixie-slim@sha256:a29215f6a35e51e22adffa17f89e9d2ef06214e64a2bad10d765c46aea49f11f AS common
 ARG DEBIAN_FRONTEND=noninteractive
-RUN printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d && chmod 755 /usr/sbin/policy-rc.d \
+# Keep installed tools' offline manuals, including files omitted from the base
+# image before this build. Installing man-db alone does not restore those files.
+RUN sed -i '\|^path-exclude /usr/share/man/\*$|d; \|^path-exclude /usr/share/info/\*$|d' /etc/dpkg/dpkg.cfg.d/docker \
+    && dpkg-query -S '/usr/share/man/*' '/usr/share/info/*' \
+       | sed 's/: \/usr\/share\/.*//' | tr ',' '\n' | sed 's/^ *//; s/ *$//' | sort -u > /tmp/base-manual-packages \
+    && printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d && chmod 755 /usr/sbin/policy-rc.d \
     && apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && xargs -r apt-get install -y --no-install-recommends --reinstall < /tmp/base-manual-packages \
+    && rm /tmp/base-manual-packages \
     && update-ca-certificates \
     && sed -i 's/Components: main/Components: main contrib non-free non-free-firmware/' /etc/apt/sources.list.d/debian.sources \
     && sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources

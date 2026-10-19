@@ -17,6 +17,14 @@ if mnos-pkg install ./script >/dev/null 2>&1; then exit 1; fi
 if command -v javac >/dev/null; then echo 'Unexpected Java SDK' >&2; exit 1; fi
 work=$(mktemp -d)
 trap 'rm -r "$work"' EXIT
+# A container base can contain man-db while filtering every manual file out.
+# Read real bundled manuals with networking disabled; command presence alone
+# does not prove that help TOOL works on the installed system.
+for manual in ls apt nmap tcpdump nano ip systemctl; do
+    man --where "$manual" >/dev/null
+    MANPAGER=cat MANWIDTH=80 mnos-help "$manual" > "$work/manual"
+    test -s "$work/manual"
+done
 printf '#include <stdio.h>\nint main(void){puts("C toolchain PASS");}\n' > "$work/hello.c"
 cc -Wall -Wextra -Werror "$work/hello.c" -o "$work/c-program"
 "$work/c-program"
