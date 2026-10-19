@@ -287,7 +287,10 @@ static void kernel_command(const char *cmd) {
         add_line(cpu_brand);
         add_number("Discovered CPUs: ", cpu_count());
         add_number("Online CPUs: ", cpu_online_count());
-    } else if (streq(cmd, "memory") || streq(cmd,"mem")) {
+    } else if (streq(cmd,"mem")) {
+        add_number("Free physical pages: ", pages_free());
+        add_number("Usable physical pages: ", pages_total());
+    } else if (streq(cmd, "memory")) {
         add_number("Free physical pages (4 KiB): ", pages_free());
         add_number("Usable physical pages (4 KiB): ", pages_total());
         add_number("Physical address limit (bytes): ", memory_limit());
