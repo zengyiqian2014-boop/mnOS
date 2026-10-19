@@ -555,7 +555,7 @@ static void open_file(unsigned index) {
 }
 static void save_document(void) {
     if (!*edit_path) {
-        dialog = 1;
+        dialog = 5;
         dialog_len = 0;
         dialog_text[0] = 0;
         dirty = true;
@@ -643,6 +643,12 @@ static void finish_dialog(void) {
     int e = f ? mnfs_create(f, p, dialog == 2) : MN_RO;
     if (e) {
         announce(mnfs_error(e));
+        return;
+    }
+    if (dialog == 5) {
+        copy_string(edit_path, sizeof edit_path, path);
+        dialog = 0;
+        save_document();
         return;
     }
     if (dialog == 1) {
@@ -940,6 +946,7 @@ static void draw(void) {
         rounded(x, y, 650, 230, 0x304454);
         text(x + 24, y + 15,
              power_dialog  ? "Power"
+             : dialog == 5 ? "Save document"
              : dialog == 1 ? "New text file"
              : dialog == 2 ? "New folder"
              : dialog == 3 ? "Delete selected item?"
@@ -947,7 +954,7 @@ static void draw(void) {
              28, FG);
         if (power_dialog)
             text(x + 24, y + 81, "R restart   S power off   Esc cancel", 18, FG);
-        else if (dialog < 3) {
+        else if (dialog < 3 || dialog == 5) {
             rounded(x + 24, y + 80, 600, 45, 0x101b25);
             text(x + 36, y + 85, dialog_text, 18, FG);
             text(x + 24, y + 146, "Enter create / Esc cancel", 18, MUTED);
@@ -1065,7 +1072,7 @@ void ui_key(char key) {
         else if (key == '\b' || key == 127) {
             if (dialog_len)
                 dialog_text[--dialog_len] = 0;
-        } else if (dialog < 3 && key >= 32 && key < 127 && dialog_len < sizeof dialog_text - 1) {
+        } else if ((dialog < 3 || dialog == 5) && key >= 32 && key < 127 && dialog_len < sizeof dialog_text - 1) {
             dialog_text[dialog_len++] = key;
             dialog_text[dialog_len] = 0;
         }

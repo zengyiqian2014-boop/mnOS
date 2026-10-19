@@ -270,6 +270,13 @@ int main(int argc, char **argv) {
             vm.login(true);
             vm.screenshot(build / (arch + "-desktop.ppm"));
             auto m = vm.output.size();
+            vm.key("f3");
+            vm.wait("UI: page 2", m);
+            vm.send("A first save must retain the untitled document.");
+            vm.key("ctrl-s");
+            m = vm.send("untitled.txt\n");
+            vm.wait("EDITOR: saved /disk/home/demo/untitled.txt", m);
+            m = vm.output.size();
             vm.key("f2");
             vm.wait("UI: page 1", m);
             vm.send("n");
@@ -288,6 +295,7 @@ int main(int argc, char **argv) {
             m = vm.send(std::string(1, (char)0x85));
             vm.wait("UI: page 4", m);
             vm.command("cat /disk/home/demo/hello.txt", "Saved by the native editor.");
+            vm.command("cat /disk/home/demo/untitled.txt", "A first save must retain the untitled document.");
             vm.command("exec /ram/bin/hello",
                        "HELLO: native user ELF; initialized data and BSS OK");
             vm.send("\033");
@@ -308,6 +316,7 @@ int main(int argc, char **argv) {
             auto m = vm.send("t");
             vm.wait("UI: page 4", m);
             vm.command("cat /disk/home/demo/hello.txt", "Saved by the native editor.");
+            vm.command("cat /disk/home/demo/untitled.txt", "A first save must retain the untitled document.");
             vm.command("write /disk/root/denied.txt blocked", "Permission denied");
             vm.screenshot(build / (arch + "-reboot.ppm"));
         }
