@@ -1,0 +1,65 @@
+name: Verify application rendering on unchanged ISOs
+on:
+  workflow_dispatch:
+    inputs:
+      verification_run:
+        description: Successful unchanged installer verification run
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  applications:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      VERIFY_RUN: ${{ inputs.verification_run }}
+      ARCH: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require successful installation verification
+        run: |
+          set -euo pipefail
+          [[ "$VERIFY_RUN" =~ ^[0-9]+$ ]]
+          gh api "repos/$GH_REPO/actions/runs/$VERIFY_RUN" > /tmp/run.json
+          jq -e --arg repo "$GH_REPO" '.repository.full_name == $repo and .path == ".github/workflows/verify-tools.yml" and .conclusion == "success"' /tmp/run.json
+      - uses: actions/download-artifact@v4
+        with:
+          name: mnOS-installer-${{ matrix.arch }}
+          run-id: ${{ inputs.verification_run }}
+          github-token: ${{ github.token }}
+          path: verified
+      - name: Boot unchanged ISO and edit through the rendered application
+        run: |
+          set -euo pipefail
+          (cd verified && sha256sum -c "mnOS-2.0-preview-installer-$ARCH.iso.sha256")
+          mkdir -p application-evidence
+          printf '%s\n' "$VERIFY_RUN" > application-evidence/installer-verification-run.txt
+          printf '%s\n' "$GITHUB_SHA" > application-evidence/application-test-commit.txt
+          cp "verified/mnOS-2.0-preview-installer-$ARCH.iso.sha256" application-evidence/
+          docker build -t mnos-application-test -f live/tests/VM.Dockerfile .
+          devices=()
+          if [ -c /dev/kvm ]; then devices+=(--device /dev/kvm); fi
+          docker run --rm --network none --memory=7g --cpus=4 "${devices[@]}" \
+            -v "$PWD:/source:ro" -v "$PWD/verified:/images:ro" -v "$PWD/application-evidence:/out" \
+            -e ARCH mnos-application-test \
+            sh -ec 'c++ -std=c++17 -O2 -Wall -Wextra -Werror /source/live/tests/install_vm.cpp -o /tmp/application-vm
+            /tmp/application-vm "$ARCH" "/images/mnOS-2.0-preview-installer-$ARCH.iso" /out --live-apps' \
+            2>&1 | tee application-evidence/application-vm.log
+          (cd verified && sha256sum -c "mnOS-2.0-preview-installer-$ARCH.iso.sha256")
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: application-rendering-${{ matrix.arch }}
+          path: application-evidence/
+          retention-days: 14

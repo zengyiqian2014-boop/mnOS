@@ -8,6 +8,9 @@ on:
       verification_run:
         description: Optional successful Verify existing installation ISOs run
         required: false
+      application_run:
+        description: Successful unchanged-ISO application rendering verification
+        required: true
       release_tag:
         description: New installer preview tag
         required: true
@@ -24,6 +27,7 @@ jobs:
       GH_REPO: ${{ github.repository }}
       SOURCE_RUN: ${{ inputs.build_run }}
       VERIFY_RUN: ${{ inputs.verification_run }}
+      APP_RUN: ${{ inputs.application_run }}
       TAG: ${{ inputs.release_tag }}
     steps:
       - name: Verify source and both architecture tests
@@ -59,6 +63,12 @@ jobs:
           source_sha=$(jq -r .head_sha /tmp/run.json)
           [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
           printf 'base_sha=%s\n' "$source_sha" >> "$GITHUB_OUTPUT"
+          [[ "$APP_RUN" =~ ^[0-9]+$ ]]
+          gh api "repos/$GH_REPO/actions/runs/$APP_RUN" > /tmp/app-run.json
+          jq -e --arg repo "$GH_REPO" '.repository.full_name == $repo and .path == ".github/workflows/verify-applications.yml" and .conclusion == "success"' /tmp/app-run.json
+          gh api "repos/$GH_REPO/actions/runs/$APP_RUN/jobs" > /tmp/app-jobs.json
+          jq -e '[.jobs[] | select(.name | startswith("applications ("))] | length == 2 and all(.[]; .conclusion == "success")' /tmp/app-jobs.json
+          printf 'app_sha=%s\n' "$(jq -r .head_sha /tmp/app-run.json)" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
         with:
           ref: ${{ steps.source.outputs.sha }}
@@ -74,11 +84,18 @@ jobs:
           run-id: ${{ inputs.build_run }}
           github-token: ${{ github.token }}
           path: evidence/native-randomness
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: application-rendering-*
+          run-id: ${{ inputs.application_run }}
+          github-token: ${{ github.token }}
+          path: evidence/applications
       - name: Stage checked binaries and validation records
         env:
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
           BASE_SHA: ${{ steps.source.outputs.base_sha }}
           VERIFICATION_MODE: ${{ steps.source.outputs.verification_mode }}
+          APP_SHA: ${{ steps.source.outputs.app_sha }}
         run: |
           set -euo pipefail
           mkdir -p release evidence
@@ -97,6 +114,10 @@ jobs:
             fi
             test "$(cat "$source/source-installer-$arch.txt")" = "$BASE_SHA"
             (cd "$source" && sha256sum -c "mnOS-2.0-preview-installer-$arch.iso.sha256")
+            application="evidence/applications/application-rendering-$arch"
+            test "$(cat "$application/installer-verification-run.txt")" = "$VERIFY_RUN"
+            test "$(cat "$application/application-test-commit.txt")" = "$APP_SHA"
+            cmp "$source/mnOS-2.0-preview-installer-$arch.iso.sha256" "$application/mnOS-2.0-preview-installer-$arch.iso.sha256"
             # This release promises one downloadable ISO per architecture.
             # Stop before creating a public release if GitHub would require parts.
             bytes=$(stat -c %s "$source/mnOS-2.0-preview-installer-$arch.iso")
@@ -116,6 +137,7 @@ jobs:
           tar -czf release/installation-validation.tar.gz evidence
           printf '%s\n' "$SOURCE_SHA" > release/SOURCE_COMMIT.txt
           printf '%s\n' "$BASE_SHA" > release/PAYLOAD_COMMIT.txt
+          printf '%s\n' "$APP_SHA" > release/APPLICATION_TEST_COMMIT.txt
           bash live/release-assets.sh release
       - name: Publish installation media
         env:
