@@ -6,7 +6,8 @@ help -cn                     中文手册
 help [-cn] 主题               查看某一章
 help --list                  列出章节
 help -cn all | less           用翻页器阅读全部章节，q 退出
-help 工具名 / man 工具名       打开随软件安装的完整上游手册
+help 工具名                  查看随包手册或工具内置帮助
+man 工具名                   查看已安装的上游手册
 工具名 --help                查看当前版本的参数
 help cd                      保留 Bash 内建命令帮助
 
@@ -33,7 +34,9 @@ readelf、objdump、checksec、strace、ltrace、ffuf、gobuster、sqlmap、
 mitmproxy、john、hashcat、yara、steghide、binwalk、foremost、testdisk、
 photorec、openssl。系统管理：htop、btop、lsblk、findmnt、ip、iw、nmcli、
 systemctl、journalctl、smartctl、nvme、sensors、gparted、gnome-disks、ufw、lynis。
-每个工具的完整选项用 help 工具名 查看，上游手册的语言取决于该软件。
+用 help 工具名 查看参数：优先读取随包手册，没有手册时使用工具菜单中固定的
+帮助参数。不会执行任意命令，也不需要打开图形终端。上游帮助的语言与详细
+程度取决于该软件。
 准确安装版本在 /usr/share/doc/mnos/packages.tsv 和 dpkg-query -W 中。
 Python 只为已选第三方工具保留必要依赖；mnOS 不主动安装 Java SDK。
 本项目运行时工具使用编译后的 C/C++ 程序。

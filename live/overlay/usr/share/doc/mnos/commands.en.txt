@@ -6,7 +6,8 @@ help -cn                     Chinese manual
 help [-cn] TOPIC             Read one chapter
 help --list                  List chapters
 help all | less              Read every chapter with a pager
-help TOOL / man TOOL         Read that installed tool's full upstream manual
+help TOOL                    Read the installed manual or catalogued tool help
+man TOOL                     Read a bundled upstream manual
 TOOL --help                  Inspect options for the installed tool version
 help cd                      Bash built-in documentation is preserved
 
@@ -35,7 +36,10 @@ objdump, checksec, strace, ltrace, ffuf, gobuster, sqlmap, mitmproxy, john, hash
 yara, steghide, binwalk, foremost, testdisk, photorec, openssl.
 System: htop, btop, lsblk, findmnt, ip, iw, nmcli, systemctl, journalctl,
 smartctl, nvme, sensors, gparted, gnome-disks, ufw, lynis, debsums.
-Run help TOOL for full parameters. Installed tools and exact versions are listed
+Run help TOOL for parameters. It opens the bundled man page when available;
+otherwise it runs the fixed help arguments used by the tool menu. It does not
+run arbitrary commands or open a graphical terminal. Upstream help language
+and completeness depend on the tool. Installed tools and exact versions are listed
 in /usr/share/doc/mnos/packages.tsv and dpkg-query -W.
 Python is retained only where chosen third-party tools require it. No Java SDK
 is selected by mnOS. Our runtime utilities are compiled C/C++.
