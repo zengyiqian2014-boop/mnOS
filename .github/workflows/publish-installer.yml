@@ -40,11 +40,16 @@ jobs:
             [[ "$VERIFY_RUN" =~ ^[0-9]+$ ]]
             jq -e '[.jobs[] | select(.name | startswith("build ("))] | length == 2 and all(.[]; any(.steps[]; .name == "Build unified offline installer and original kernel" and .conclusion == "success"))' /tmp/jobs.json
             gh api "repos/$GH_REPO/actions/runs/$VERIFY_RUN" > /tmp/verify.json
-            jq -e --arg repo "$GH_REPO" '.conclusion == "success" and .repository.full_name == $repo and .path == ".github/workflows/retest-installer.yml"' /tmp/verify.json
+            jq -e --arg repo "$GH_REPO" '.conclusion == "success" and .repository.full_name == $repo and (.path == ".github/workflows/retest-installer.yml" or .path == ".github/workflows/verify-tools.yml")' /tmp/verify.json
             gh api "repos/$GH_REPO/actions/runs/$VERIFY_RUN/jobs" > /tmp/verify-jobs.json
             jq -e '[.jobs[] | select(.name | startswith("verify ("))] | length == 2 and all(.[]; .conclusion == "success")' /tmp/verify-jobs.json
             printf 'assets_run=%s\n' "$VERIFY_RUN" >> "$GITHUB_OUTPUT"
             printf 'sha=%s\n' "$(jq -r .head_sha /tmp/verify.json)" >> "$GITHUB_OUTPUT"
+            if [ "$(jq -r .path /tmp/verify.json)" = .github/workflows/verify-tools.yml ]; then
+              printf 'verification_mode=unchanged\n' >> "$GITHUB_OUTPUT"
+            else
+              printf 'verification_mode=overlay\n' >> "$GITHUB_OUTPUT"
+            fi
           else
             jq -e '.conclusion == "success"' /tmp/run.json
             jq -e '[.jobs[] | select(.name | startswith("build ("))] | length == 2 and all(.[]; .conclusion == "success")' /tmp/jobs.json
@@ -73,6 +78,7 @@ jobs:
         env:
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
           BASE_SHA: ${{ steps.source.outputs.base_sha }}
+          VERIFICATION_MODE: ${{ steps.source.outputs.verification_mode }}
         run: |
           set -euo pipefail
           mkdir -p release evidence
@@ -80,7 +86,13 @@ jobs:
             source="verified/mnOS-installer-$arch"
             if [ -n "$VERIFY_RUN" ]; then
               test "$(cat "$source/verified-build-run.txt")" = "$SOURCE_RUN"
-              test "$(cat "$source/boot-overlay-$arch.txt")" = "$SOURCE_SHA"
+              if [ "$VERIFICATION_MODE" = unchanged ]; then
+                test "$(cat "$source/verification-mode.txt")" = unchanged
+                # The verification workflow validates the original checksum
+                # before and after booting; no runtime overlay is applied.
+              else
+                test "$(cat "$source/boot-overlay-$arch.txt")" = "$SOURCE_SHA"
+              fi
               test "$(cat "$source/verification-code.txt")" = "$SOURCE_SHA"
             fi
             test "$(cat "$source/source-installer-$arch.txt")" = "$BASE_SHA"

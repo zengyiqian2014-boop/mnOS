@@ -309,6 +309,15 @@ int main(int argc,char **argv) {
             // Authenticate promptly: login/PAM has a real login timeout, unlike
             // agetty's old pre-authentication username prompt.
             send_all(vm.serial,account+"\n"); vm.wait("Password:",60);
+            if(!nvme) {
+                size_t rejected=vm.output.size();
+                send_all(vm.serial,"incorrect-test-password\n");
+                vm.wait("Login incorrect",60,rejected);
+                vm.wait("login:",60,rejected);
+                check(vm.output.find("incorrect-test-password",rejected)==std::string::npos,
+                      "Console echoed the password");
+                send_all(vm.serial,account+"\n"); vm.wait("Password:",60,rejected);
+            }
             send_all(vm.serial,password+"\n"); vm.pause(3);
             vm.pause(12); vm.screen(out/(phase+"-login.ppm"));
             // Use real credentials on the graphical greeter, then validate its desktop.
