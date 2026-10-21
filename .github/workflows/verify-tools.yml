@@ -71,7 +71,8 @@ jobs:
             bash /source/tests/account-preflight.sh /usr/lib/mnos/account-preflight
             c++ -std=c++17 -O2 -Wall -Wextra -Werror /source/tests/enrollment-runtime.cpp -lutil -lcrypt -o /tmp/enrollment-test
             /tmp/enrollment-test
-            sh /source/tests/tool-environment.sh' 2>&1 | tee verified/validation/payload-tools.log
+            sh /source/tests/tool-environment.sh
+            sh /source/tests/ctf-environment.sh' 2>&1 | tee verified/validation/payload-tools.log
           docker build -t mnos-installer-test -f live/tests/VM.Dockerfile .
       - name: Verify installation, real console authentication and application windows
         run: |
@@ -83,6 +84,10 @@ jobs:
             sh -ec 'c++ -std=c++17 -O2 -Wall -Wextra -Werror /source/live/tests/install_vm.cpp -o /tmp/install-vm
             /tmp/install-vm "$ARCH" "/out/mnOS-2.0-preview-installer-$ARCH.iso" /out/validation' 2>&1 | tee verified/validation/install-vm.log
           (cd verified && sha256sum -c "mnOS-2.0-preview-installer-$ARCH.iso.sha256")
+          grep -q 'PASS: VS Code painted its document and saved real keyboard edits' verified/validation/install-vm.log
+          grep -q 'PASS: real GUI installation; no-ISO UEFI boot; VirtIO and NVMe disks; ordinary-user desktop and applications' verified/validation/install-vm.log
+          test -s verified/validation/installed-ctf.ppm
+          printf 'integrated-gui-edit-save\n' > verified/application-verification.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -9,7 +9,7 @@ on:
         description: Optional successful Verify existing installation ISOs run
         required: false
       application_run:
-        description: Supplemental application verification (required when using a separate verification run)
+        description: Optional supplemental application verification (older verification runs require it)
         required: false
       tool_center_run:
         description: Successful unchanged-payload GUI keyboard and window verification
@@ -86,8 +86,12 @@ jobs:
             gh api "repos/$GH_REPO/actions/runs/$APP_RUN/jobs" > /tmp/app-jobs.json
             jq -e '[.jobs[] | select(.name | startswith("applications ("))] | length == 2 and all(.[]; .conclusion == "success")' /tmp/app-jobs.json
             printf 'app_sha=%s\n' "$(jq -r .head_sha /tmp/app-run.json)" >> "$GITHUB_OUTPUT"
+          elif [ -n "$VERIFY_RUN" ]; then
+            jq -e '.path == ".github/workflows/verify-tools.yml"' /tmp/verify.json
+            jq -e '[.jobs[] | select(.name | startswith("verify ("))] | length == 2 and all(.[];
+              any(.steps[]; .name == "Verify installation, real console authentication and application windows" and .conclusion == "success"))' /tmp/verify-jobs.json
+            printf 'app_sha=%s\n' "$(jq -r .head_sha /tmp/verify.json)" >> "$GITHUB_OUTPUT"
           else
-            test -z "$VERIFY_RUN"
             printf 'app_sha=%s\n' "$source_sha" >> "$GITHUB_OUTPUT"
           fi
       - uses: actions/checkout@v4
@@ -155,6 +159,13 @@ jobs:
               test "$(cat "$application/application-test-commit.txt")" = "$APP_SHA"
               cmp "$source/mnOS-2.0-preview-installer-$arch.iso.sha256" "$application/mnOS-2.0-preview-installer-$arch.iso.sha256"
             else
+              if [ -n "$VERIFY_RUN" ]; then
+                test "$(cat "$source/application-verification.txt")" = integrated-gui-edit-save
+                grep -q 'PASS: VS Code painted its document and saved real keyboard edits' "$source/validation/install-vm.log"
+                grep -q 'PASS: real GUI installation; no-ISO UEFI boot; VirtIO and NVMe disks; ordinary-user desktop and applications' "$source/validation/install-vm.log"
+                test -s "$source/validation/installed-ctf.ppm"
+                test -s "$source/validation/vscode-window.ppm"
+              fi
               test -s "$source/validation/ctf-workbench.png"
               test -s "$source/validation/ghex.png"
               test -s "$source/validation/sqlitebrowser.png"

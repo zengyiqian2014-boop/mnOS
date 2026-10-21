@@ -323,8 +323,12 @@ timeout 600 sh -c 'export DISPLAY=:0; count=0; until id=$(xdotool search --onlyv
         start=vm.output.size();
         // Bash may put a bracketed-paste control sequence and CR immediately
         // before a quiet command's first output. Emit our own line boundary.
-        send_all(vm.serial,"timeout 45 sh -c 'until grep -q \"MNOS UI OK\" /tmp/mnos-app.c; do sleep 1; done' && printf '\\nMNOS_CODE_EDIT_PASS\\n'\n");
-        vm.wait("\r\nMNOS_CODE_EDIT_PASS\r\n",75,start);
+        // A loaded document can still be completing Electron initialization
+        // under TCG. Observed ARM64 logs show keyboard edits and a successful
+        // save after the old 45-second deadline. Wait for the actual saved
+        // line, never manufacture it through the serial shell.
+        send_all(vm.serial,"timeout 180 sh -c 'until grep -Fxq \"// MNOS UI OK\" /tmp/mnos-app.c; do sleep 1; done' && sed -n '1,8p' /tmp/mnos-app.c && printf '\\nMNOS_CODE_EDIT_PASS\\n'\n");
+        vm.wait("\r\nMNOS_CODE_EDIT_PASS\r\n",210,start,false,true);
         vm.capture(picture);
         check(editor_painted(picture),"Editor disappeared after saving");
         std::cout << "PASS: VS Code painted its document and saved real keyboard edits" << std::endl;
@@ -332,6 +336,8 @@ timeout 600 sh -c 'export DISPLAY=:0; count=0; until id=$(xdotool search --onlyv
         start=vm.output.size();
         send_all(vm.serial,"DISPLAY=:0 xset q; cat /tmp/mnos-code.log; ps -eo pid,comm,pcpu,stat --sort=-pcpu | head -25; find ~/.config/Code/logs -name '*.log' -exec tail -n 25 {} \\; 2>/dev/null; printf '\\nMNOS_CODE_DIAGNOSTICS_END\\n'\n");
         try { vm.wait("\r\nMNOS_CODE_DIAGNOSTICS_END\r\n",90,start); }
+        catch(const std::exception &) {}
+        try { vm.capture(out/"vscode-failure.ppm"); }
         catch(const std::exception &) {}
         throw;
     }
