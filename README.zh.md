@@ -96,6 +96,10 @@ mnos-pkg search ripgrep
 
 图形工具中心新增 **CTF 工作台** 和 **Linux 命令库**：`mnos-center --ctf`、`mnos-center --commands`。按实际安装情况自动索引命令，不执行被索引的程序；GHex、SQLite DB Browser、Wireshark 可直接打开图形界面。`help -cn ctf` 和 `help -cn commands` 提供分类说明及离线练习。
 
+AMD64 安装完成、移除 ISO 后从硬盘启动的实测画面；后台的 VS Code 已完成 C 文件编辑保存：
+
+![安装后的 mnOS 工具桌面与 CTF 工作台](assets/ctf-workbench.png)
+
 ## 原版 BusyBox 版本
 
 原版仍单独保留：**Linux 6.13.3 + BusyBox + GRUB**，提供 FHS 目录树和 BIOS/UEFI
