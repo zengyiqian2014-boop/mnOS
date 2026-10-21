@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       build_run:
-        description: Successful unified installer source run
+        description: Unified installer source run with completed images and tool checks
         required: true
 permissions:
   contents: read
@@ -27,12 +27,17 @@ jobs:
       ARCH: ${{ matrix.arch }}
     steps:
       - uses: actions/checkout@v4
-      - name: Check successful installer source
+      - name: Check completed images and source tool checks
         run: |
           set -euo pipefail
           [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
           gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN" > /tmp/source.json
-          jq -e --arg repo "$GH_REPO" '.repository.full_name == $repo and .path == ".github/workflows/installer.yml" and .conclusion == "success"' /tmp/source.json
+          jq -e --arg repo "$GH_REPO" '.repository.full_name == $repo and .path == ".github/workflows/installer.yml" and .status == "completed"' /tmp/source.json
+          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN/jobs" > /tmp/jobs.json
+          jq -e --arg arch "$ARCH" 'any(.jobs[]; (.name | startswith("build ("+$arch+",")) and
+            any(.steps[]; .name == "Build unified offline installer and original kernel" and .conclusion == "success") and
+            any(.steps[]; .name == "Verify bundled applications, compiler headers and detailed manuals" and .conclusion == "success") and
+            any(.steps[]; .name == "Verify graphical tool center and CTF application windows" and .conclusion == "success"))' /tmp/jobs.json
       - uses: actions/download-artifact@v4
         with:
           name: mnOS-installer-${{ matrix.arch }}
