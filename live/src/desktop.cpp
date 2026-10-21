@@ -294,10 +294,22 @@ static bool matches(const Entry &e) {
 static void render_entries() {
     if (!list) return;
     gtk_container_foreach(GTK_CONTAINER(list), +[](GtkWidget *w, gpointer) { gtk_widget_destroy(w); }, nullptr);
-    size_t count = 0;
+    const std::string query = folded(gtk_entry_get_text(GTK_ENTRY(search)));
+    std::vector<std::pair<int, Entry *>> matching;
     for (auto &e : entries) {
         if (!matches(e)) continue;
-        if (++count > visible_limit) continue;
+        const std::string name = folded(e.name);
+        int rank = 3;
+        if (query.empty() || name == query ||
+            (e.command.size() > 1 && folded(e.command[1]) == query)) rank = 0;
+        else if (name.find(query) == 0) rank = 1;
+        else if (name.find(query) != std::string::npos) rank = 2;
+        matching.emplace_back(rank, &e);
+    }
+    std::stable_sort(matching.begin(), matching.end(), [](const auto &a, const auto &b) { return a.first < b.first; });
+    const size_t count = matching.size();
+    for (size_t i = 0; i < std::min(count, visible_limit); ++i) {
+        auto &e = *matching[i].second;
         auto *row = gtk_list_box_row_new();
         g_object_set_data(G_OBJECT(row), "entry", &e);
         auto *inner = box(GTK_ORIENTATION_HORIZONTAL, 10);
@@ -678,6 +690,9 @@ int main(int argc, char **argv) {
             });
             if (found == entries.end() || !matches(*found))
                 throw std::runtime_error("Installed command discovery did not find ls");
+            auto *first = gtk_list_box_get_row_at_index(GTK_LIST_BOX(list), 0);
+            if (!first || static_cast<Entry *>(g_object_get_data(G_OBJECT(first), "entry"))->name != "ls")
+                throw std::runtime_error("Exact command search did not rank ls first");
             selected = "CTF 工具";
             gtk_entry_set_text(GTK_ENTRY(search), "");
             if (std::none_of(entries.begin(), entries.end(), [](const Entry &e) { return matches(e); }))
