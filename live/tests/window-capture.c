@@ -2,9 +2,17 @@
 #include <gtk/gtk.h>
 #include <gdk/gdkx.h>
 #include <stdlib.h>
+#include <string.h>
 int main(int argc,char **argv) {
     if(argc!=3)return 2;
     gtk_init(NULL,NULL);
+    if(!strcmp(argv[1],"--clipboard")) {
+        gchar *value=gtk_clipboard_wait_for_text(gtk_clipboard_get(GDK_SELECTION_CLIPBOARD));
+        int result=value && !strcmp(value,argv[2])?0:1;
+        g_free(value);
+        if(result)g_printerr("Search entry did not receive the expected keyboard input\n");
+        return result;
+    }
     GdkWindow *window=gdk_x11_window_foreign_new_for_display(gdk_display_get_default(),strtoul(argv[1],NULL,10));
     if(!window)return 1;
     if(gdk_window_get_width(window)<400 || gdk_window_get_height(window)<200)return 1;

@@ -11,6 +11,9 @@ on:
       application_run:
         description: Supplemental application verification (required when using a separate verification run)
         required: false
+      tool_center_run:
+        description: Successful unchanged-payload GUI keyboard and window verification
+        required: true
       release_tag:
         description: New installer preview tag
         required: true
@@ -28,6 +31,7 @@ jobs:
       SOURCE_RUN: ${{ inputs.build_run }}
       VERIFY_RUN: ${{ inputs.verification_run }}
       APP_RUN: ${{ inputs.application_run }}
+      GUI_RUN: ${{ inputs.tool_center_run }}
       TAG: ${{ inputs.release_tag }}
     steps:
       - name: Verify source and both architecture tests
@@ -69,6 +73,12 @@ jobs:
           source_sha=$(jq -r .head_sha /tmp/run.json)
           [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
           printf 'base_sha=%s\n' "$source_sha" >> "$GITHUB_OUTPUT"
+          [[ "$GUI_RUN" =~ ^[0-9]+$ ]]
+          gh api "repos/$GH_REPO/actions/runs/$GUI_RUN" > /tmp/gui-run.json
+          jq -e --arg repo "$GH_REPO" '.repository.full_name == $repo and .path == ".github/workflows/verify-tool-center.yml" and .conclusion == "success"' /tmp/gui-run.json
+          gh api "repos/$GH_REPO/actions/runs/$GUI_RUN/jobs" > /tmp/gui-jobs.json
+          jq -e '[.jobs[] | select(.name | startswith("gui ("))] | length == 2 and all(.[]; .conclusion == "success")' /tmp/gui-jobs.json
+          printf 'gui_sha=%s\n' "$(jq -r .head_sha /tmp/gui-run.json)" >> "$GITHUB_OUTPUT"
           if [ -n "$APP_RUN" ]; then
             [[ "$APP_RUN" =~ ^[0-9]+$ ]]
             gh api "repos/$GH_REPO/actions/runs/$APP_RUN" > /tmp/app-run.json
@@ -96,6 +106,12 @@ jobs:
           github-token: ${{ github.token }}
           path: evidence/native-randomness
       - uses: actions/download-artifact@v4
+        with:
+          pattern: tool-center-input-*
+          run-id: ${{ inputs.tool_center_run }}
+          github-token: ${{ github.token }}
+          path: evidence/tool-center-input
+      - uses: actions/download-artifact@v4
         if: inputs.application_run != ''
         with:
           pattern: application-rendering-*
@@ -108,6 +124,7 @@ jobs:
           BASE_SHA: ${{ steps.source.outputs.base_sha }}
           VERIFICATION_MODE: ${{ steps.source.outputs.verification_mode }}
           APP_SHA: ${{ steps.source.outputs.app_sha }}
+          GUI_SHA: ${{ steps.source.outputs.gui_sha }}
         run: |
           set -euo pipefail
           mkdir -p release evidence
@@ -126,6 +143,12 @@ jobs:
             fi
             test "$(cat "$source/source-installer-$arch.txt")" = "$BASE_SHA"
             (cd "$source" && sha256sum -c "mnOS-2.0-preview-installer-$arch.iso.sha256")
+            gui="evidence/tool-center-input/tool-center-input-$arch"
+            test "$(cat "$gui/build-run.txt")" = "$SOURCE_RUN"
+            test "$(cat "$gui/gui-test-commit.txt")" = "$GUI_SHA"
+            cmp "$source/mnOS-2.0-preview-installer-$arch.iso.sha256" "$gui/mnOS-2.0-preview-installer-$arch.iso.sha256"
+            test -s "$gui/command-search.png"
+            grep -q 'GUI CTF PASS' "$gui/gui-test.log"
             if [ -n "$APP_RUN" ]; then
               application="evidence/applications/application-rendering-$arch"
               test "$(cat "$application/installer-verification-run.txt")" = "$VERIFY_RUN"
@@ -157,6 +180,7 @@ jobs:
           printf '%s\n' "$SOURCE_SHA" > release/SOURCE_COMMIT.txt
           printf '%s\n' "$BASE_SHA" > release/PAYLOAD_COMMIT.txt
           printf '%s\n' "$APP_SHA" > release/APPLICATION_TEST_COMMIT.txt
+          printf '%s\n' "$GUI_SHA" > release/GUI_TEST_COMMIT.txt
           bash live/release-assets.sh release
       - name: Publish installation media
         env:
