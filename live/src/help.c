@@ -10,7 +10,7 @@
 #ifndef MNOS_MANUAL_DIR
 #define MNOS_MANUAL_DIR "/usr/share/doc/mnos"
 #endif
-static const char *topics[]={"help","tools","firefox","code","packages","build","network","kernel","system","files","native"};
+static const char *topics[]={"help","tools","commands","ctf","firefox","code","packages","build","network","kernel","system","files","native"};
 static int known(const char *s){for(size_t i=0;i<sizeof topics/sizeof *topics;i++)if(!strcmp(s,topics[i]))return 1;return !strcmp(s,"all");}
 static int has_manual(const char *topic) {
     pid_t child=fork();

@@ -13,7 +13,7 @@ F1–F7 打开应用，编辑器 Ctrl-S 保存，左上角 Applications 可搜�
 Linux 二进制兼容、原生网络／Wi-Fi、USB、AHCI/NVMe、音频、加速 GPU 和 APFS
 尚未完成。具体测试设备和功能限制见安装说明，不宣称兼容全部硬件或已适合日常使用。
 
-[工具集成安装包](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.3)
+[工具集成安装包](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.4)
 每个架构一份 ISO，包含 Firefox ESR、官方 VS Code、nano、C/C++ 编译器及标准头文件、
 CTF／系统工具和两个引导入口。这些应用运行在 Debian/Linux/Xfce 环境中，自研内核
 还没有 Linux 应用兼容层。安装器创建 ext4 系统；原生文件持久化另外需要受支持的 MNFS 卷。
@@ -74,7 +74,7 @@ Linux 工具环境的开发版实测画面：
 
 [English](README.md) | [中文](README.zh.md)
 
-左上角 **应用与工具** 按钮可搜索已安装应用和 121 个命令行工具入口；命令行条目打开终端帮助。内核、显示、壁纸和分区管理统一放进 **系统设置**，并更新风景壁纸、字体大小和清晰度。
+左上角 **应用与工具** 按钮可搜索已安装应用和 133 个命令行工具入口；命令行条目打开终端帮助。内核、显示、壁纸和分区管理统一放进 **系统设置**，并更新风景壁纸、字体大小和清晰度。
 
 在集成的 Linux 工具环境中，以普通账号打开应用、阅读帮助：
 
@@ -93,6 +93,8 @@ mnos-pkg search ripgrep
 再用 `sudo mnos-pkg install 软件包名` 安装。保留依赖解析和软件管理器的确认提示。
 新增软件需要联网，或事先准备完整的离线软件包及依赖。这些 Linux 应用当前不能
 在自研内核入口运行。
+
+图形工具中心新增 **CTF 工作台** 和 **Linux 命令库**：`mnos-center --ctf`、`mnos-center --commands`。按实际安装情况自动索引命令，不执行被索引的程序；GHex、SQLite DB Browser、Wireshark 可直接打开图形界面。`help -cn ctf` 和 `help -cn commands` 提供分类说明及离线练习。
 
 ## 原版 BusyBox 版本
 

@@ -17,7 +17,7 @@ run in kernel mode. Linux binary compatibility, Firefox, VS Code, native network
 Wi-Fi, USB, AHCI/NVMe, audio, accelerated GPU and APFS support remain unfinished.
 Tested hardware models and remaining limits are listed in the installation guide.
 
-The [integrated tools installer](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.3)
+The [integrated tools installer](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.4)
 includes Firefox ESR, official VS Code, nano, C/C++ build tools and headers,
 CTF/system utilities and both boot entries in one ISO per architecture. Those
 applications run in the Debian/Linux/Xfce environment; the original kernel has
@@ -88,7 +88,7 @@ Separate Linux desktop and system center, captured in a development VM:
 
 [VS Code editing and saving a C file as an ordinary user](assets/linux-vscode.png).
 
-The top-left **Applications & Tools** button searches installed apps and 121 named CLI tools. CLI entries open terminal help; kernel, display, wallpaper and partition controls share **System settings**. The desktop includes a new landscape wallpaper and outline-rendered text, a 34 px panel and 20 px menu icons.
+The top-left **Applications & Tools** button searches installed apps and 133 named tool entries plus an automatically discovered inventory of installed Linux commands. CLI entries open terminal help; kernel, display, wallpaper and partition controls share **System settings**. The desktop includes a new landscape wallpaper and outline-rendered text, a 34 px panel and 20 px menu icons.
 
 In the integrated Linux tools environment, use your ordinary account to launch
 applications and read help:
@@ -109,6 +109,8 @@ To install additional packages, refresh the signed repository indexes with
 resolution and the package manager's confirmation remain enabled. Internet
 access is needed unless the packages and all dependencies are available locally.
 These Linux applications do not run in the original kernel entry.
+
+The graphical tool center now includes **CTF Workbench** and **Linux Command Library**. Open `mnos-center --ctf` or `mnos-center --commands`; installed executable names are indexed without running them. GHex, DB Browser for SQLite and Wireshark open as GUI applications. `help ctf` and `help commands` document the included tool families and offline exercises.
 
 ## Legacy BusyBox edition
 

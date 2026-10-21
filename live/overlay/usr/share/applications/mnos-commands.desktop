@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Linux Command Library
+Name[zh_CN]=Linux 命令库
+Comment=Search installed executables and open their offline manuals
+Comment[zh_CN]=搜索已安装命令并查看离线手册
+Exec=mnos-center --commands
+Icon=utilities-terminal
+Categories=System;Utility;
+Keywords=Linux;commands;help;命令;帮助;
+StartupNotify=true

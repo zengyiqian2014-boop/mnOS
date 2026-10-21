@@ -7,7 +7,8 @@
       "gcc",
       "--help"
     ],
-    "description": "C 编译器"
+    "description": "C 编译器",
+    "ctf": false
   },
   {
     "name": "G++",
@@ -17,7 +18,8 @@
       "g++",
       "--help"
     ],
-    "description": "C++ 编译器"
+    "description": "C++ 编译器",
+    "ctf": false
   },
   {
     "name": "Clang",
@@ -27,7 +29,8 @@
       "clang",
       "--help"
     ],
-    "description": "C / C++ 编译器"
+    "description": "C / C++ 编译器",
+    "ctf": false
   },
   {
     "name": "clangd",
@@ -37,7 +40,8 @@
       "clangd",
       "--help"
     ],
-    "description": "C / C++ 语言服务器"
+    "description": "C / C++ 语言服务器",
+    "ctf": false
   },
   {
     "name": "LLD",
@@ -47,7 +51,8 @@
       "ld.lld",
       "--help"
     ],
-    "description": "LLVM 链接器"
+    "description": "LLVM 链接器",
+    "ctf": false
   },
   {
     "name": "Rust",
@@ -57,7 +62,8 @@
       "rustc",
       "--help"
     ],
-    "description": "Rust 编译器"
+    "description": "Rust 编译器",
+    "ctf": false
   },
   {
     "name": "Cargo",
@@ -67,7 +73,8 @@
       "cargo",
       "--help"
     ],
-    "description": "Rust 项目与依赖管理"
+    "description": "Rust 项目与依赖管理",
+    "ctf": false
   },
   {
     "name": "Go",
@@ -77,7 +84,8 @@
       "go",
       "help"
     ],
-    "description": "Go 语言与构建工具"
+    "description": "Go 语言与构建工具",
+    "ctf": false
   },
   {
     "name": "Node.js",
@@ -87,7 +95,8 @@
       "node",
       "--help"
     ],
-    "description": "JavaScript 运行环境"
+    "description": "JavaScript 运行环境",
+    "ctf": false
   },
   {
     "name": "npm",
@@ -97,7 +106,8 @@
       "npm",
       "--help"
     ],
-    "description": "JavaScript 包与项目管理"
+    "description": "JavaScript 包与项目管理",
+    "ctf": false
   },
   {
     "name": "Git",
@@ -107,7 +117,8 @@
       "git",
       "--help"
     ],
-    "description": "版本管理"
+    "description": "版本管理",
+    "ctf": false
   },
   {
     "name": "Make",
@@ -117,7 +128,8 @@
       "make",
       "--help"
     ],
-    "description": "编译任务"
+    "description": "编译任务",
+    "ctf": false
   },
   {
     "name": "CMake",
@@ -127,7 +139,8 @@
       "cmake",
       "--help"
     ],
-    "description": "项目构建配置"
+    "description": "项目构建配置",
+    "ctf": false
   },
   {
     "name": "Ninja",
@@ -137,7 +150,8 @@
       "ninja",
       "--help"
     ],
-    "description": "构建任务执行器"
+    "description": "构建任务执行器",
+    "ctf": false
   },
   {
     "name": "pkg-config",
@@ -147,7 +161,8 @@
       "pkg-config",
       "--help"
     ],
-    "description": "查找库的编译参数"
+    "description": "查找库的编译参数",
+    "ctf": false
   },
   {
     "name": "ShellCheck",
@@ -157,7 +172,8 @@
       "shellcheck",
       "--help"
     ],
-    "description": "Shell 脚本检查"
+    "description": "Shell 脚本检查",
+    "ctf": false
   },
   {
     "name": "Nano",
@@ -167,7 +183,8 @@
       "nano",
       "--help"
     ],
-    "description": "终端文件编辑器"
+    "description": "终端文件编辑器",
+    "ctf": false
   },
   {
     "name": "Vim",
@@ -177,7 +194,8 @@
       "vim.tiny",
       "--help"
     ],
-    "description": "终端文件编辑器"
+    "description": "终端文件编辑器",
+    "ctf": false
   },
   {
     "name": "ripgrep",
@@ -187,7 +205,8 @@
       "rg",
       "--help"
     ],
-    "description": "快速搜索文件内容"
+    "description": "快速搜索文件内容",
+    "ctf": false
   },
   {
     "name": "fd",
@@ -197,7 +216,8 @@
       "fdfind",
       "--help"
     ],
-    "description": "按名称查找文件"
+    "description": "按名称查找文件",
+    "ctf": false
   },
   {
     "name": "GDB",
@@ -207,7 +227,8 @@
       "gdb",
       "--help"
     ],
-    "description": "程序调试器"
+    "description": "程序调试器",
+    "ctf": true
   },
   {
     "name": "GDB Multiarch",
@@ -217,7 +238,8 @@
       "gdb-multiarch",
       "--help"
     ],
-    "description": "跨架构调试器"
+    "description": "跨架构调试器",
+    "ctf": true
   },
   {
     "name": "Pwntools",
@@ -227,7 +249,8 @@
       "pwn",
       "--help"
     ],
-    "description": "Pwn 与二进制分析工具集"
+    "description": "Pwn 与二进制分析工具集",
+    "ctf": true
   },
   {
     "name": "Checksec",
@@ -237,7 +260,8 @@
       "checksec",
       "--help"
     ],
-    "description": "ELF 编译保护检查"
+    "description": "ELF 编译保护检查",
+    "ctf": true
   },
   {
     "name": "objdump",
@@ -247,7 +271,8 @@
       "objdump",
       "--help"
     ],
-    "description": "反汇编与目标文件信息"
+    "description": "反汇编与目标文件信息",
+    "ctf": true
   },
   {
     "name": "readelf",
@@ -257,7 +282,8 @@
       "readelf",
       "--help"
     ],
-    "description": "ELF 结构分析"
+    "description": "ELF 结构分析",
+    "ctf": true
   },
   {
     "name": "nm",
@@ -267,7 +293,8 @@
       "nm",
       "--help"
     ],
-    "description": "符号表"
+    "description": "符号表",
+    "ctf": true
   },
   {
     "name": "strings",
@@ -277,7 +304,8 @@
       "strings",
       "--help"
     ],
-    "description": "提取可读字符串"
+    "description": "提取可读字符串",
+    "ctf": true
   },
   {
     "name": "patchelf",
@@ -287,7 +315,8 @@
       "patchelf",
       "--help"
     ],
-    "description": "调整 ELF 解释器和库路径"
+    "description": "调整 ELF 解释器和库路径",
+    "ctf": true
   },
   {
     "name": "strace",
@@ -297,7 +326,8 @@
       "strace",
       "--help"
     ],
-    "description": "跟踪系统调用"
+    "description": "跟踪系统调用",
+    "ctf": true
   },
   {
     "name": "ltrace",
@@ -307,7 +337,8 @@
       "ltrace",
       "--help"
     ],
-    "description": "跟踪动态库调用"
+    "description": "跟踪动态库调用",
+    "ctf": true
   },
   {
     "name": "xxd",
@@ -317,7 +348,8 @@
       "xxd",
       "-h"
     ],
-    "description": "十六进制转储"
+    "description": "十六进制转储",
+    "ctf": true
   },
   {
     "name": "Hexedit",
@@ -327,7 +359,8 @@
       "hexedit",
       "--help"
     ],
-    "description": "十六进制文件编辑器"
+    "description": "十六进制文件编辑器",
+    "ctf": true
   },
   {
     "name": "file",
@@ -337,7 +370,8 @@
       "file",
       "--help"
     ],
-    "description": "识别文件类型"
+    "description": "识别文件类型",
+    "ctf": true
   },
   {
     "name": "Nmap",
@@ -347,7 +381,8 @@
       "nmap",
       "--help"
     ],
-    "description": "主机、端口与服务探测"
+    "description": "主机、端口与服务探测",
+    "ctf": true
   },
   {
     "name": "tcpdump",
@@ -357,7 +392,8 @@
       "tcpdump",
       "--help"
     ],
-    "description": "网络抓包"
+    "description": "网络抓包",
+    "ctf": true
   },
   {
     "name": "TShark",
@@ -367,7 +403,8 @@
       "tshark",
       "--help"
     ],
-    "description": "命令行报文分析"
+    "description": "命令行报文分析",
+    "ctf": true
   },
   {
     "name": "mnos-net",
@@ -377,7 +414,8 @@
       "mnos-net",
       "help"
     ],
-    "description": "NET_ADMIN / NET_RAW 授权入口"
+    "description": "NET_ADMIN / NET_RAW 授权入口",
+    "ctf": false
   },
   {
     "name": "ip",
@@ -387,7 +425,8 @@
       "ip",
       "help"
     ],
-    "description": "网卡、地址和路由"
+    "description": "网卡、地址和路由",
+    "ctf": false
   },
   {
     "name": "tc",
@@ -397,7 +436,8 @@
       "tc",
       "-help"
     ],
-    "description": "流量控制"
+    "description": "流量控制",
+    "ctf": false
   },
   {
     "name": "iw",
@@ -407,7 +447,8 @@
       "iw",
       "help"
     ],
-    "description": "Wi-Fi 无线设备"
+    "description": "Wi-Fi 无线设备",
+    "ctf": false
   },
   {
     "name": "nmcli",
@@ -417,7 +458,8 @@
       "nmcli",
       "--help"
     ],
-    "description": "NetworkManager 网络配置"
+    "description": "NetworkManager 网络配置",
+    "ctf": false
   },
   {
     "name": "ethtool",
@@ -427,7 +469,8 @@
       "ethtool",
       "--help"
     ],
-    "description": "以太网设备参数"
+    "description": "以太网设备参数",
+    "ctf": false
   },
   {
     "name": "ss",
@@ -437,7 +480,8 @@
       "ss",
       "--help"
     ],
-    "description": "连接与套接字"
+    "description": "连接与套接字",
+    "ctf": false
   },
   {
     "name": "ping",
@@ -447,7 +491,8 @@
       "ping",
       "-h"
     ],
-    "description": "网络可达性"
+    "description": "网络可达性",
+    "ctf": false
   },
   {
     "name": "traceroute",
@@ -457,7 +502,8 @@
       "traceroute",
       "--help"
     ],
-    "description": "网络路径"
+    "description": "网络路径",
+    "ctf": false
   },
   {
     "name": "MTR",
@@ -467,7 +513,8 @@
       "mtr",
       "--help"
     ],
-    "description": "持续路由诊断"
+    "description": "持续路由诊断",
+    "ctf": false
   },
   {
     "name": "dig",
@@ -477,7 +524,8 @@
       "dig",
       "-h"
     ],
-    "description": "DNS 查询"
+    "description": "DNS 查询",
+    "ctf": false
   },
   {
     "name": "iperf3",
@@ -487,7 +535,8 @@
       "iperf3",
       "--help"
     ],
-    "description": "带宽测试"
+    "description": "带宽测试",
+    "ctf": false
   },
   {
     "name": "Netcat",
@@ -497,7 +546,8 @@
       "nc",
       "-h"
     ],
-    "description": "TCP / UDP 命令行工具"
+    "description": "TCP / UDP 命令行工具",
+    "ctf": true
   },
   {
     "name": "socat",
@@ -507,7 +557,8 @@
       "socat",
       "-h"
     ],
-    "description": "数据流与套接字转发"
+    "description": "数据流与套接字转发",
+    "ctf": true
   },
   {
     "name": "curl",
@@ -518,7 +569,8 @@
       "--help",
       "all"
     ],
-    "description": "HTTP 与数据传输"
+    "description": "HTTP 与数据传输",
+    "ctf": true
   },
   {
     "name": "wget",
@@ -528,7 +580,8 @@
       "wget",
       "--help"
     ],
-    "description": "下载工具"
+    "description": "下载工具",
+    "ctf": false
   },
   {
     "name": "SSH",
@@ -537,7 +590,8 @@
     "command": [
       "ssh"
     ],
-    "description": "SSH 客户端命令帮助"
+    "description": "SSH 客户端命令帮助",
+    "ctf": false
   },
   {
     "name": "SFTP",
@@ -547,7 +601,8 @@
       "sftp",
       "-h"
     ],
-    "description": "SSH 文件传输"
+    "description": "SSH 文件传输",
+    "ctf": false
   },
   {
     "name": "rsync",
@@ -557,115 +612,127 @@
       "rsync",
       "--help"
     ],
-    "description": "文件同步"
+    "description": "文件同步",
+    "ctf": false
   },
   {
     "name": "SQLmap",
-    "category": "Web 与密码工具",
+    "category": "Web 安全",
     "icon": "security-high",
     "command": [
       "sqlmap",
       "-h"
     ],
-    "description": "Web 数据库测试"
+    "description": "Web 数据库测试",
+    "ctf": true
   },
   {
     "name": "ffuf",
-    "category": "Web 与密码工具",
+    "category": "Web 安全",
     "icon": "security-high",
     "command": [
       "ffuf",
       "-h"
     ],
-    "description": "HTTP 模糊测试"
+    "description": "HTTP 模糊测试",
+    "ctf": true
   },
   {
     "name": "Gobuster",
-    "category": "Web 与密码工具",
+    "category": "Web 安全",
     "icon": "security-high",
     "command": [
       "gobuster",
       "--help"
     ],
-    "description": "目录、DNS 和服务枚举"
+    "description": "目录、DNS 和服务枚举",
+    "ctf": true
   },
   {
     "name": "dirb",
-    "category": "Web 与密码工具",
+    "category": "Web 安全",
     "icon": "security-high",
     "command": [
       "dirb"
     ],
-    "description": "Web 内容发现"
+    "description": "Web 内容发现",
+    "ctf": true
   },
   {
     "name": "mitmproxy",
-    "category": "Web 与密码工具",
+    "category": "Web 安全",
     "icon": "security-high",
     "command": [
       "mitmproxy",
       "--help"
     ],
-    "description": "交互式 HTTP 代理"
+    "description": "交互式 HTTP 代理",
+    "ctf": true
   },
   {
     "name": "mitmdump",
-    "category": "Web 与密码工具",
+    "category": "Web 安全",
     "icon": "security-high",
     "command": [
       "mitmdump",
       "--help"
     ],
-    "description": "命令行 HTTP 代理"
+    "description": "命令行 HTTP 代理",
+    "ctf": true
   },
   {
     "name": "mitmweb",
-    "category": "Web 与密码工具",
+    "category": "Web 安全",
     "icon": "security-high",
     "command": [
       "mitmweb",
       "--help"
     ],
-    "description": "Web 界面代理工具"
+    "description": "Web 界面代理工具",
+    "ctf": true
   },
   {
     "name": "John the Ripper",
-    "category": "Web 与密码工具",
+    "category": "密码分析",
     "icon": "security-high",
     "command": [
       "john"
     ],
-    "description": "离线密码分析"
+    "description": "离线密码分析",
+    "ctf": true
   },
   {
     "name": "Hashcat",
-    "category": "Web 与密码工具",
+    "category": "密码分析",
     "icon": "security-high",
     "command": [
       "hashcat",
       "--help"
     ],
-    "description": "密码散列分析"
+    "description": "密码散列分析",
+    "ctf": true
   },
   {
     "name": "Hydra",
-    "category": "Web 与密码工具",
+    "category": "密码分析",
     "icon": "security-high",
     "command": [
       "hydra",
       "-h"
     ],
-    "description": "授权认证测试"
+    "description": "授权认证测试",
+    "ctf": true
   },
   {
     "name": "OpenSSL",
-    "category": "Web 与密码工具",
+    "category": "密码分析",
     "icon": "security-high",
     "command": [
       "openssl",
       "help"
     ],
-    "description": "证书、密码算法与 TLS"
+    "description": "证书、密码算法与 TLS",
+    "ctf": true
   },
   {
     "name": "Binwalk",
@@ -675,7 +742,8 @@
       "binwalk",
       "--help"
     ],
-    "description": "固件签名分析"
+    "description": "固件签名分析",
+    "ctf": true
   },
   {
     "name": "ExifTool",
@@ -684,7 +752,8 @@
     "command": [
       "exiftool"
     ],
-    "description": "文件元数据"
+    "description": "文件元数据",
+    "ctf": true
   },
   {
     "name": "Steghide",
@@ -694,7 +763,8 @@
       "steghide",
       "--help"
     ],
-    "description": "隐写文件工具"
+    "description": "隐写文件工具",
+    "ctf": true
   },
   {
     "name": "Foremost",
@@ -704,7 +774,8 @@
       "foremost",
       "-h"
     ],
-    "description": "按文件特征恢复数据"
+    "description": "按文件特征恢复数据",
+    "ctf": true
   },
   {
     "name": "YARA",
@@ -714,7 +785,8 @@
       "yara",
       "--help"
     ],
-    "description": "文件规则扫描"
+    "description": "文件规则扫描",
+    "ctf": true
   },
   {
     "name": "7-Zip",
@@ -724,7 +796,8 @@
       "7z",
       "-h"
     ],
-    "description": "归档与解压"
+    "description": "归档与解压",
+    "ctf": true
   },
   {
     "name": "Unzip",
@@ -734,7 +807,8 @@
       "unzip",
       "-h"
     ],
-    "description": "ZIP 解压"
+    "description": "ZIP 解压",
+    "ctf": true
   },
   {
     "name": "Zip",
@@ -744,7 +818,8 @@
       "zip",
       "-h"
     ],
-    "description": "ZIP 归档"
+    "description": "ZIP 归档",
+    "ctf": true
   },
   {
     "name": "jq",
@@ -754,7 +829,8 @@
       "jq",
       "--help"
     ],
-    "description": "JSON 处理"
+    "description": "JSON 处理",
+    "ctf": true
   },
   {
     "name": "TestDisk",
@@ -764,7 +840,8 @@
       "testdisk",
       "--help"
     ],
-    "description": "分区与文件恢复"
+    "description": "分区与文件恢复",
+    "ctf": true
   },
   {
     "name": "PhotoRec",
@@ -774,7 +851,8 @@
       "photorec",
       "--help"
     ],
-    "description": "文件恢复"
+    "description": "文件恢复",
+    "ctf": true
   },
   {
     "name": "MNFS",
@@ -783,7 +861,8 @@
     "command": [
       "mnfs"
     ],
-    "description": "自研文件系统镜像工具"
+    "description": "自研文件系统镜像工具",
+    "ctf": true
   },
   {
     "name": "内核设置",
@@ -793,7 +872,8 @@
       "kernel",
       "help"
     ],
-    "description": "内核、CPU、内存、GPU、模块与性能配置"
+    "description": "内核、CPU、内存、GPU、模块与性能配置",
+    "ctf": false
   },
   {
     "name": "TuneD",
@@ -803,7 +883,8 @@
       "tuned-adm",
       "--help"
     ],
-    "description": "性能策略配置"
+    "description": "性能策略配置",
+    "ctf": false
   },
   {
     "name": "sysctl",
@@ -813,7 +894,8 @@
       "sysctl",
       "--help"
     ],
-    "description": "Linux 内核参数"
+    "description": "Linux 内核参数",
+    "ctf": false
   },
   {
     "name": "modprobe",
@@ -823,7 +905,8 @@
       "modprobe",
       "--help"
     ],
-    "description": "Linux 内核模块"
+    "description": "Linux 内核模块",
+    "ctf": false
   },
   {
     "name": "xrandr",
@@ -833,7 +916,8 @@
       "xrandr",
       "--help"
     ],
-    "description": "显示器、屏幕分辨率和输出"
+    "description": "显示器、屏幕分辨率和输出",
+    "ctf": false
   },
   {
     "name": "UFW",
@@ -843,7 +927,8 @@
       "ufw",
       "--help"
     ],
-    "description": "防火墙设置"
+    "description": "防火墙设置",
+    "ctf": false
   },
   {
     "name": "systemctl",
@@ -853,7 +938,8 @@
       "systemctl",
       "--help"
     ],
-    "description": "服务与系统状态"
+    "description": "服务与系统状态",
+    "ctf": false
   },
   {
     "name": "loginctl",
@@ -863,7 +949,8 @@
       "loginctl",
       "--help"
     ],
-    "description": "用户登录会话"
+    "description": "用户登录会话",
+    "ctf": false
   },
   {
     "name": "timedatectl",
@@ -873,7 +960,8 @@
       "timedatectl",
       "--help"
     ],
-    "description": "日期和时区"
+    "description": "日期和时区",
+    "ctf": false
   },
   {
     "name": "localectl",
@@ -883,7 +971,8 @@
       "localectl",
       "--help"
     ],
-    "description": "系统语言和键盘"
+    "description": "系统语言和键盘",
+    "ctf": false
   },
   {
     "name": "useradd",
@@ -893,7 +982,8 @@
       "useradd",
       "--help"
     ],
-    "description": "新增本地账号"
+    "description": "新增本地账号",
+    "ctf": false
   },
   {
     "name": "usermod",
@@ -903,7 +993,8 @@
       "usermod",
       "--help"
     ],
-    "description": "用户组与账号配置"
+    "description": "用户组与账号配置",
+    "ctf": false
   },
   {
     "name": "passwd",
@@ -913,7 +1004,8 @@
       "passwd",
       "--help"
     ],
-    "description": "账号密码"
+    "description": "账号密码",
+    "ctf": false
   },
   {
     "name": "apt",
@@ -923,7 +1015,8 @@
       "apt",
       "--help"
     ],
-    "description": "软件包管理"
+    "description": "软件包管理",
+    "ctf": false
   },
   {
     "name": "dpkg",
@@ -933,7 +1026,8 @@
       "dpkg",
       "--help"
     ],
-    "description": "Debian 软件包"
+    "description": "Debian 软件包",
+    "ctf": false
   },
   {
     "name": "parted",
@@ -943,7 +1037,8 @@
       "parted",
       "--help"
     ],
-    "description": "磁盘分区管理"
+    "description": "磁盘分区管理",
+    "ctf": false
   },
   {
     "name": "lsblk",
@@ -953,7 +1048,8 @@
       "lsblk",
       "--help"
     ],
-    "description": "磁盘与分区信息"
+    "description": "磁盘与分区信息",
+    "ctf": false
   },
   {
     "name": "findmnt",
@@ -963,7 +1059,8 @@
       "findmnt",
       "--help"
     ],
-    "description": "挂载信息"
+    "description": "挂载信息",
+    "ctf": false
   },
   {
     "name": "cryptsetup",
@@ -973,7 +1070,8 @@
       "cryptsetup",
       "--help"
     ],
-    "description": "加密卷管理"
+    "description": "加密卷管理",
+    "ctf": false
   },
   {
     "name": "btrfs",
@@ -983,7 +1081,8 @@
       "btrfs",
       "--help"
     ],
-    "description": "Btrfs 文件系统管理"
+    "description": "Btrfs 文件系统管理",
+    "ctf": false
   },
   {
     "name": "mdadm",
@@ -993,7 +1092,8 @@
       "mdadm",
       "--help"
     ],
-    "description": "Linux 软件 RAID"
+    "description": "Linux 软件 RAID",
+    "ctf": false
   },
   {
     "name": "lvm",
@@ -1003,7 +1103,8 @@
       "lvm",
       "help"
     ],
-    "description": "逻辑卷管理"
+    "description": "逻辑卷管理",
+    "ctf": false
   },
   {
     "name": "htop",
@@ -1013,7 +1114,8 @@
       "htop",
       "--help"
     ],
-    "description": "进程与资源监控"
+    "description": "进程与资源监控",
+    "ctf": false
   },
   {
     "name": "btop",
@@ -1023,7 +1125,8 @@
       "btop",
       "--help"
     ],
-    "description": "终端资源监控"
+    "description": "终端资源监控",
+    "ctf": false
   },
   {
     "name": "iostat",
@@ -1033,7 +1136,8 @@
       "iostat",
       "--help"
     ],
-    "description": "磁盘与 CPU 统计"
+    "description": "磁盘与 CPU 统计",
+    "ctf": false
   },
   {
     "name": "iotop",
@@ -1043,7 +1147,8 @@
       "iotop",
       "--help"
     ],
-    "description": "进程磁盘 I/O"
+    "description": "进程磁盘 I/O",
+    "ctf": false
   },
   {
     "name": "smartctl",
@@ -1053,7 +1158,8 @@
       "smartctl",
       "--help"
     ],
-    "description": "磁盘健康状态"
+    "description": "磁盘健康状态",
+    "ctf": false
   },
   {
     "name": "nvme",
@@ -1063,7 +1169,8 @@
       "nvme",
       "help"
     ],
-    "description": "NVMe 设备管理"
+    "description": "NVMe 设备管理",
+    "ctf": false
   },
   {
     "name": "lspci",
@@ -1073,7 +1180,8 @@
       "lspci",
       "--help"
     ],
-    "description": "PCI 设备"
+    "description": "PCI 设备",
+    "ctf": false
   },
   {
     "name": "lsusb",
@@ -1083,7 +1191,8 @@
       "lsusb",
       "--help"
     ],
-    "description": "USB 设备"
+    "description": "USB 设备",
+    "ctf": false
   },
   {
     "name": "sensors",
@@ -1093,7 +1202,8 @@
       "sensors",
       "--help"
     ],
-    "description": "温度和电压"
+    "description": "温度和电压",
+    "ctf": false
   },
   {
     "name": "journalctl",
@@ -1103,7 +1213,8 @@
       "journalctl",
       "--help"
     ],
-    "description": "系统日志"
+    "description": "系统日志",
+    "ctf": false
   },
   {
     "name": "stress-ng",
@@ -1113,7 +1224,8 @@
       "stress-ng",
       "--help"
     ],
-    "description": "硬件压力测试"
+    "description": "硬件压力测试",
+    "ctf": false
   },
   {
     "name": "fio",
@@ -1123,7 +1235,8 @@
       "fio",
       "--help"
     ],
-    "description": "存储性能测试"
+    "description": "存储性能测试",
+    "ctf": false
   },
   {
     "name": "glxinfo",
@@ -1133,7 +1246,8 @@
       "glxinfo",
       "-h"
     ],
-    "description": "OpenGL 显卡信息"
+    "description": "OpenGL 显卡信息",
+    "ctf": false
   },
   {
     "name": "vulkaninfo",
@@ -1143,7 +1257,8 @@
       "vulkaninfo",
       "--help"
     ],
-    "description": "Vulkan 显卡信息"
+    "description": "Vulkan 显卡信息",
+    "ctf": false
   },
   {
     "name": "clinfo",
@@ -1153,7 +1268,8 @@
       "clinfo",
       "--help"
     ],
-    "description": "OpenCL 设备信息"
+    "description": "OpenCL 设备信息",
+    "ctf": false
   },
   {
     "name": "Lynis",
@@ -1163,7 +1279,8 @@
       "lynis",
       "--help"
     ],
-    "description": "系统配置审计"
+    "description": "系统配置审计",
+    "ctf": false
   },
   {
     "name": "debsums",
@@ -1173,7 +1290,8 @@
       "debsums",
       "--help"
     ],
-    "description": "软件包文件校验"
+    "description": "软件包文件校验",
+    "ctf": false
   },
   {
     "name": "debsecan",
@@ -1183,7 +1301,8 @@
       "debsecan",
       "--help"
     ],
-    "description": "Debian 漏洞状态"
+    "description": "Debian 漏洞状态",
+    "ctf": false
   },
   {
     "name": "mnOS 帮助",
@@ -1192,7 +1311,8 @@
     "command": [
       "mnos-help"
     ],
-    "description": "英文命令帮助；help -cn 查看中文版"
+    "description": "英文命令帮助；help -cn 查看中文版",
+    "ctf": false
   },
   {
     "name": "软件包管理",
@@ -1202,6 +1322,141 @@
       "mnos-pkg",
       "--help"
     ],
-    "description": "查询、安装与更新签名软件包"
+    "description": "查询、安装与更新签名软件包",
+    "ctf": false
+  },
+  {
+    "name": "CTF 入门手册",
+    "category": "CTF 工具",
+    "icon": "help-browser",
+    "command": [
+      "mnos-help",
+      "-cn",
+      "ctf"
+    ],
+    "description": "分类、离线练习、工具用法与权限",
+    "ctf": true
+  },
+  {
+    "name": "Sleuth Kit / fls",
+    "category": "取证与文件",
+    "icon": "drive-harddisk",
+    "command": [
+      "mnos-help",
+      "fls"
+    ],
+    "description": "列出取证磁盘镜像中的文件；help fls 查看参数",
+    "ctf": true
+  },
+  {
+    "name": "Sleuth Kit / mmls",
+    "category": "取证与文件",
+    "icon": "drive-harddisk",
+    "command": [
+      "mnos-help",
+      "mmls"
+    ],
+    "description": "分析取证镜像分区布局；help mmls 查看参数",
+    "ctf": true
+  },
+  {
+    "name": "Sleuth Kit / icat",
+    "category": "取证与文件",
+    "icon": "drive-harddisk",
+    "command": [
+      "mnos-help",
+      "icat"
+    ],
+    "description": "按 inode 提取镜像文件；help icat 查看参数",
+    "ctf": true
+  },
+  {
+    "name": "SQLite",
+    "category": "取证与文件",
+    "icon": "database",
+    "command": [
+      "sqlite3",
+      "-help"
+    ],
+    "description": "查询 SQLite 数据库与应用痕迹",
+    "ctf": true
+  },
+  {
+    "name": "PNGCheck",
+    "category": "取证与文件",
+    "icon": "image-x-generic",
+    "command": [
+      "pngcheck",
+      "-h"
+    ],
+    "description": "检查 PNG 数据块与图像结构",
+    "ctf": true
+  },
+  {
+    "name": "ZBar",
+    "category": "取证与文件",
+    "icon": "image-x-generic",
+    "command": [
+      "zbarimg",
+      "--help"
+    ],
+    "description": "识别本地图片中的二维码与条形码",
+    "ctf": true
+  },
+  {
+    "name": "tcpflow",
+    "category": "网络工具",
+    "icon": "network-wired",
+    "command": [
+      "tcpflow",
+      "-h"
+    ],
+    "description": "从 PCAP 重组 TCP 数据流",
+    "ctf": true
+  },
+  {
+    "name": "ngrep",
+    "category": "网络工具",
+    "icon": "network-wired",
+    "command": [
+      "ngrep",
+      "-h"
+    ],
+    "description": "按表达式检索数据包内容",
+    "ctf": true
+  },
+  {
+    "name": "fcrackzip",
+    "category": "密码分析",
+    "icon": "dialog-password",
+    "command": [
+      "fcrackzip",
+      "--help"
+    ],
+    "description": "CTF ZIP 密码恢复",
+    "ctf": true
+  },
+  {
+    "name": "tmux",
+    "category": "系统工具",
+    "icon": "utilities-terminal",
+    "command": [
+      "mnos-help",
+      "tmux"
+    ],
+    "description": "终端多窗口与会话管理",
+    "ctf": false
+  },
+  {
+    "name": "Linux 命令手册",
+    "category": "系统工具",
+    "icon": "help-browser",
+    "command": [
+      "mnos-help",
+      "-cn",
+      "commands"
+    ],
+    "description": "文件、文本、进程、网络与系统管理命令",
+    "ctf": false
   }
 ]

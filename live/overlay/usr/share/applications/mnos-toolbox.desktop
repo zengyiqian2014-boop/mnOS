@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=mnOS Tool Center
+Name[zh_CN]=mnOS 工具中心
+Comment=Graphical applications, installed Linux commands and CTF tools
+Comment[zh_CN]=图形应用、已安装 Linux 命令与 CTF 工具
+Exec=mnos-center --tools
+Icon=mnos
+Categories=Utility;Development;
+Keywords=Linux;CTF;tools;工具;命令;
+StartupNotify=true

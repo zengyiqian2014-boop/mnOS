@@ -17,26 +17,32 @@
 #include <sys/utsname.h>
 #include <unistd.h>
 #include <vector>
+#include "command-index.hpp"
 namespace fs = std::filesystem;
 struct Entry {
     std::string name, description, category, icon, id, search;
     std::vector<std::string> command;
     GAppInfo *app = nullptr;
+    bool ctf = false, indexed = false;
 };
 static std::vector<Entry> entries;
-static GtkWidget *window, *search, *list, *summary;
+static GtkWidget *window, *search, *list, *summary, *results, *more;
 static bool popup = false, testing = false;
 static std::string selected = "常用";
-static const char *groups[] = {"常用",     "全部应用",   "系统设置",       "开发编程",
-                               "网络工具", "逆向与调试", "Web 与密码工具", "取证与文件",
+static size_t visible_limit = 180;
+static const char *groups[] = {"常用", "全部应用", "CTF 工具", "Linux 命令", "系统设置", "开发编程",
+                               "网络工具", "逆向与调试", "Web 安全", "密码分析", "取证与文件",
                                "系统工具", "其他应用"};
 static const char *group_icons[] = {"starred",
                                     "view-app-grid",
+                                    "security-high",
+                                    "utilities-terminal",
                                     "preferences-system",
                                     "applications-development",
                                     "network-workgroup",
                                     "applications-debugging",
                                     "security-high",
+                                    "dialog-password",
                                     "folder-saved-search",
                                     "utilities-system-monitor",
                                     "applications-other"};
@@ -93,6 +99,8 @@ static void catalog(const char *path, bool optional = false) {
         e.icon = string_member(o, "icon");
         e.category = string_member(o, "category");
         e.id = id_for(e.name);
+        if (json_object_has_member(o, "ctf"))
+            e.ctf = json_object_get_boolean_member(o, "ctf");
         JsonArray *args = json_object_get_array_member(o, "command");
         if (!args || !json_array_get_length(args))
             throw std::runtime_error("Empty tool command");
@@ -140,6 +148,12 @@ static void discover() {
         const char *raw = g_desktop_app_info_get_categories(G_DESKTOP_APP_INFO(app));
         std::string c = raw ? raw : "";
         std::string filename = id;
+        const char *program = g_app_info_get_executable(app);
+        const std::string binary = program ? fs::path(program).filename().string() : "";
+        e.ctf = filename == "org.wireshark.Wireshark.desktop" || filename == "wireshark.desktop" ||
+                filename == "org.kde.okteta.desktop" || filename == "org.gnome.GHex.desktop" ||
+                filename == "ghex.desktop" || filename == "sqlitebrowser.desktop" ||
+                binary == "wireshark" || binary == "ghex" || binary == "sqlitebrowser";
         e.category = "其他应用";
         if (c.find("Settings;") != std::string::npos || filename == "gparted.desktop" ||
             filename == "org.gnome.DiskUtility.desktop" || filename == "mnos-admin.desktop" ||
@@ -151,10 +165,31 @@ static void discover() {
             e.category = "网络工具";
         else if (c.find("System;") != std::string::npos)
             e.category = "系统工具";
+        if (binary == "ghex" || binary == "sqlitebrowser") e.category = "取证与文件";
         e.search = folded(e.name + " " + e.description + " " + e.category + " " + id);
         entries.push_back(std::move(e));
     }
     g_list_free_full(apps, g_object_unref);
+}
+static void discover_commands() {
+    std::set<std::string> catalogued;
+    for (const auto &e : entries)
+        if (e.command.size() > 1 && e.command[0] == "@terminal")
+            catalogued.insert(e.command[1]);
+    for (const auto &[name, path] : installed_commands()) {
+        if (catalogued.count(name) || !g_utf8_validate(name.c_str(), -1, nullptr))
+            continue;
+        Entry e;
+        e.name = name;
+        e.description = "已安装命令 · " + path + " · 点击查看离线帮助";
+        e.category = "Linux 命令";
+        e.icon = "utilities-terminal";
+        e.id = "command-" + id_for(name);
+        e.command = {"@terminal", "mnos-help", name};
+        e.search = folded(name + " " + e.description + " Linux command 命令");
+        e.indexed = true;
+        entries.push_back(std::move(e));
+    }
 }
 static std::string quote_args(const std::vector<std::string> &args) {
     std::string s;
@@ -245,20 +280,62 @@ static bool favorite(const Entry &e) {
     return e.app && (e.id == "code.desktop" || e.id == "com.microsoft.VSCode.desktop" ||
                      e.id == "firefox-esr.desktop" || e.id == "thunar.desktop" ||
                      e.id == "org.xfce.Thunar.desktop" || e.id == "xfce4-terminal.desktop" ||
-                     e.id == "mnos-center.desktop" || e.id == "org.xfce.mousepad.desktop");
+                     e.id == "mnos-center.desktop" || e.id == "org.xfce.mousepad.desktop" ||
+                     e.id == "mnos-ctf.desktop" || e.id == "mnos-commands.desktop");
 }
-static gboolean filter(GtkListBoxRow *row, gpointer) {
-    auto *e = static_cast<Entry *>(g_object_get_data(G_OBJECT(row), "entry"));
+static bool matches(const Entry &e) {
     std::string query = folded(gtk_entry_get_text(GTK_ENTRY(search)));
     if (!query.empty())
-        return e->search.find(query) != std::string::npos;
-    return selected == "全部应用" || (selected == "常用" ? favorite(*e) : selected == e->category);
+        return e.search.find(query) != std::string::npos;
+    if (selected == "CTF 工具") return e.ctf;
+    if (selected == "Linux 命令") return !e.app && !e.command.empty() && e.command[0] == "@terminal";
+    return selected == "全部应用" || (selected == "常用" ? favorite(e) : selected == e.category);
+}
+static void render_entries() {
+    if (!list) return;
+    gtk_container_foreach(GTK_CONTAINER(list), +[](GtkWidget *w, gpointer) { gtk_widget_destroy(w); }, nullptr);
+    size_t count = 0;
+    for (auto &e : entries) {
+        if (!matches(e)) continue;
+        if (++count > visible_limit) continue;
+        auto *row = gtk_list_box_row_new();
+        g_object_set_data(G_OBJECT(row), "entry", &e);
+        auto *inner = box(GTK_ORIENTATION_HORIZONTAL, 10);
+        margin(inner, 8);
+        gtk_container_add(GTK_CONTAINER(row), inner);
+        GIcon *icon = e.app ? g_app_info_get_icon(e.app) : nullptr;
+        auto *image = icon ? gtk_image_new_from_gicon(icon, GTK_ICON_SIZE_MENU)
+                           : gtk_image_new_from_icon_name(e.icon.c_str(), GTK_ICON_SIZE_MENU);
+        gtk_image_set_pixel_size(GTK_IMAGE(image), 22);
+        gtk_box_pack_start(GTK_BOX(inner), image, FALSE, FALSE, 0);
+        auto *texts = box(GTK_ORIENTATION_VERTICAL, 3);
+        auto *title = label(e.name);
+        gtk_label_set_ellipsize(GTK_LABEL(title), PANGO_ELLIPSIZE_END);
+        gtk_box_pack_start(GTK_BOX(texts), title, FALSE, FALSE, 0);
+        if (!popup) {
+            auto *desc = label(e.description);
+            css(desc, "muted");
+            gtk_label_set_ellipsize(GTK_LABEL(desc), PANGO_ELLIPSIZE_END);
+            gtk_box_pack_start(GTK_BOX(texts), desc, FALSE, FALSE, 0);
+        }
+        gtk_box_pack_start(GTK_BOX(inner), texts, TRUE, TRUE, 0);
+        auto *kind = label(e.app ? "打开" : "帮助");
+        css(kind, "muted");
+        gtk_box_pack_end(GTK_BOX(inner), kind, FALSE, FALSE, 5);
+        gtk_widget_set_tooltip_text(row, e.description.c_str());
+        gtk_container_add(GTK_CONTAINER(list), row);
+    }
+    gtk_widget_show_all(list);
+    const std::string text = count ? "显示 " + std::to_string(std::min(count, visible_limit)) + " / " +
+        std::to_string(count) + " 项 · 图形应用直接打开，命令打开帮助" : "没有匹配项；可用 mnos-pkg search 搜索软件仓库";
+    gtk_label_set_text(GTK_LABEL(results), text.c_str());
+    gtk_widget_set_visible(more, count > visible_limit);
 }
 static void changed(GtkSearchEntry *, gpointer) {
-    gtk_list_box_invalidate_filter(GTK_LIST_BOX(list));
+    visible_limit = 180;
+    render_entries();
 }
 static void activate_first(GtkEntry *, gpointer) {
-    gtk_list_box_invalidate_filter(GTK_LIST_BOX(list));
     GList *rows = gtk_container_get_children(GTK_CONTAINER(list));
     for (auto *n = rows; n; n = n->next)
         if (gtk_widget_get_child_visible(GTK_WIDGET(n->data))) {
@@ -318,7 +395,7 @@ static gboolean metrics(gpointer) {
 }
 static void build() {
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(window), popup ? "mnOS 应用与工具" : "mnOS 系统设置");
+    gtk_window_set_title(GTK_WINDOW(window), popup ? "mnOS 应用与工具" : "mnOS 工具中心");
     gtk_window_set_icon_name(GTK_WINDOW(window), "mnos");
     css(window, "mnos");
     GdkMonitor *monitor = gdk_display_get_primary_monitor(gdk_display_get_default());
@@ -346,6 +423,17 @@ static void build() {
     g_signal_connect(window, "focus-out-event", G_CALLBACK(lost_focus), nullptr);
     auto *shell = box(GTK_ORIENTATION_VERTICAL, 0);
     gtk_container_add(GTK_CONTAINER(window), shell);
+    if (!popup) {
+        auto *heading = box(GTK_ORIENTATION_VERTICAL, 4);
+        margin(heading, 14);
+        auto *title = label("应用与工具");
+        css(title, "heading");
+        gtk_box_pack_start(GTK_BOX(heading), title, FALSE, FALSE, 0);
+        auto *subtitle = label("桌面应用  /  Linux 命令  /  CTF 工作台");
+        css(subtitle, "muted");
+        gtk_box_pack_start(GTK_BOX(heading), subtitle, FALSE, FALSE, 0);
+        gtk_box_pack_start(GTK_BOX(shell), heading, FALSE, FALSE, 0);
+    }
     search = gtk_search_entry_new();
     gtk_entry_set_placeholder_text(GTK_ENTRY(search), "搜索应用、工具和设置…");
     margin(search, 12);
@@ -358,7 +446,12 @@ static void build() {
     css(nav, "categories");
     gtk_widget_set_size_request(nav, 158, -1);
     margin(nav, 6);
-    gtk_box_pack_start(GTK_BOX(body), nav, FALSE, FALSE, 0);
+    auto *nav_scroll = gtk_scrolled_window_new(nullptr, nullptr);
+    gtk_widget_set_size_request(nav_scroll, 178, -1);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(nav_scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+    gtk_container_add(GTK_CONTAINER(nav_scroll), nav);
+    gtk_box_pack_start(GTK_BOX(body), nav_scroll, FALSE, FALSE, 0);
+    const std::string initial = selected;
     GSList *radio = nullptr;
     for (size_t i = 0; i < G_N_ELEMENTS(groups); ++i) {
         auto *button = gtk_radio_button_new(radio);
@@ -379,12 +472,12 @@ static void build() {
                                  static_cast<char *>(g_object_get_data(G_OBJECT(b), "category"));
                              if (search)
                                  gtk_entry_set_text(GTK_ENTRY(search), "");
-                             if (list)
-                                 gtk_list_box_invalidate_filter(GTK_LIST_BOX(list));
+                             visible_limit = 180;
+                             render_entries();
                          }),
                          nullptr);
         gtk_box_pack_start(GTK_BOX(nav), button, FALSE, FALSE, 0);
-        if ((!popup && i == 2) || (popup && i == 0))
+        if (initial == groups[i])
             gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(button), TRUE);
     }
     auto *scroller = gtk_scrolled_window_new(nullptr, nullptr);
@@ -395,37 +488,24 @@ static void build() {
     gtk_list_box_set_selection_mode(GTK_LIST_BOX(list), GTK_SELECTION_SINGLE);
     gtk_list_box_set_activate_on_single_click(GTK_LIST_BOX(list), TRUE);
     gtk_container_add(GTK_CONTAINER(scroller), list);
-    for (auto &e : entries) {
-        auto *row = gtk_list_box_row_new();
-        g_object_set_data(G_OBJECT(row), "entry", &e);
-        auto *inner = box(GTK_ORIENTATION_HORIZONTAL, 10);
-        margin(inner, 8);
-        gtk_container_add(GTK_CONTAINER(row), inner);
-        GIcon *icon = e.app ? g_app_info_get_icon(e.app) : nullptr;
-        auto *image = icon ? gtk_image_new_from_gicon(icon, GTK_ICON_SIZE_MENU)
-                           : gtk_image_new_from_icon_name(e.icon.c_str(), GTK_ICON_SIZE_MENU);
-        gtk_image_set_pixel_size(GTK_IMAGE(image), 20);
-        gtk_box_pack_start(GTK_BOX(inner), image, FALSE, FALSE, 0);
-        auto *texts = box(GTK_ORIENTATION_VERTICAL, 3);
-        auto *title = label(e.name);
-        gtk_label_set_ellipsize(GTK_LABEL(title), PANGO_ELLIPSIZE_END);
-        gtk_box_pack_start(GTK_BOX(texts), title, FALSE, FALSE, 0);
-        if (!popup) {
-            auto *desc = label(e.description);
-            css(desc, "muted");
-            gtk_label_set_ellipsize(GTK_LABEL(desc), PANGO_ELLIPSIZE_END);
-            gtk_box_pack_start(GTK_BOX(texts), desc, FALSE, FALSE, 0);
-        }
-        gtk_box_pack_start(GTK_BOX(inner), texts, TRUE, TRUE, 0);
-        gtk_widget_set_tooltip_text(row, e.description.c_str());
-        gtk_container_add(GTK_CONTAINER(list), row);
-    }
-    gtk_list_box_set_filter_func(GTK_LIST_BOX(list), filter, nullptr, nullptr);
     g_signal_connect(list, "row-activated",
                      G_CALLBACK(+[](GtkListBox *, GtkListBoxRow *r, gpointer) {
                          launch(*static_cast<Entry *>(g_object_get_data(G_OBJECT(r), "entry")));
                      }),
                      nullptr);
+    auto *inventory = box(GTK_ORIENTATION_HORIZONTAL, 8);
+    margin(inventory, 10);
+    results = label("");
+    css(results, "muted");
+    gtk_label_set_ellipsize(GTK_LABEL(results), PANGO_ELLIPSIZE_END);
+    gtk_box_pack_start(GTK_BOX(inventory), results, TRUE, TRUE, 0);
+    more = gtk_button_new_with_label("显示更多");
+    g_signal_connect(more, "clicked", G_CALLBACK(+[](GtkButton *, gpointer) {
+        visible_limit += 180;
+        render_entries();
+    }), nullptr);
+    gtk_box_pack_end(GTK_BOX(inventory), more, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(shell), inventory, FALSE, FALSE, 0);
     auto *footer = box(GTK_ORIENTATION_HORIZONTAL, 8);
     margin(footer, 10);
     css(footer, "footer");
@@ -459,10 +539,12 @@ static void build() {
         g_timeout_add_seconds(2, metrics, nullptr);
     }
     gtk_widget_show_all(window);
+    render_entries();
     gtk_widget_grab_focus(search);
 }
 static const char *style = R"CSS(
 .mnos { background: #1b2026; color: #e6eaf0; font-family: Inter, "Noto Sans CJK SC", sans-serif; font-size: 13px; }
+.mnos label { color: #e6eaf0; }
 .mnos entry { border-radius: 4px; min-height: 28px; background: #252c34; border-color: #3a454f; }
 .mnos list { background: #1b2026; }
 .mnos row { border-radius: 3px; }
@@ -473,11 +555,16 @@ static const char *style = R"CSS(
 .mnos .category:hover { background: #29323a; }
 .mnos .categories { border-right: 1px solid #323941; }
 .mnos .muted { color: #b3bdc7; font-size: 12px; }
+.mnos .heading { font-size: 23px; font-weight: bold; }
 .mnos .footer { border-top: 1px solid #323941; padding-top: 5px; }
 )CSS";
 int main(int argc, char **argv) {
     try {
         popup = fs::path(argv[0]).filename() == "mnos-tools";
+        if (argc == 2 && std::string(argv[1]) == "--list-commands") {
+            for (const auto &[name, path] : installed_commands()) std::cout << name << '\t' << path << '\n';
+            return 0;
+        }
         catalog("/usr/share/mnos/tools.json");
         if (argc == 3 && std::string(argv[1]) == "--print-help") {
             // Only run the fixed help invocation from the installed catalog.
@@ -528,12 +615,18 @@ int main(int argc, char **argv) {
         if (argc > 1 && std::string(argv[1]) == "--welcome")
             return 0; // Do not obscure the desktop at login.
         testing = argc > 1 && std::string(argv[1]) == "--self-test";
-        if (argc > 1 && !testing) {
-            std::cerr << "Usage: mnos-tools [--help-tool ID] | mnos-center\n";
+        if (argc > 1 && std::string(argv[1]) == "--ctf") { selected = "CTF 工具"; popup = false; }
+        else if (argc > 1 && std::string(argv[1]) == "--commands") { selected = "Linux 命令"; popup = false; }
+        else if (argc > 1 && std::string(argv[1]) == "--tools") { selected = "常用"; popup = false; }
+        else if (argc > 1 && !testing) {
+            std::cerr << "Usage: mnos-center [--tools|--ctf|--commands|--list-commands]\n"
+                         "       mnos-tools [--help-tool ID]\n";
             return 2;
         }
+        else if (!popup) selected = "系统设置";
         gtk_init(nullptr, nullptr);
         discover();
+        discover_commands();
         std::stable_sort(entries.begin(), entries.end(), [](const Entry &a, const Entry &b) {
             return g_utf8_collate(a.name.c_str(), b.name.c_str()) < 0;
         });
@@ -579,6 +672,16 @@ int main(int argc, char **argv) {
             g_list_free(rows);
             if (!visible)
                 throw std::runtime_error("Search did not find Nmap");
+            gtk_entry_set_text(GTK_ENTRY(search), "ls");
+            auto found = std::find_if(entries.begin(), entries.end(), [](const Entry &e) {
+                return e.indexed && e.name == "ls";
+            });
+            if (found == entries.end() || !matches(*found))
+                throw std::runtime_error("Installed command discovery did not find ls");
+            selected = "CTF 工具";
+            gtk_entry_set_text(GTK_ENTRY(search), "");
+            if (std::none_of(entries.begin(), entries.end(), [](const Entry &e) { return matches(e); }))
+                throw std::runtime_error("Empty CTF category");
             std::cout
                 << "C++ desktop: " << count
                 << " catalog commands resolve; XDG applications, categories and search PASS\n";
