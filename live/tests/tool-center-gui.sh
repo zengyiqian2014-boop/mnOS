@@ -31,7 +31,12 @@ center=$!
 window_ready '^mnOS'
 "$work/capture" "$id" /evidence/ctf-workbench.png
 # Typing a newly indexed command must filter live, without launching it.
-xdotool type --window "$id" --clearmodifiers 'ls'
+xdotool windowfocus --sync "$id"
+xdotool key --clearmodifiers ctrl+a
+xdotool type --clearmodifiers 'ls'
+xdotool key --clearmodifiers ctrl+a ctrl+c
+"$work/capture" --clipboard ls
+xdotool key --clearmodifiers End
 sleep 1
 "$work/capture" "$id" /evidence/command-search.png
 kill "$center"
