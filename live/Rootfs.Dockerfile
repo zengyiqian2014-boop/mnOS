@@ -6,6 +6,7 @@ RUN sed -i '\|^path-exclude /usr/share/man/\*$|d; \|^path-exclude /usr/share/inf
     && dpkg-query -S '/usr/share/man/*' '/usr/share/info/*' \
        | sed 's/: \/usr\/share\/.*//' | tr ',' '\n' | sed 's/^ *//; s/ *$//' | sort -u > /tmp/base-manual-packages \
     && printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d && chmod 755 /usr/sbin/policy-rc.d \
+    && printf 'Acquire::Retries "5";\n' > /etc/apt/apt.conf.d/80-mnos-build-retries \
     && apt-get update && apt-get install -y --no-install-recommends ca-certificates \
     && xargs -r apt-get install -y --no-install-recommends --reinstall < /tmp/base-manual-packages \
     && rm /tmp/base-manual-packages \
@@ -85,6 +86,7 @@ RUN --mount=type=secret,id=build_ca \
     && MNOS_BUILD_ROOT=1 MNOS_PROFILE="$PROFILE" sh /tmp/mnos-configure \
     && rm /usr/sbin/policy-rc.d && rm -rf /var/lib/apt/lists/* \
     && rm -f /etc/apt/apt.conf.d/99-mnos-build-ca \
+    && rm -f /etc/apt/apt.conf.d/80-mnos-build-retries \
     && rm -f /var/lib/dbus/machine-id /etc/machine-id /etc/ssh/ssh_host_* \
     && touch /etc/machine-id \
     && ln -s /etc/machine-id /var/lib/dbus/machine-id \
