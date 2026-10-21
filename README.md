@@ -112,6 +112,11 @@ These Linux applications do not run in the original kernel entry.
 
 The graphical tool center now includes **CTF Workbench** and **Linux Command Library**. Open `mnos-center --ctf` or `mnos-center --commands`; installed executable names are indexed without running them. GHex, DB Browser for SQLite and Wireshark open as GUI applications. `help ctf` and `help commands` document the included tool families and offline exercises.
 
+CTF Workbench on the installed AMD64 system, captured after booting from disk
+without the ISO and editing a C file in VS Code:
+
+![CTF Workbench on the installed mnOS tools desktop](assets/ctf-workbench.png)
+
 ## Legacy BusyBox edition
 
 The original build remains available separately: **Linux 6.13.3 + BusyBox + GRUB**,
