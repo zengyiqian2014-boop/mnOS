@@ -21,8 +21,8 @@ firefox-esr                   Browser; run as your ordinary account
 code .                        VS Code for the current project
 nano FILE                     Terminal editor; Ctrl-O save, Ctrl-X exit
 thunar                        Graphical file manager
-mnos-center                   Search applications and categorized tool icons
-mnos-tools                    Alias for the same application/tool center
+mnos-center --tools           Search applications and categorized tool icons
+mnos-tools                    Compact top-left application/tool menu
 kernel help                   Kernel query/administration syntax
 mnos-pkg --help               Software package commands
 
@@ -230,3 +230,107 @@ its current real commands. Its GUI and libraries do not run Firefox or VS Code.
 The native-only desktop ISO contains this environment alone. The combined
 installer includes both environments; one install writes both boot entries.
 Native hardware support is currently narrower; see /usr/src/mnos-native/README.md.
+
+@@commands
+Linux command library — installed commands and offline documentation
+
+mnos-center --tools          Open the graphical application/tool center
+mnos-center --commands       Open the searchable Linux command library
+mnos-center --list-commands  Print installed executable names and their paths
+mnos-center --list-commands | less   Browse the complete local inventory
+help TOOL                    Read an installed upstream manual or curated help
+help cd                      Read Bash's help for the cd built-in
+compgen -b                   List Bash built-ins (inside Bash)
+command -v NAME              Locate a command using your shell's PATH
+man -k WORD                  Search indexed manual descriptions
+sudo mnos-pkg install PACKAGE  Add a package with dependency resolution
+
+The command library scans /usr/local/bin, /usr/bin, /bin, /usr/local/sbin,
+/usr/sbin and /sbin each time it opens, including executable symlinks and tools
+installed later. Duplicate names use the first path in that order. It does not
+execute discovered files. The menu shows at most 180 matches initially; Show more
+expands that view, while search always covers the complete inventory. The shell
+may use a different PATH, aliases, functions or built-ins; command -v shows what
+that shell would run. Executables inside a project or virtual environment are not
+system commands and are not automatically indexed. Reopen after package changes.
+
+Clicking an indexed command opens help through mnos-help, never the command itself.
+If a tool ships no manual and has no reviewed help entry, help reports that lack;
+it does not guess flags or launch an operation. Upstream manuals may be English.
+GUI applications open normally as your account. System changes still require the
+normal administrator authorization; showing a command grants no privileges.
+
+Core command families included in the installer:
+  Files: ls, cp, mv, rm, mkdir, rmdir, touch, stat, ln, readlink, realpath, du, df
+  Search/text: find, xargs, grep, sed, awk, sort, uniq, cut, tr, wc, head, tail,
+               diff, cmp, patch, rg, fdfind, jq, xxd, strings, file
+  Archives: tar, gzip, bzip2, xz, zstd, cpio, zip, unzip, 7z
+  Processes: ps, top, htop, btop, kill, pkill, pgrep, jobs, fg, bg, nice, timeout
+  Sessions: bash, zsh, tmux, env, printenv, id, whoami, date, uname, uptime
+  Network: ip, ss, nmcli, iw, ping, dig, curl, wget, ssh, sftp, rsync, nc, socat
+  Storage: lsblk, findmnt, mount, umount, blkid, parted, gparted, cryptsetup
+  Services: systemctl, journalctl, loginctl, timedatectl, sysctl, modprobe
+  Permissions: chmod, chown, chgrp, getfacl, setfacl, getfattr, setfattr, sudo
+  Development: cc, c++, gcc, clang, gdb, make, cmake, ninja, git, cargo, go, npm
+
+Examples (ordinary account):
+  find ~/Documents -type f -name '*.txt'   Find text files in your documents
+  du -h --max-depth=1 ~                   Summarize your directory usage
+  ps -u "$USER" -o pid,comm,%cpu,%mem      Inspect your own processes
+  lsblk -f                               Inspect disks without writing them
+  journalctl --user -b                    Read your user-session log
+  tmux new -s work                        Create a persistent terminal session
+
+Linux does not define one finite set of all commands: packages add executables,
+and shells add functions, aliases and built-ins. The inventory states what is
+actually installed instead of advertising commands that are absent. These tools
+run in the Linux environment, not through the original mnOS kernel ABI.
+
+@@ctf
+CTF workbench — tools, permissions and an offline starting point
+
+mnos-center --ctf             Open the graphical CTF workbench
+wireshark                    Graphical packet analysis (open a saved PCAP)
+ghex                         Graphical hex editor for a local file
+sqlitebrowser                Graphical SQLite database inspection
+help -cn ctf                 Chinese version of this chapter
+help TOOL                    Installed options, formats and examples
+
+Web: Firefox ESR, curl, ffuf, gobuster, dirb, sqlmap, mitmproxy/mitmweb.
+Pwn/reverse: GDB, GDB Multiarch, Pwntools (pwn), checksec, readelf, objdump, nm,
+strings, patchelf, strace, ltrace, xxd, hexedit and GHex.
+Crypto/passwords: OpenSSL, John the Ripper, Hashcat, Hydra and fcrackzip.
+Forensics/steganography: Sleuth Kit (mmls/fls/icat), YARA, Binwalk, ExifTool,
+Steghide, PNGCheck, ZBar, Foremost, TestDisk, PhotoRec, SQLite/DB Browser.
+Traffic: Wireshark/TShark, tcpdump, tcpflow, ngrep, Nmap, netcat and socat.
+
+Offline practice with files you create, as an ordinary user:
+  mkdir -p ~/ctf/work && cd ~/ctf/work
+  printf 'int main(void){return 0;}\n' > hello.c
+  cc -g hello.c -o hello
+  file hello                          Identify the executable and CPU architecture
+  readelf -h hello                    Inspect the ELF header
+  objdump -d hello | less             Inspect disassembly; q exits
+  gdb ./hello                         Start a debugger; quit exits
+  printf 'mnOS\n' | openssl dgst -sha256  Hash data without network access
+  sqlite3 evidence.db 'CREATE TABLE note(text); INSERT INTO note VALUES("mnOS");'
+  sqlitebrowser evidence.db           Open the database graphically
+
+For supplied challenge files (replace filenames with your own):
+  tshark -r challenge.pcap -c 10      Read ten saved packets; no live capture
+  tcpflow -r challenge.pcap -o flows  Extract TCP flows into the flows directory
+  mmls evidence.img                  Show a disk image's partition layout
+  fls -o SECTOR evidence.img         List files at a partition's sector offset
+  exiftool picture.jpg               Read image metadata
+  pngcheck -v picture.png            Inspect PNG chunk structure
+  zbarimg picture.png                Decode barcodes/QR codes from an image
+
+Analyzing local challenge files, compiling, editing and opening tools do not need
+root. Live packet capture, raw sockets and interface changes obey the configured
+network policy: see help network and mnos-net help. The launcher never silently
+adds sudo or grants NET_ADMIN. Opening a tool starts no scan or capture.
+The offline payload includes these tools and their runtime dependencies. Python
+is present only for selected third-party software that requires it, such as
+Pwntools, SQLmap and mitmproxy; mnOS utilities/menu are C/C++. No Java SDK or
+Java-based suite is added. Hashcat's OpenCL CPU runtime is included; GPU speed
+and supported algorithms depend on the driver/device, not a menu setting.

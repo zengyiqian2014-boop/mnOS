@@ -422,6 +422,13 @@ int main(int argc,char **argv) {
                 send_all(vm.serial,"code --version && firefox-esr --version && mnos-help -cn code && ! mnos-pkg install nano && timeout 90 firefox-esr --headless --screenshot /tmp/mnos-browser.png 'data:text/html,<h1>mnOS offline browser check</h1>' && test -s /tmp/mnos-browser.png && printf '#include <stdio.h>\\nint main(void){puts(\"BUILD_OK\");}\\n' > /tmp/mnos-app.c && cc -Wall -Werror /tmp/mnos-app.c -o /tmp/mnos-app && /tmp/mnos-app && echo MNOS_APPLICATIONS_PASS\n");
                 vm.wait("\r\nMNOS_APPLICATIONS_PASS\r\n",180,start);
                 code_editor(vm,out);
+                start=vm.output.size();
+                send_all(vm.serial,"DISPLAY=:0 mnos-center --ctf >/tmp/mnos-ctf-gui.log 2>&1 &\n");
+                vm.pause(8);
+                send_all(vm.serial,"DISPLAY=:0 mnos-center --self-test && mnos-center --list-commands | grep -w readelf && mnos-help -cn ctf && printf '\\nMNOS_CTF_GUI_PASS\\n'\n");
+                vm.wait("\r\nMNOS_CTF_GUI_PASS\r\n",120,start);
+                vm.pause(3);
+                vm.capture(out/"installed-ctf.ppm");
             }
             // Keep the echoed command distinct from the actual sudo prompt.
             send_all(vm.serial,"sudo -S -p 'QA_'\"AUTH:\" /usr/bin/systemctl poweroff\n"); vm.wait("QA_AUTH:",30);

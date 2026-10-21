@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=CTF Workbench
+Name[zh_CN]=CTF 工作台
+Comment=Web, reverse engineering, binary analysis, crypto and forensics
+Comment[zh_CN]=Web、逆向、二进制、密码分析与取证工具
+Exec=mnos-center --ctf
+Icon=security-high
+Categories=Development;Utility;
+Keywords=CTF;Pwn;Web;Crypto;Forensics;Reverse;
+StartupNotify=true

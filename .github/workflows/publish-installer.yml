@@ -9,12 +9,12 @@ on:
         description: Optional successful Verify existing installation ISOs run
         required: false
       application_run:
-        description: Successful unchanged-ISO application rendering verification
-        required: true
+        description: Supplemental application verification (required when using a separate verification run)
+        required: false
       release_tag:
         description: New installer preview tag
         required: true
-        default: v2.0-installer-preview.3
+        default: v2.0-installer-preview.4
 permissions:
   contents: write
   actions: read
@@ -57,18 +57,29 @@ jobs:
           else
             jq -e '.conclusion == "success"' /tmp/run.json
             jq -e '[.jobs[] | select(.name | startswith("build ("))] | length == 2 and all(.[]; .conclusion == "success")' /tmp/jobs.json
+            # The source job itself must have exercised installed GUI apps and
+            # real disk boot, not only produced an ISO or a shell prompt.
+            jq -e '[.jobs[] | select(.name | startswith("build ("))] | all(.[];
+              any(.steps[]; .name == "Verify graphical tool center and CTF application windows" and .conclusion == "success") and
+              any(.steps[]; .name == "Verify bundled applications, compiler headers and detailed manuals" and .conclusion == "success") and
+              any(.steps[]; .name == "Install to a blank disk and boot without the ISO" and .conclusion == "success"))' /tmp/jobs.json
             printf 'assets_run=%s\n' "$SOURCE_RUN" >> "$GITHUB_OUTPUT"
             printf 'sha=%s\n' "$(jq -r .head_sha /tmp/run.json)" >> "$GITHUB_OUTPUT"
           fi
           source_sha=$(jq -r .head_sha /tmp/run.json)
           [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
           printf 'base_sha=%s\n' "$source_sha" >> "$GITHUB_OUTPUT"
-          [[ "$APP_RUN" =~ ^[0-9]+$ ]]
-          gh api "repos/$GH_REPO/actions/runs/$APP_RUN" > /tmp/app-run.json
-          jq -e --arg repo "$GH_REPO" '.repository.full_name == $repo and .path == ".github/workflows/verify-applications.yml" and .conclusion == "success"' /tmp/app-run.json
-          gh api "repos/$GH_REPO/actions/runs/$APP_RUN/jobs" > /tmp/app-jobs.json
-          jq -e '[.jobs[] | select(.name | startswith("applications ("))] | length == 2 and all(.[]; .conclusion == "success")' /tmp/app-jobs.json
-          printf 'app_sha=%s\n' "$(jq -r .head_sha /tmp/app-run.json)" >> "$GITHUB_OUTPUT"
+          if [ -n "$APP_RUN" ]; then
+            [[ "$APP_RUN" =~ ^[0-9]+$ ]]
+            gh api "repos/$GH_REPO/actions/runs/$APP_RUN" > /tmp/app-run.json
+            jq -e --arg repo "$GH_REPO" '.repository.full_name == $repo and .path == ".github/workflows/verify-applications.yml" and .conclusion == "success"' /tmp/app-run.json
+            gh api "repos/$GH_REPO/actions/runs/$APP_RUN/jobs" > /tmp/app-jobs.json
+            jq -e '[.jobs[] | select(.name | startswith("applications ("))] | length == 2 and all(.[]; .conclusion == "success")' /tmp/app-jobs.json
+            printf 'app_sha=%s\n' "$(jq -r .head_sha /tmp/app-run.json)" >> "$GITHUB_OUTPUT"
+          else
+            test -z "$VERIFY_RUN"
+            printf 'app_sha=%s\n' "$source_sha" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@v4
         with:
           ref: ${{ steps.source.outputs.sha }}
@@ -85,6 +96,7 @@ jobs:
           github-token: ${{ github.token }}
           path: evidence/native-randomness
       - uses: actions/download-artifact@v4
+        if: inputs.application_run != ''
         with:
           pattern: application-rendering-*
           run-id: ${{ inputs.application_run }}
@@ -114,10 +126,17 @@ jobs:
             fi
             test "$(cat "$source/source-installer-$arch.txt")" = "$BASE_SHA"
             (cd "$source" && sha256sum -c "mnOS-2.0-preview-installer-$arch.iso.sha256")
-            application="evidence/applications/application-rendering-$arch"
-            test "$(cat "$application/installer-verification-run.txt")" = "$VERIFY_RUN"
-            test "$(cat "$application/application-test-commit.txt")" = "$APP_SHA"
-            cmp "$source/mnOS-2.0-preview-installer-$arch.iso.sha256" "$application/mnOS-2.0-preview-installer-$arch.iso.sha256"
+            if [ -n "$APP_RUN" ]; then
+              application="evidence/applications/application-rendering-$arch"
+              test "$(cat "$application/installer-verification-run.txt")" = "$VERIFY_RUN"
+              test "$(cat "$application/application-test-commit.txt")" = "$APP_SHA"
+              cmp "$source/mnOS-2.0-preview-installer-$arch.iso.sha256" "$application/mnOS-2.0-preview-installer-$arch.iso.sha256"
+            else
+              test -s "$source/validation/ctf-workbench.png"
+              test -s "$source/validation/ghex.png"
+              test -s "$source/validation/sqlitebrowser.png"
+              test -s "$source/validation/wireshark.png"
+            fi
             # This release promises one downloadable ISO per architecture.
             # Stop before creating a public release if GitHub would require parts.
             bytes=$(stat -c %s "$source/mnOS-2.0-preview-installer-$arch.iso")
@@ -147,7 +166,7 @@ jobs:
           if gh release view "$TAG" --json isDraft,targetCommitish > /tmp/existing.json 2>/dev/null; then
             jq -e --arg sha "$SOURCE_SHA" '.isDraft == true and .targetCommitish == $sha' /tmp/existing.json
           else
-            gh release create "$TAG" --target "$SOURCE_SHA" --draft --prerelease --title 'mnOS 集成工具安装包 · 应用环境与详细命令手册（amd64 / ARM64）' --notes-file live/INSTALLER-RELEASE.md
+            gh release create "$TAG" --target "$SOURCE_SHA" --draft --prerelease --title 'mnOS 图形工具中心 · Linux 命令库与 CTF 工作台（AMD64 / ARM64）' --notes-file live/INSTALLER-RELEASE.md
           fi
           for file in release/publish/*; do gh release upload "$TAG" "$file" --clobber; done
           gh release view "$TAG" --json assets --jq '.assets[]|[.name,.size,.state]|@tsv'

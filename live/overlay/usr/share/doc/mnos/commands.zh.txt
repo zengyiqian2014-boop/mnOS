@@ -214,3 +214,100 @@ rg 文字 目录                  搜索文件内容
 当前自研内核不能运行 Firefox 或 VS Code。
 原生桌面专用 ISO 只包含原生环境；集成安装 ISO 同时包含两套环境，一次安装
 写入两个引导入口。原生硬件支持仍较少，详见 /usr/src/mnos-native/README.md。
+
+@@commands
+Linux 命令库——按实际安装情况显示命令
+
+mnos-center --tools          打开图形应用与工具中心
+mnos-center --commands       打开可搜索的 Linux 命令库
+mnos-center --list-commands  列出已安装命令及可执行文件路径
+mnos-center --list-commands | less  分页查看完整列表，按 q 退出
+help 工具名                  查看随包提供的手册或审核过的帮助调用
+help cd                      查看 Bash 的 cd 内建命令说明
+compgen -b                   在 Bash 内列出全部内建命令
+command -v 名称              查看当前 shell 实际使用的命令路径
+man -k 关键词                搜索本地手册索引
+sudo mnos-pkg install 软件包 安装其他软件及其依赖
+
+命令库每次打开时读取 /usr/local/bin、/usr/bin、/bin、/usr/local/sbin、
+/usr/sbin、/sbin；包含可执行符号链接及后续安装的软件，同名命令按上述顺序
+取首个路径。索引时不执行文件。列表先显示 180 项，点“显示更多”继续显示；
+搜索始终覆盖完整列表。Shell 的 PATH、别名、函数和内建命令可能不同，
+以 command -v 的结果为准。项目或虚拟环境内的文件不自动作为系统命令收录。
+安装新包后重新打开工具中心即可刷新。
+
+点击命令条目只打开 mnos-help 帮助，不执行该命令的默认操作。没有随包手册、
+也没有已审核帮助入口时会明确告知，不猜测参数、不启动操作。上游手册可能
+只有英文。图形应用以当前账号直接打开；列出管理命令不代表授予管理员权限。
+
+安装包中的常用命令分类：
+  文件：ls、cp、mv、rm、mkdir、rmdir、touch、stat、ln、readlink、realpath、du、df
+  搜索与文本：find、xargs、grep、sed、awk、sort、uniq、cut、tr、wc、head、tail、
+              diff、cmp、patch、rg、fdfind、jq、xxd、strings、file
+  压缩：tar、gzip、bzip2、xz、zstd、cpio、zip、unzip、7z
+  进程：ps、top、htop、btop、kill、pkill、pgrep、jobs、fg、bg、nice、timeout
+  会话：bash、zsh、tmux、env、printenv、id、whoami、date、uname、uptime
+  网络：ip、ss、nmcli、iw、ping、dig、curl、wget、ssh、sftp、rsync、nc、socat
+  磁盘：lsblk、findmnt、mount、umount、blkid、parted、gparted、cryptsetup
+  服务：systemctl、journalctl、loginctl、timedatectl、sysctl、modprobe
+  权限：chmod、chown、chgrp、getfacl、setfacl、getfattr、setfattr、sudo
+  开发：cc、c++、gcc、clang、gdb、make、cmake、ninja、git、cargo、go、npm
+
+普通用户示例：
+  find ~/Documents -type f -name '*.txt'  查找文档目录中的文本文件
+  du -h --max-depth=1 ~                  统计家目录下一级目录大小
+  ps -u "$USER" -o pid,comm,%cpu,%mem     查看自己的进程与资源占用
+  lsblk -f                              查看磁盘文件系统，不写入磁盘
+  journalctl --user -b                   查看本次启动的用户会话日志
+  tmux new -s work                       新建终端会话
+
+Linux 没有固定不变的“全部命令”：软件包增加程序，shell 增加函数、别名和
+内建命令。此处以实际安装清单为准。这些程序运行在 Linux 工具环境；不能
+据此认为自研内核已经实现 Linux 应用 ABI。
+
+@@ctf
+CTF 工作台——工具分类、权限和离线练习
+
+mnos-center --ctf             打开图形 CTF 工作台
+wireshark                    图形化分析已保存的数据包文件
+ghex                         图形十六进制编辑器
+sqlitebrowser                图形化查看和编辑 SQLite 数据库
+help ctf                     英文版 CTF 说明
+help 工具名                   查看安装版本的参数、格式与用法
+
+Web：Firefox ESR、curl、ffuf、gobuster、dirb、sqlmap、mitmproxy/mitmweb。
+Pwn／逆向：GDB、GDB Multiarch、Pwntools（pwn）、checksec、readelf、objdump、
+nm、strings、patchelf、strace、ltrace、xxd、hexedit、GHex。
+密码分析：OpenSSL、John the Ripper、Hashcat、Hydra、fcrackzip。
+取证／隐写：Sleuth Kit（mmls／fls／icat）、YARA、Binwalk、ExifTool、Steghide、
+PNGCheck、ZBar、Foremost、TestDisk、PhotoRec、SQLite／DB Browser。
+流量：Wireshark／TShark、tcpdump、tcpflow、ngrep、Nmap、netcat、socat。
+
+以下练习完全离线，使用自己创建的文件，不需要 root：
+  mkdir -p ~/ctf/work && cd ~/ctf/work
+  printf 'int main(void){return 0;}\n' > hello.c
+  cc -g hello.c -o hello
+  file hello                          识别可执行文件及架构
+  readelf -h hello                    查看 ELF 文件头
+  objdump -d hello | less             查看反汇编，按 q 退出
+  gdb ./hello                         打开调试器，quit 退出
+  printf 'mnOS\n' | openssl dgst -sha256  计算数据的 SHA256
+  sqlite3 evidence.db 'CREATE TABLE note(text); INSERT INTO note VALUES("mnOS");'
+  sqlitebrowser evidence.db           用图形界面打开刚创建的数据库
+
+对题目提供的文件，可用下列方式分析（替换为实际文件名）：
+  tshark -r challenge.pcap -c 10      查看保存的前十个包，不抓取实时流量
+  tcpflow -r challenge.pcap -o flows  将 TCP 流写入 flows 目录
+  mmls evidence.img                  查看磁盘镜像分区布局
+  fls -o 扇区偏移 evidence.img        查看指定分区里的文件
+  exiftool picture.jpg               读取图像元数据
+  pngcheck -v picture.png            查看 PNG 数据块结构
+  zbarimg picture.png                从图片识别条形码和二维码
+
+本地文件分析、编译、编辑与打开应用无需 root。实时抓包、原始套接字和接口
+管理按安装时选定的网络权限执行，详见 help -cn network 和 mnos-net help。
+工具中心不会自动加入 sudo，不会因为打开工具就开始扫描或抓包。
+上述工具和运行依赖随离线安装包集成。Python 只随选定的第三方工具依赖保留，
+例如 Pwntools、SQLmap、mitmproxy；mnOS 工具中心与管理命令用 C/C++ 编写。
+不额外加入 Java SDK 或 Java 工具套件。Hashcat 带 OpenCL CPU 运行环境，
+GPU 的可用性与速度取决于实际驱动和设备。

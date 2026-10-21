@@ -30,3 +30,12 @@ yara
 7zip
 xvfb
 xdotool
+ghex
+sqlite3
+sqlitebrowser
+sleuthkit
+tcpflow
+ngrep
+pngcheck
+zbar-tools
+fcrackzip
