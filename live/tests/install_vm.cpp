@@ -423,6 +423,9 @@ int main(int argc,char **argv) {
             send_all(vm.serial,"test $(id -u) -ge 1000 && ! grep -qw boot=live /proc/cmdline && findmnt -n -o FSTYPE / | grep -qx ext4 && test -e /var/lib/mnos/installed-architecture && command -v code firefox-esr nano nmap mnos-pkg && /usr/sbin/getcap /usr/lib/mnos/net-admin | grep -q cap_net_admin,cap_net_raw=ep && timeout 120 sh -c 'until pgrep -u $(id -u) xfce4-session && pgrep -u $(id -u) xfce4-panel && pgrep -u $(id -u) xfwm4; do sleep 1; done' && echo MNOS_DISK_DESKTOP_PASS\n");
             vm.wait("\r\nMNOS_DISK_DESKTOP_PASS\r\n",180,start);
             vm.desktop_screen(out/(phase+"-desktop.ppm"));
+            start=vm.output.size();
+            send_all(vm.serial,"test \"$(cat /etc/mnos/edition)\" = linux && test ! -e /etc/grub.d/41_mnos_native && test ! -e /boot/mnos.elf && test ! -e /boot/mnos-arm64.efi && mnos-admin info && mnos-help -cn editions && printf '\\nMNOS_LINUX_EDITION_PASS\\n'\n");
+            vm.wait("\r\nMNOS_LINUX_EDITION_PASS\r\n",60,start);
             if(!nvme) {
                 start=vm.output.size();
                 send_all(vm.serial,"code --version && firefox-esr --version && mnos-help -cn code && ! mnos-pkg install nano && timeout 90 firefox-esr --headless --screenshot /tmp/mnos-browser.png 'data:text/html,<h1>mnOS offline browser check</h1>' && test -s /tmp/mnos-browser.png && printf '#include <stdio.h>\\nint main(void){puts(\"BUILD_OK\");}\\n' > /tmp/mnos-app.c && cc -Wall -Werror /tmp/mnos-app.c -o /tmp/mnos-app && /tmp/mnos-app && echo MNOS_APPLICATIONS_PASS\n");

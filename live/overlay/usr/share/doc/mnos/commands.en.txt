@@ -223,13 +223,13 @@ from deletion permissions. ISO Live changes are temporary until installed.
 @@native
 Original kernel environment
 
-The installed boot menu also contains the original C/assembly kernel for the
-matching architecture. Its graphical desktop, MNFS, authentication, kernel
-commands and native ELF ABI are independent of Linux. help / help -cn lists
-its current real commands. Its GUI and libraries do not run Firefox or VS Code.
-The native-only desktop ISO contains this environment alone. The combined
-installer includes both environments; one install writes both boot entries.
-Native hardware support is currently narrower; see /usr/src/mnos-native/README.md.
+Native Edition is a separate installer with the original C/assembly kernel,
+GUI, MNFS, authentication and native ELF ABI. This Linux Edition does not add
+that kernel to its boot menu. In the native desktop, linux start opens the
+bundled software Linux guest for RV64IMAC/LP64 console applications and temporary
+files. It has no virtual NIC/GPU or host storage sharing. Firefox and VS Code
+require Linux Edition. Native hardware support remains narrower; see help editions
+and /usr/src/mnos-native/README.md. That reference source is not the running kernel.
 
 @@commands
 Linux command library — installed commands and offline documentation

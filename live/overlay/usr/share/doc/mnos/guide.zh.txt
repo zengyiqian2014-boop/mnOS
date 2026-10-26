@@ -1,20 +1,27 @@
-mnOS 集成工具安装包
+mnOS Linux Edition
 ==================
 
 按 CPU 架构选择一份 ISO，离线安装时一起写入桌面、Firefox ESR、官方 VS Code、
-nano、开发编译环境、CTF/网络/系统工具、驱动固件和自研内核入口。
+nano、开发编译环境、CTF/网络/系统工具以及驱动固件。
 AMD64 面向 Intel/AMD 64 位，ARM64 面向 AArch64 UEFI；每种架构同一份镜像
 包含虚拟机和常见硬件支持，未测试的硬件仍不能承诺兼容。
 
-默认桌面工具环境使用 Debian 13/Linux 6.12 LTS/Xfce。自研 C/汇编内核是
-另一个引导入口，有自己的原生 GUI、文件系统和账号；不支持 Linux 应用 ABI。
-不要把 Firefox/VS Code 说成已运行在自研内核上。
+本版使用 Debian 13/Linux 6.12 LTS/Xfce，配有 mnOS 的 C/C++ 图形工具与管理命令。
+自研 C/汇编内核和 GUI 通过单独的 Native Edition 安装包交付；本版不混入自研
+引导入口。Native Edition 的 Linux 窗口在自写 C 模拟器里运行真实 Linux 客体，
+初期支持 RV64IMAC/LP64 控制台程序和临时文件，没有虚拟网卡、GPU 或宿主文件共享。
+Firefox、VS Code 和完整 CTF 桌面应用运行在本 Linux 版里，尚不能在原生客体运行。
 
 完整英文命令手册：help
 完整中文命令手册：help -cn
 具体章节：help -cn code / firefox / packages / build / network / kernel
+版本区别与管理：help -cn editions / management
 具体软件：help 工具名（随软件安装的上游手册，语言取决于软件）
-自研入口：help -cn all，逐条列出实际实现的原生命令。
+原生版终端：help -cn all，逐条列出实际实现的原生命令。
+
+打开“mnOS 系统管理中心”或运行 mnos-admin gui，可集中访问服务、账户、磁盘、
+网络、日志、更新、进程、显示和内核设置。mnos-admin help -cn 查看 CLI。
+查询按当前账号权限执行；修改系统时使用 sudo 或图形管理器的正常认证。
 
 图形安装器先选磁盘、创建普通账号和网络权限模式，再确认整盘清空。
 当前是自动整盘分区安装，不支持保留旧系统、手动分区或安装时加密。
@@ -35,6 +42,5 @@ UTM 先使用 QEMU 后端：取消“使用 Apple 虚拟化”，ARM64 主机运
 与 QEMU/HVF 是不同后端，前者目前未验证。原生内核未签名，需要关闭
 Secure Boot；Linux 工具入口使用 Debian 的签名引导链。
 
-原生文档和源码：/usr/src/mnos-native。
-原生 MNFS 目前支持 ATA PIO（AMD64）或 VirtIO-MMIO（ARM64）磁盘，
-未识别到 MNFS 卷时账号和文件只在内存中；不要把 Linux ext4 分区当 MNFS。
+原生参考文档和源码：/usr/src/mnos-native，不表示其内核正在本版运行。
+本版安装后的系统和用户文件使用 ext4；Native Edition 使用独立的 MNFS 格式。
