@@ -3,6 +3,8 @@
 set -euo pipefail
 ROOT=$(cd -- "$(dirname -- "$0")" && pwd)
 PROFILE=${1:-installer}
+EDITION=${EDITION:-linux}
+case "$EDITION" in linux|combined) ;; *) echo 'EDITION must be linux or combined.' >&2; exit 2 ;; esac
 ARCH=${2:-$(uname -m)}
 case "$ARCH" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; amd64|arm64) ;; *) echo 'Unsupported architecture.' >&2; exit 2 ;; esac
 case "$PROFILE" in installer|qemu|hardware) ;; *) echo "Usage: $0 [installer] [amd64|arm64]" >&2; exit 2 ;; esac
@@ -39,7 +41,7 @@ trap 'docker rm -f "$CONTAINER" >/dev/null 2>&1 || true' EXIT
 # Stream the rootfs. No host chroot, host service changes or rootfs tar copy.
 docker export "$CONTAINER" | docker run --rm -i --network none \
     --memory=3g --cpus="${JOBS:-4}" \
-    -e "PROFILE=$PROFILE" -e "ARCH=$ARCH" -e "SOURCE_COMMIT=$SOURCE_COMMIT" -e "BUILD_UID=$(id -u)" -e "BUILD_GID=$(id -g)" \
+    -e "PROFILE=$PROFILE" -e "EDITION=$EDITION" -e "ARCH=$ARCH" -e "SOURCE_COMMIT=$SOURCE_COMMIT" -e "BUILD_UID=$(id -u)" -e "BUILD_GID=$(id -g)" \
     -v "$OUT:/out" -v "$ROOT:/source:ro" -v "$ROOT/../native:/native:ro" mnos-live-builder \
     bash /source/pack.sh
 echo "Built $OUT/mnOS-2.0-preview-$PROFILE-$ARCH.iso"

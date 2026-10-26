@@ -200,7 +200,7 @@ static void draw(void) {
         rect(x, y + 402, 230, 36, 0x31544d);
         text(x + 15, y + 404, "Continue to install", 18, 0xe2ebf0);
     }
-    text(x, y + 558, "mnOS Desktop 0.4   /   Native applications, no Linux runtime", 18, 0x617f91);
+    text(x, y + 558, "mnOS Native Edition   /   Original host kernel and desktop", 18, 0x617f91);
     if (mouse_visible)
         for (int n = 0; n < 15; n++)
             rect(mouse_x, mouse_y + n, n / 2 + 1, 1, 0xe2ebf0);
@@ -243,6 +243,7 @@ static bool fs_write(void *p, uint64_t block, const void *bytes) {
     return block < data_blocks && raw_write(p, MN_DATA_START + block * 8, 8, bytes);
 }
 static void progress(unsigned n) {
+    if (percent == n) return;
     percent = n;
     draw();
 }

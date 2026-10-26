@@ -311,3 +311,36 @@ PNGCheck、ZBar、Foremost、TestDisk、PhotoRec、SQLite／DB Browser。
 例如 Pwntools、SQLmap、mitmproxy；mnOS 工具中心与管理命令用 C/C++ 编写。
 不额外加入 Java SDK 或 Java 工具套件。Hashcat 带 OpenCL CPU 运行环境，
 GPU 的可用性与速度取决于实际驱动和设备。
+
+@@editions
+mnOS 分为自研版和 Linux 版。
+自研版启动原生 C/汇编内核及自己的 GUI；其中的 Linux 窗口使用自研 C CPU/MMU
+模拟器运行真实 Linux 内核和 RV64IMAC/LP64 控制台程序，分配 64 MiB 临时内存。
+初期没有客体 GPU、浮点指令、虚拟网卡、宿主存储共享，不能运行 Firefox 或 VS Code。
+客体 root 不等于宿主 root；停止、重启客体或宿主切换账号会丢弃客体文件。
+Linux 版使用 Debian/Linux/Xfce，配有 mnOS 自写的 C/C++ 管理工具，包含 Firefox、
+VS Code、开发环境、GNU/Linux 命令和 CTF 图形应用。日常使用无需 root，系统修改需认证。
+两版均提供 AMD64 与 ARM64 镜像；设备范围以实测及支持文档为准，不宣称全硬件兼容或安全认证。
+
+@@management
+mnos-admin help                  英文命令手册
+mnos-admin help -cn              中文命令手册
+mnos-admin gui                   打开统一系统管理中心
+mnos-admin info                  版本、架构、实际运行的宿主内核
+mnos-admin processes             当前账号可见进程
+mnos-admin storage               块设备和文件系统
+mnos-admin network               NetworkManager 设备状态
+mnos-admin accounts              账号数据库（不读取密码）
+mnos-admin services list         服务状态
+mnos-admin services status UNIT  指定服务状态
+mnos-admin logs [UNIT]           最近 100 条可访问日志
+mnos-admin boot                  启动耗时
+mnos-admin security              AppArmor 状态，遵守访问权限
+mnos-admin packages              图形软件管理
+mnos-admin updates               图形系统更新
+mnos-admin commands|tools|ctf     实际安装的命令与工具目录
+服务 start/stop/restart/enable/disable 操作需 sudo，且必须明确指定
+.service/.socket/.timer/.target 后缀。工具不会自动提权。
+示例：sudo mnos-admin services restart NetworkManager.service
+重启网络服务可能中断连接。打开管理中心和执行查询均不会应用系统修改；图形管理工具
+在应用修改时认证。宿主管理与 Linux 客体内的管理相互独立。

@@ -17,7 +17,7 @@ on:
       release_tag:
         description: New installer preview tag
         required: true
-        default: v2.0-installer-preview.4
+        default: v2.1-linux-preview.1
 permissions:
   contents: write
   actions: read
@@ -201,7 +201,7 @@ jobs:
           if gh release view "$TAG" --json isDraft,targetCommitish > /tmp/existing.json 2>/dev/null; then
             jq -e --arg sha "$SOURCE_SHA" '.isDraft == true and .targetCommitish == $sha' /tmp/existing.json
           else
-            gh release create "$TAG" --target "$SOURCE_SHA" --draft --prerelease --title 'mnOS 图形工具中心 · Linux 命令库与 CTF 工作台（AMD64 / ARM64）' --notes-file live/INSTALLER-RELEASE.md
+            gh release create "$TAG" --target "$SOURCE_SHA" --draft --prerelease --title 'mnOS Linux Edition 2.1 Preview — 系统管理、GUI 与 CTF 工具' --notes-file live/INSTALLER-RELEASE.md
           fi
           for file in release/publish/*; do gh release upload "$TAG" "$file" --clobber; done
           gh release view "$TAG" --json assets --jq '.assets[]|[.name,.size,.state]|@tsv'

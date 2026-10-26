@@ -6,10 +6,20 @@ EFI_LD ?= lld-link-19
 OBJCOPY ?= llvm-objcopy-19
 COMMON = src/string.c src/phys.c src/mnfs.c src/files.c src/password.c src/auth.c src/ui.c src/exec.c assets/font.c
 COMMON += src/process.c src/usercopy.c src/file_api.c src/disk_layout.c src/text.c src/commands.c assets/icons.c
+COMMON += src/guest.c src/linux_guest.c
+GUEST ?= 0
 ARM = arch/arm64/acpi.c arch/arm64/core.c arch/arm64/fdt.c arch/arm64/memory.c arch/arm64/interrupts.c arch/arm64/virtio.c
 FLAGS = -std=gnu11 -O2 -g -ffreestanding -fno-builtin -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -mgeneral-regs-only -mstrict-align -mno-outline-atomics -Wall -Wextra -Werror -Wno-misleading-indentation -Iarch/arm64/freestanding -Iinclude -Iarch/arm64 -MMD -MP
 ELF = $(patsubst %.c,build/arm64/elf/%.o,$(COMMON) $(ARM)) build/arm64/elf/entry.o build/arm64/elf/user.o
 PE = $(patsubst %.c,build/arm64/pe/%.obj,$(COMMON) $(ARM) arch/arm64/efi.c) build/arm64/pe/entry.obj build/arm64/pe/user.obj
+ELF += build/arm64/elf/guest-image-$(GUEST).o
+PE += build/arm64/pe/guest-image-$(GUEST).obj
+build/arm64/elf/guest-image-$(GUEST).o: src/guest-image.S $(if $(filter 1,$(GUEST)),build/guest/Image build/guest/machine.dtb)
+	mkdir -p $(dir $@)
+	$(CLANG) --target=aarch64-none-elf -DMNOS_LINUX_GUEST=$(GUEST) -c $< -o $@
+build/arm64/pe/guest-image-$(GUEST).obj: src/guest-image.S $(if $(filter 1,$(GUEST)),build/guest/Image build/guest/machine.dtb)
+	mkdir -p $(dir $@)
+	$(CLANG) --target=aarch64-unknown-windows -DMNOS_LINUX_GUEST=$(GUEST) -c $< -o $@
 .PHONY: all
 all: build/arm64/Image build/arm64/BOOTAA64.EFI
 ELF += build/arm64/elf/exec-image.o

@@ -1,0 +1,33 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+if [ "${1:-}" = -cn ]; then
+    cat <<'EOF'
+这里是自研 mnOS 桌面中的 Linux 客体，不是宿主的内核终端。
+busybox --list 列出实际编入的 Linux 命令；命令 --help 查看语法。
+文件：ls、find、cat、cp、mv、rm、mkdir、stat、du、df、tar、gzip、vi。
+文本：grep、sed、awk、sort、uniq、cut、tr、head、tail、wc、diff。
+进程：ps、top、kill、nice、time、uptime、free、uname、dmesg。
+分析：hexdump、od、strings、base64、md5sum、sha256sum。
+权限：id、whoami、chmod、chown、umask；此临时客体控制台为 guest root。
+网络仅有客体内部协议栈，尚无虚拟网卡；网络命令不能访问宿主网络。
+文件保存在客体 RAM，停止或重启后丢失；没有宿主文件或磁盘共享。
+仅执行 RV64IMAC/LP64 Linux 程序，未实现浮点/向量、图形或动态包仓库。
+Firefox、VS Code 和完整 CTF 桌面工具请使用 mnOS Linux Edition。
+F1–F7 切换宿主窗口；宿主终端 linux pause/resume/stop/status 管理客体。
+EOF
+else
+    cat <<'EOF'
+This is the Linux guest inside the original mnOS desktop, not the host terminal.
+busybox --list lists compiled Linux utilities. COMMAND --help shows real syntax.
+Files: ls find cat cp mv rm mkdir stat du df tar gzip vi.
+Text: grep sed awk sort uniq cut tr head tail wc diff.
+Processes: ps top kill nice time uptime free uname dmesg.
+Analysis: hexdump od strings base64 md5sum sha256sum.
+Permissions: id whoami chmod chown umask. Guest root has no host privileges.
+The guest has no virtual network adapter, host storage sharing or GPU.
+All guest files are temporary; stop/restart discards them.
+Supported binaries: RV64IMAC/LP64 Linux, without floating point or vectors.
+Firefox, VS Code and the complete CTF desktop are in mnOS Linux Edition.
+F1-F7 switch host windows. Host: linux pause/resume/stop/status.
+EOF
+fi

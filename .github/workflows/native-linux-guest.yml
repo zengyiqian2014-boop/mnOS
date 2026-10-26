@@ -1,0 +1,65 @@
+name: Native GUI with real Linux guest
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build original host and pinned Linux guest
+        run: |
+          docker build -t mnos-native-builder -f native/Builder.Dockerfile .
+          docker run --rm -v "$PWD/native:/native" -w /native mnos-native-builder bash -ec '
+            mkdir -p build
+            guest/build.sh > build/guest-source-build.log 2>&1
+            make host-tests
+            GUEST=1 installer/build.sh
+            c++ -std=c++17 -O2 -Wall -Wextra -Werror tests/desktop_vm.cpp -o build/desktop-vm'
+      - name: Install and execute guest Linux in both native desktops
+        run: |
+          set -euo pipefail
+          devices=()
+          if [ -c /dev/kvm ]; then devices+=(--device /dev/kvm); fi
+          docker run --rm --network none "${devices[@]}" -e MNOS_TEST_LINUX_GUEST=1 \
+            -v "$PWD/native:/native" -w /native mnos-native-builder bash -ec '
+            set -o pipefail
+            for arch in amd64 arm64; do
+              build/desktop-vm build/desktop "$arch" 2>&1 | tee "build/desktop/guest-validation-$arch.log"
+            done'
+      - name: Package tested native edition and matching guest sources
+        run: |
+          set -euo pipefail
+          mkdir release
+          for arch in amd64 arm64; do
+            grep -q "NATIVE LINUX GUEST PASS $arch" "native/build/desktop/guest-validation-$arch.log"
+            grep -q "DESKTOP PASS $arch" "native/build/desktop/guest-validation-$arch.log"
+            cp "native/build/desktop/mnOS-0.4-desktop-installer-$arch.iso" "release/mnOS-native-0.5-preview.1-$arch.iso"
+          done
+          cp native/build/guest/{SOURCES.sha256,linux.config,busybox.config} release/
+          cp native/guest/README.md release/GUEST_BUILD.md
+          cp EDITIONS.md release/
+          printf '%s\n' "$GITHUB_SHA" > release/SOURCE_COMMIT.txt
+          printf 'Validation: https://github.com/%s/actions/runs/%s\n' "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > release/PROVENANCE.txt
+          tar -C native/build/guest-source -cf release/linux-guest-upstream-sources.tar linux-6.12.114.tar.xz busybox-1.37.0.tar.bz2 musl-1.2.5.tar.gz
+          git archive --format=tar.gz -o release/mnos-native-source.tar.gz HEAD native EDITIONS.md LICENSE .github/workflows/native-linux-guest.yml
+          tar -C native/build/desktop -czf release/native-installation-validation.tar.gz --wildcards '*.log' '*-linux-guest.ppm'
+          (cd release && sha256sum *.iso *.tar *.tar.gz *.config *.txt *.md SOURCES.sha256 > SHA256SUMS && sha256sum -c SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-linux-guest-evidence
+          path: |
+            native/build/*.log
+            native/build/desktop/*.log
+            native/build/desktop/*-linux-guest.ppm
+            native/build/guest-source-build.log
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-linux-guest-release
+          path: release/
+          retention-days: 14
+          compression-level: 0

@@ -1,0 +1,17 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin TERM=dumb HOME=/root ENV=/etc/mnos-shellrc
+mount -t devtmpfs devtmpfs /dev
+mkdir -p /dev/pts /proc /sys /tmp /run /root
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devpts devpts /dev/pts
+mount -t tmpfs tmpfs /tmp
+hostname mnos-linux-guest
+printf '\nmnOS Linux guest / RV64IMAC / isolated temporary RAM\n'
+printf 'Linux runs INSIDE the original mnOS C interpreter. Guest root is not host root.\n'
+printf 'No host disk, files, network, GPU or device passthrough. Reboot discards guest files.\n'
+printf 'Commands: busybox --list | more ; help ; help -cn\n\n'
+export PS1='linux-guest# '
+printf 'help() { /usr/bin/help "$@"; }\n' > /etc/mnos-shellrc
+while :; do setsid cttyhack /bin/sh; done

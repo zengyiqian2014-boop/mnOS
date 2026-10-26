@@ -1,5 +1,12 @@
 # mnOS native kernel and desktop
 
+Current development adds the original C RV64IMAC/Sv39 machine and a real Linux
+guest window: build with `GUEST=1` after `guest/build.sh`. This executes Linux
+inside the native desktop; it does not add a host Linux ABI. See
+[two editions and exact runtime limits](../EDITIONS.md). `system` unifies native
+status queries; `linux` controls the guest. The older release notes below
+describe builds without the guest payload.
+
 [Install the original graphical system](DESKTOP.md) · [Desktop 0.4 release notes](DESKTOP-RELEASE.md)
 
 An experimental x86_64 and ARM64 kernel written in freestanding C and assembly.

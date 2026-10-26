@@ -334,3 +334,39 @@ is present only for selected third-party software that requires it, such as
 Pwntools, SQLmap and mitmproxy; mnOS utilities/menu are C/C++. No Java SDK or
 Java-based suite is added. Hashcat's OpenCL CPU runtime is included; GPU speed
 and supported algorithms depend on the driver/device, not a menu setting.
+
+@@editions
+mnOS has two editions. Native Edition boots the original C/assembly kernel
+and its own GUI. Its Linux window runs an actual Linux kernel and RV64IMAC/LP64
+console programs inside an original C software CPU/MMU, with 64 MiB temporary
+RAM. It has no guest GPU, floating-point ISA, virtual network adapter or host
+storage sharing. It cannot yet run Firefox or VS Code. Guest root is not host root.
+Linux Edition uses Debian/Linux/Xfce and mnOS C/C++ management tools. It includes
+Firefox, VS Code, development, GNU/Linux commands and CTF desktop applications.
+Ordinary applications need no root; changing system state requires authentication.
+Each edition has AMD64 and ARM64 media with documented device limits.
+No edition claims universal hardware compatibility or security certification.
+
+@@management
+mnos-admin help                  English command reference
+mnos-admin help -cn              Chinese command reference
+mnos-admin gui                   System management center
+mnos-admin info                  Edition, architecture and real host kernel
+mnos-admin processes             Processes visible to your account
+mnos-admin storage               Block devices and filesystems
+mnos-admin network               NetworkManager device state
+mnos-admin accounts              Account database (not passwords)
+mnos-admin services list         Service states
+mnos-admin services status UNIT  Status of an explicitly named unit
+mnos-admin logs [UNIT]           Latest 100 accessible journal entries
+mnos-admin boot                  Boot timing
+mnos-admin security              AppArmor status, subject to access rights
+mnos-admin packages              Graphical software management
+mnos-admin updates               Graphical update management
+mnos-admin commands|tools|ctf     Installed command/tool catalogs
+Service start/stop/restart/enable/disable requires sudo and an explicit unit
+suffix (.service/.socket/.timer/.target). The wrapper does not elevate itself.
+Example: sudo mnos-admin services restart NetworkManager.service
+Restarting a network service can interrupt connections. No changes occur on
+opening the management center or on status queries. Management tools authenticate
+when applying changes. Host administration is separate from guest administration.

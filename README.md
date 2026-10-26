@@ -2,6 +2,15 @@
 
 [English](README.md) | [中文](README.zh.md)
 
+**Current development: two distinct editions.** [Native Edition and Linux Edition](EDITIONS.md)
+have separate installers and honest runtime labels. The native GUI now has an
+original C software machine for a real Linux/BusyBox guest; Linux Edition keeps
+Firefox, VS Code, the full CTF suite and a unified C system-management command.
+The guest initially supports RV64IMAC/LP64 console programs, not Linux GUI apps.
+See the edition guide for commands, permissions, build steps and limits.
+
+The links and description below document earlier published releases.
+
 [Native graphical desktop installer: AMD64 / ARM64](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.4-desktop-preview.2)
 · [Install, use and reproduce the tests](native/DESKTOP.md)
 

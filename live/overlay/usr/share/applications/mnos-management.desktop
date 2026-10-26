@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=mnOS System Management
+Name[zh_CN]=mnOS 系统管理中心
+Comment=Services, accounts, storage, network, logs, updates and tools
+Comment[zh_CN]=服务、账户、存储、网络、日志、更新与工具
+Exec=mnos-center --management
+Icon=preferences-system
+Categories=System;Settings;
+Terminal=false

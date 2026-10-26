@@ -34,21 +34,28 @@ fi
 chmod 440 "$ROOT/etc/sudoers.d/50-mnos"
 chmod 644 "$ROOT/usr/share/backgrounds/mnos/default.svg"
 printf '%s\n' "${SOURCE_COMMIT:?}" > "$ROOT/etc/mnos/source-commit"
-if [ "$ARCH" = amd64 ]; then
+EDITION=${EDITION:-linux}
+case "$EDITION" in linux|combined) ;; *) exit 2 ;; esac
+printf '%s\n' "$EDITION" > "$ROOT/etc/mnos/edition"
+if [ "$EDITION" = combined ] && [ "$ARCH" = amd64 ]; then
     grub-file --is-x86-multiboot2 /native/build/mnos.elf
     cp /native/build/mnos.elf "$ISO/boot/mnos.elf"
     cp /native/build/mnos.elf "$ROOT/boot/mnos.elf"
-else
+elif [ "$EDITION" = combined ]; then
     cp /native/build/arm64/BOOTAA64.EFI "$ISO/boot/mnos-arm64.efi"
     cp /native/build/arm64/BOOTAA64.EFI "$ROOT/boot/mnos-arm64.efi"
 fi
 rm -f "$ROOT/etc/grub.d/09_mnos_native"
-install -m 755 /source/overlay/etc/grub.d/41_mnos_native "$ROOT/etc/grub.d/41_mnos_native"
+if [ "$EDITION" = combined ]; then
+    install -m 755 /source/overlay/etc/grub.d/41_mnos_native "$ROOT/etc/grub.d/41_mnos_native"
+else
+    rm -f "$ROOT/etc/grub.d/41_mnos_native"
+fi
 sed -i -E '/^userAutoLogin:/d; s/^doAutologin:.*/doAutologin: false/; s/^setRootPassword:.*/setRootPassword: false/; s/^allowWeakPasswords:.*/allowWeakPasswords: false/' "$ROOT/etc/calamares/modules/users.conf"
 cp /source/overlay/usr/share/doc/mnos/guide.zh.txt "$ROOT/usr/share/doc/mnos/guide.zh.txt"
 # Include the original kernel source and font license with the bootable binary.
 mkdir -p "$ROOT/usr/src/mnos-native"
-cp -a /native/src /native/include /native/tests /native/tools /native/arch /native/user /native/installer /native/Makefile /native/linker.ld /native/README.md /native/FILESYSTEM.md "$ROOT/usr/src/mnos-native/"
+cp -a /native/src /native/include /native/tests /native/tools /native/arch /native/user /native/installer /native/guest /native/Makefile /native/linker.ld /native/README.md /native/FILESYSTEM.md "$ROOT/usr/src/mnos-native/"
 mkdir -p "$ROOT/usr/src/mnos-admin"
 cp /source/src/kernel.c /source/src/kernel-admin.c /source/src/kernel-common.h "$ROOT/usr/src/mnos-admin/"
 cp /source/src/net-admin.c "$ROOT/usr/src/mnos-admin/"
@@ -112,7 +119,7 @@ menuentry 'Try desktop / diagnostics (changes are temporary)' {
     initrd /live/initrd.img
 }
 EOF
-if [ "$ARCH" = amd64 ]; then
+if [ "$EDITION" = combined ] && [ "$ARCH" = amd64 ]; then
 cat >> "$ISO/boot/grub/grub.cfg" <<'EOF'
 menuentry 'Experimental C kernel - not the installer - Secure Boot off' {
     insmod multiboot2
@@ -120,7 +127,7 @@ menuentry 'Experimental C kernel - not the installer - Secure Boot off' {
     boot
 }
 EOF
-else
+elif [ "$EDITION" = combined ]; then
 cat >> "$ISO/boot/grub/grub.cfg" <<'EOF'
 menuentry 'Experimental C kernel - GOP/serial - Secure Boot off' {
     chainloader /boot/mnos-arm64.efi
