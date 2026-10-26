@@ -10,6 +10,8 @@ mnos-help --list | grep -qx packages
 mnos-help -cn packages | grep -q '依赖'
 mnos-help code | grep -q 'sandbox'
 mnos-help -cn editions | grep -q '自研版'
+mnos-help -cn native | grep -q '单独的 Native Edition'
+mnos-help native | grep -q 'separate installer'
 mnos-help management | grep -q 'mnos-admin services'
 sh "$(dirname "$0")/admin.sh"
 mnos-pkg show libc6 >/dev/null || test -s /usr/share/doc/mnos/packages.tsv

@@ -41,6 +41,13 @@ sleep 1
 "$work/capture" "$id" /evidence/command-search.png
 kill "$center"
 wait "$center" || true
+# The unified management entry must really open the settings catalog.
+mnos-admin gui > "$work/management.log" 2>&1 &
+manager=$!
+window_ready '^mnOS'
+"$work/capture" "$id" /evidence/system-management.png
+kill "$manager"
+wait "$manager" || true
 # Launch actual graphical analysis tools with local fixtures, without root.
 printf 'mnOS CTF local fixture\n' > "$work/fixture.bin"
 ghex "$work/fixture.bin" > /evidence/ghex.log 2>&1 &

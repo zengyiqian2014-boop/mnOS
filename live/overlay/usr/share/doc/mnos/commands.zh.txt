@@ -209,11 +209,12 @@ rg 文字 目录                  搜索文件内容
 @@native
 自研内核环境
 
-安装后的启动菜单也包含对应架构的原生 C/汇编内核。其图形桌面、MNFS、账号、
-内核命令及原生 ELF 接口独立于 Linux，help 与 help -cn 列出实际命令。
-当前自研内核不能运行 Firefox 或 VS Code。
-原生桌面专用 ISO 只包含原生环境；集成安装 ISO 同时包含两套环境，一次安装
-写入两个引导入口。原生硬件支持仍较少，详见 /usr/src/mnos-native/README.md。
+自研版通过单独的 Native Edition 安装包交付，包含原生 C/汇编内核、GUI、
+MNFS、账号和原生 ELF 接口。本 Linux Edition 不在引导菜单加入自研内核。
+自研桌面内用 linux start 启动软件模拟的 Linux 客体，运行 RV64IMAC/LP64
+控制台程序；客体文件临时保存，没有虚拟网卡、GPU 或宿主存储共享。
+Firefox、VS Code 仍需要 Linux Edition。原生硬件支持范围较窄，详见
+help -cn editions 和 /usr/src/mnos-native/README.md；源码供参考，不是本版运行内核。
 
 @@commands
 Linux 命令库——按实际安装情况显示命令
