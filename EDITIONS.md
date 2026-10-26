@@ -1,5 +1,7 @@
 # Two mnOS editions
 
+[中文说明](EDITIONS.zh.md)
+
 | | Native Edition | Linux Edition |
 | --- | --- | --- |
 | Host kernel | Original freestanding C/assembly mnOS | Debian's maintained Linux kernel |

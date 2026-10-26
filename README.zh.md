@@ -1,6 +1,6 @@
 # mnOS
 
-**当前开发分成两版：[自研版与 Linux 版](EDITIONS.md)。** 自研版运行原生 C/汇编内核和 GUI，
+**当前开发分成两版：[自研版与 Linux 版](EDITIONS.zh.md)。** 自研版运行原生 C/汇编内核和 GUI，
 新增自研 C 模拟器中的真实 Linux/BusyBox 客体；Linux 版提供 Firefox、VS Code、完整 CTF 工具
 以及统一系统管理入口。初期客体支持 RV64IMAC/LP64 控制台程序，尚不支持 Linux 图形软件。
 构建、权限、命令和兼容范围见版本说明；以下链接和描述保留为历史发布记录。
