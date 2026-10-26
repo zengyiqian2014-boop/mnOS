@@ -9,6 +9,14 @@ Firefox, VS Code, the full CTF suite and a unified C system-management command.
 The guest initially supports RV64IMAC/LP64 console programs, not Linux GUI apps.
 See the edition guide for commands, permissions, build steps and limits.
 
+**Native Edition 0.5 Preview is available:**
+[AMD64 installer](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.5-native-preview.1/mnOS-native-0.5-preview.1-amd64.iso)
+· [ARM64 installer](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.5-native-preview.1/mnOS-native-0.5-preview.1-arm64.iso)
+· [Checksums, source and tested scope](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.5-native-preview.1).
+Both architectures passed GUI installation, disk boot without the ISO and actual Linux guest commands.
+
+![Actual native desktop executing Linux guest programs](assets/native-linux-guest.png)
+
 The links and description below document earlier published releases.
 
 [Native graphical desktop installer: AMD64 / ARM64](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.4-desktop-preview.2)
