@@ -3,7 +3,17 @@
 **当前开发分成两版：[自研版与 Linux 版](EDITIONS.zh.md)。** 自研版运行原生 C/汇编内核和 GUI，
 新增自研 C 模拟器中的真实 Linux/BusyBox 客体；Linux 版提供 Firefox、VS Code、完整 CTF 工具
 以及统一系统管理入口。初期客体支持 RV64IMAC/LP64 控制台程序，尚不支持 Linux 图形软件。
-构建、权限、命令和兼容范围见版本说明；以下链接和描述保留为历史发布记录。
+构建、权限、命令和兼容范围见版本说明。
+
+**自研版 0.5 Preview 已发布：**
+[AMD64 安装 ISO](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.5-native-preview.1/mnOS-native-0.5-preview.1-amd64.iso)
+· [ARM64 安装 ISO](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.5-native-preview.1/mnOS-native-0.5-preview.1-arm64.iso)
+· [校验和、源码和测试范围](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.5-native-preview.1)。
+两架构均通过图形安装、移除 ISO 后磁盘启动，以及在真实 Linux 客体中执行程序的测试。
+
+![原生桌面内运行 Linux 客体程序的实测画面](assets/native-linux-guest.png)
+
+以下链接和描述保留为历史发布记录。
 
 [下载原生图形系统安装 ISO：AMD64 / ARM64](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.4-desktop-preview.2)
 · [安装、操作与测试说明](native/DESKTOP.md)
