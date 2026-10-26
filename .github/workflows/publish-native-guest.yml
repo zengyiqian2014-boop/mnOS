@@ -1,0 +1,75 @@
+name: Publish tested native GUI and Linux guest
+on:
+  workflow_dispatch:
+    inputs:
+      build_run:
+        description: Successful Native GUI with real Linux guest run
+        required: true
+      release_tag:
+        description: Native edition preview tag matching the built filenames
+        required: true
+        default: v0.5-native-preview.1
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      SOURCE_RUN: ${{ inputs.build_run }}
+      TAG: ${{ inputs.release_tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require a successful complete native installation and Linux guest run
+        id: source
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+-native-preview\.[0-9]+$ ]]
+          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN" > /tmp/source.json
+          jq -e --arg repo "$GH_REPO" '.repository.full_name == $repo and .path == ".github/workflows/native-linux-guest.yml" and .conclusion == "success"' /tmp/source.json
+          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN/jobs" > /tmp/jobs.json
+          jq -e 'any(.jobs[]; .name == "native" and .conclusion == "success" and any(.steps[]; .name == "Install and execute guest Linux in both native desktops" and .conclusion == "success"))' /tmp/jobs.json
+          printf 'sha=%s\n' "$(jq -r .head_sha /tmp/source.json)" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-linux-guest-release
+          run-id: ${{ inputs.build_run }}
+          github-token: ${{ github.token }}
+          path: release
+      - name: Verify the exact images, source archives and both architecture records
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          test "$(cat release/SOURCE_COMMIT.txt)" = "$SOURCE_SHA"
+          grep -Fx "Validation: https://github.com/$GH_REPO/actions/runs/$SOURCE_RUN" release/PROVENANCE.txt
+          (cd release && sha256sum -c SHA256SUMS)
+          mkdir evidence upstream
+          tar -xf release/native-installation-validation.tar.gz -C evidence
+          tar -xf release/linux-guest-upstream-sources.tar -C upstream
+          (cd upstream && sha256sum -c ../release/SOURCES.sha256)
+          version=${TAG#v}
+          version=${version/-native/}
+          for arch in amd64 arm64; do
+            test -s "release/mnOS-native-$version-$arch.iso"
+            grep -q "NATIVE LINUX GUEST PASS $arch" "evidence/guest-validation-$arch.log"
+            grep -q "DESKTOP PASS $arch" "evidence/guest-validation-$arch.log"
+            test -s "evidence/$arch-linux-guest.ppm"
+            test -s "evidence/$arch-linux-guest-help.ppm"
+          done
+      - name: Publish the verified native preview
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --json isDraft,targetCommitish > /tmp/existing.json 2>/dev/null; then
+            jq -e --arg sha "$SOURCE_SHA" '.isDraft == true and .targetCommitish == $sha' /tmp/existing.json
+          else
+            gh release create "$TAG" --target "$SOURCE_SHA" --draft --prerelease --title 'mnOS Native Edition 0.5 Preview — 自研 GUI 与真实 Linux 客体' --notes-file native/GUEST-RELEASE.md
+          fi
+          for file in release/*; do gh release upload "$TAG" "$file" --clobber; done
+          gh release edit "$TAG" --draft=false --prerelease --latest=false
