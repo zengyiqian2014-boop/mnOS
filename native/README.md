@@ -175,8 +175,10 @@ The reference text is generated from the same registry:
 [English](COMMANDS.en.txt) / [中文](COMMANDS.zh.txt).
 `kernel disk status` is read-only for ordinary users; lock/unlock require root.
 Malformed volume arguments are rejected before any operation. Power commands
-open a confirmation dialog. `tools` reports the actual executable environment;
-it does not emulate APT or claim Linux binaries can run in the native kernel.
+open a confirmation dialog. `tools` reports the actual executable environment.
+With the bundled guest image, `linux start` executes Linux shell programs in the
+original software interpreter. This does not add Linux syscalls to the host ABI;
+APT, Firefox and VS Code require the separate Linux Edition.
 
 Other console commands: `uname`, `mem`, `tasks`, `pci`, `test`, `uptime`, `clear`,
 `reboot`, `shutdown`. F1–F7 select pages; `t` opens the console. F7 shows display

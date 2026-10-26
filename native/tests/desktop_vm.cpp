@@ -345,6 +345,8 @@ int main(int argc, char **argv) {
                 vm.command("test ! -e /disk && printf '%s%s\\n' NO_HOST_ DISK", "\r\nNO_HOST_DISK\r\n");
                 vm.command("busybox --list | wc -l", "\r\n402\r\n");
                 vm.screenshot(build/(arch+"-linux-guest.ppm"));
+                vm.command("help -cn", "F1–F7 切换宿主窗口");
+                vm.screenshot(build/(arch+"-linux-guest-help.ppm"));
                 vm.send(std::string(1,(char)0x85));
                 vm.command("linux pause","Paused / guest RAM retained");
                 vm.command("system memory","Free physical pages");

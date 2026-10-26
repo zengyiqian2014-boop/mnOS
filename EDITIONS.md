@@ -44,6 +44,10 @@ Open **Linux environment** from the launcher and press Start, or enter
 `linux start` in the host Terminal. `linux pause`, `linux resume`, `linux status`,
 `linux stop` and `linux restart` control the guest. Stop/restart discard guest
 files; closing the window only hides it. F5 returns to the host Terminal.
+The guest window is a UTF-8 line console (`TERM=dumb`), not a full ANSI terminal.
+Use line-oriented commands and batch output (for example `top -b -n 1`);
+interactive full-screen editors and cursor-addressed applications are not yet
+supported by this display. Native Edition's own editor remains available.
 `system status`, `system processes`, `system storage`, `system guest` report
 the real host services. `help` is English; `help -cn` is Chinese. The guest has
 its own `help`, `help -cn`, `busybox --list` and `COMMAND --help`.

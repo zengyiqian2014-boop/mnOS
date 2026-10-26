@@ -60,7 +60,7 @@ host-tests:
 build/mnos.elf: $(OBJECTS) linker.ld
 	$(LD) -nostdlib -z max-page-size=0x1000 -T linker.ld -o $@ $(OBJECTS)
 
-build/%.o: %.c include/kernel.h include/phys.h include/mnfs.h include/block.h include/auth.h include/exec.h include/process.h include/file_api.h include/usercopy.h include/font.h include/icons.h include/commands.h
+build/%.o: %.c include/kernel.h include/boot_layout.h include/phys.h include/mnfs.h include/block.h include/auth.h include/exec.h include/process.h include/file_api.h include/usercopy.h include/font.h include/icons.h include/commands.h include/guest.h include/linux_guest.h
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
