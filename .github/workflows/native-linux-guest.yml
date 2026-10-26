@@ -14,7 +14,10 @@ jobs:
           docker build -t mnos-native-builder -f native/Builder.Dockerfile .
           docker run --rm -v "$PWD/native:/native" -w /native mnos-native-builder bash -ec '
             mkdir -p build
-            guest/build.sh > build/guest-source-build.log 2>&1
+            if ! guest/build.sh > build/guest-source-build.log 2>&1; then
+              tail -100 build/guest-source-build.log
+              exit 1
+            fi
             make host-tests
             GUEST=1 installer/build.sh
             c++ -std=c++17 -O2 -Wall -Wextra -Werror tests/desktop_vm.cpp -o build/desktop-vm'
