@@ -115,7 +115,7 @@ static bool grub_menu_visible(const fs::path &path) {
     return cyan>size_t(w)*10 && black>size_t(w)*h*3/4;
 }
 struct VM {
-    pid_t pid=-1; int serial=-1, qmp=-1; bool pointer_tick=false; std::string output; fs::path log;
+    pid_t pid=-1; int serial=-1, qmp=-1; bool pointer_tick=false, accelerated=false; std::string output; fs::path log;
     VM(const std::string &arch, const fs::path &iso, const fs::path &disk, const fs::path &out,
        const fs::path &work, const std::string &phase, bool nvme=false, bool bios=false) : log(out/(phase+".log")) {
         auto sock=work/(phase+".serial"), q=work/(phase+".qmp"), vars=work/(phase+".fd");
@@ -126,6 +126,7 @@ struct VM {
         bool matching = !arm;
 #endif
         bool kvm = matching && access("/dev/kvm", R_OK | W_OK) == 0;
+        accelerated = kvm;
         std::ofstream(out/"hypervisor.txt", std::ios::app) << phase << ": "
             << (kvm ? "KVM / host CPU" : "TCG / max CPU") << '\n';
         std::vector<std::string> args{arm ? "qemu-system-aarch64" : "qemu-system-x86_64",
@@ -190,6 +191,7 @@ struct VM {
         std::cout << log.stem().string() << ": waiting for " << text << std::endl;
         auto end=Clock::now()+std::chrono::seconds(seconds);
         auto capture_at=Clock::now()+20s;
+        auto report_at=Clock::now()+60s;
         size_t progress_at=output.size();
         while(output.find(text,after)==std::string::npos) {
             check(Clock::now()<end,"Timeout waiting for "+text+"; see "+log.string()); pump(500);
@@ -207,6 +209,12 @@ struct VM {
                 capture(picture);
                 if (keep_display) check(image_active(picture),"Installer display became inactive: "+picture.string());
                 capture_at=Clock::now()+20s;
+            }
+            if (Clock::now() >= report_at) {
+                auto remaining=std::chrono::duration_cast<std::chrono::seconds>(end-Clock::now()).count();
+                std::cout << log.stem().string() << ": still waiting for " << text
+                          << " (" << remaining << " seconds remaining)" << std::endl;
+                report_at=Clock::now()+60s;
             }
             check(output.find("Kernel panic")==std::string::npos,"Kernel panic");
             check(output.find("SQUASHFS error")==std::string::npos,"SquashFS failure");
@@ -395,7 +403,14 @@ int main(int argc,char **argv) {
             vm.key("tab"); vm.type(password); vm.key("tab"); vm.key("spc");
             vm.key("alt-i"); vm.pause(3); vm.type("/dev/vda"); vm.key("ret");
             vm.wait("STAGE 5 ",120,0,true);
-            vm.wait("MNOS INSTALL PASS",1800,0,true); vm.pause(8); vm.screen(out/"installed.ppm");
+            // A software-only ARM64 VM spent 19 minutes unpacking this full
+            // offline image, then reached initramfs generation before the old
+            // 30-minute deadline expired. Allow TCG a bounded hour without
+            // changing the ISO, skipping installation, or relaxing its checks.
+            int install_seconds=vm.accelerated ? 1800 : 3600;
+            std::cout << "Installation deadline: " << install_seconds << " seconds ("
+                      << (vm.accelerated ? "KVM" : "TCG") << ")" << std::endl;
+            vm.wait("MNOS INSTALL PASS",install_seconds,0,true); vm.pause(8); vm.screen(out/"installed.ppm");
             std::cout << "Disk installation complete; shutting down the ISO session" << std::endl;
             vm.finish_installation(out/"installed.ppm");
         }
