@@ -2,6 +2,7 @@
  * mnOS original x86-64 EFI loader. Loads our native ELF, builds a bounded boot
  * map, leaves firmware services, enters our 64-bit kernel trampoline. */
 #include "../../installer/efi.h"
+#include "boot_layout.h"
 extern const uint8_t kernel_payload[], kernel_payload_end[];
 struct elf {
     uint8_t ident[16];
@@ -41,8 +42,8 @@ status efi_main(void *handle, struct system_table *s) {
         const struct segment *p = (const void *)(kernel_payload + e->phoff + i * e->phsize);
         if (p->type != 1)
             continue;
-        if (p->physical != p->address || p->address < 0x2000000 || p->address >= 0x4000000 ||
-            p->memory > 0x4000000 - p->address || p->size > p->memory || p->offset > len ||
+        if (p->physical != p->address || p->address < 0x2000000 || p->address >= MNOS_BOOT_LIMIT ||
+            p->memory > MNOS_BOOT_LIMIT - p->address || p->size > p->memory || p->offset > len ||
             p->size > len - p->offset)
             return fail(s, (void *)L"Invalid native segment.\r\n");
         if (p->address + p->memory > high)
