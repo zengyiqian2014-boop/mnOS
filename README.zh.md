@@ -13,6 +13,18 @@
 
 ![原生桌面内运行 Linux 客体程序的实测画面](assets/native-linux-guest.png)
 
+**Linux 版 2.1 Preview 已发布：**
+[AMD64 安装 ISO](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v2.1-linux-preview.1/mnOS-2.1-linux-preview.1-amd64.iso)
+· [ARM64 安装 ISO](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v2.1-linux-preview.1/mnOS-2.1-linux-preview.1-arm64.iso)
+· [校验和、源码和验证记录](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.1-linux-preview.1)。
+每份约 2 GB 的 ISO 离线安装 Linux/Xfce 桌面、Firefox、VS Code、C/C++ 开发环境、
+CTF 工具和系统管理工具。`mnos-admin gui` 打开管理中心，`mnos-admin help -cn` 查看
+中文管理手册。发布镜像的命令目录实测为 AMD64 1727 项、ARM64 1725 项。
+两份镜像均通过安装、移除 ISO 后磁盘启动、账号认证、Firefox 渲染、VS Code 实际
+编辑保存和 CTF 图形窗口检查。
+
+![ARM64 磁盘启动后的 Linux 桌面、CTF 中心与 VS Code 实测截图](assets/linux-edition-2.1.png)
+
 以下链接和描述保留为历史发布记录。
 
 [下载原生图形系统安装 ISO：AMD64 / ARM64](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.4-desktop-preview.2)

@@ -17,6 +17,19 @@ Both architectures passed GUI installation, disk boot without the ISO and actual
 
 ![Actual native desktop executing Linux guest programs](assets/native-linux-guest.png)
 
+**Linux Edition 2.1 Preview is available:**
+[AMD64 installer](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v2.1-linux-preview.1/mnOS-2.1-linux-preview.1-amd64.iso)
+· [ARM64 installer](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v2.1-linux-preview.1/mnOS-2.1-linux-preview.1-arm64.iso)
+· [Checksums, source and validation records](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.1-linux-preview.1).
+Each approximately 2 GB ISO installs the Linux/Xfce desktop, Firefox, VS Code,
+C/C++ development environment, CTF tools and system management offline. Open
+`mnos-admin gui` for management or `mnos-admin help -cn` for its Chinese manual.
+The shipped command catalogs resolve 1,727 entries on AMD64 and 1,725 on ARM64.
+Both exact images passed installation, disk boot without the ISO, account
+authentication, Firefox rendering, actual VS Code editing/saving and CTF windows.
+
+![Actual ARM64 installed Linux desktop with the CTF center and VS Code](assets/linux-edition-2.1.png)
+
 The links and description below document earlier published releases.
 
 [Native graphical desktop installer: AMD64 / ARM64](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.4-desktop-preview.2)
