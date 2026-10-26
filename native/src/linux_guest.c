@@ -8,15 +8,21 @@ static struct guest vm;
 static uint8_t *ram;
 static bool running, paused;
 static uint32_t owner;
-static char screen[128][81];
-static unsigned line_count=1,column,escape;
+static char screen[128][321];
+static unsigned line_count=1,column,used,escape,utf_count,utf_need;
+static unsigned char utf[4];
 static unsigned char keys[256];
 static unsigned key_read,key_write;
 static const char *state="Stopped / temporary Linux guest";
 static void newline(void) {
     if(line_count<128)line_count++;
-    else {for(unsigned i=1;i<128;i++)memcpy(screen[i-1],screen[i],81);}
-    memset(screen[line_count-1],0,81);column=0;
+    else {for(unsigned i=1;i<128;i++)memcpy(screen[i-1],screen[i],sizeof screen[0]);}
+    memset(screen[line_count-1],0,sizeof screen[0]);column=used=0;
+}
+static void append(const unsigned char *s,unsigned n,unsigned cells) {
+    if(column+cells>72||used+n>=sizeof screen[0])newline();
+    memcpy(screen[line_count-1]+used,s,n);used+=n;column+=cells;
+    screen[line_count-1][used]=0;
 }
 static void output(void *unused,unsigned char c) {
     (void)unused;
@@ -25,13 +31,28 @@ static void output(void *unused,unsigned char c) {
      * host commands or feed it to the account/installer input path. */
     if(escape){if(c>=0x40&&c<=0x7e&&c!='[')escape=0;return;}
     if(c==27){escape=1;return;}
+    if(utf_need) {
+        if((c&0xc0)==0x80) {
+            utf[utf_count++]=c;
+            if(utf_count==utf_need) {
+                uint32_t cp=utf[0] & (utf_need==2?31:utf_need==3?15:7);
+                for(unsigned i=1;i<utf_need;i++)cp=(cp<<6)|(utf[i]&63);
+                bool valid=(utf_need!=2||cp>=128)&&(utf_need!=3||cp>=2048)&&(utf_need!=4||cp>=65536)&&cp<=0x10ffff&&!(cp>=0xd800&&cp<=0xdfff);
+                if(valid)append(utf,utf_need,cp>=0x1100?2:1);
+                else append((const unsigned char *)"?",1,1);
+                utf_need=utf_count=0;
+            }
+            return;
+        }
+        utf_need=utf_count=0;append((const unsigned char *)"?",1,1);
+    }
+    if(c>=0xc2&&c<=0xf4){utf[0]=c;utf_count=1;utf_need=c<0xe0?2:c<0xf0?3:4;return;}
     if(c=='\n'){newline();return;}
-    if(c=='\r'){column=0;return;}
-    if(c=='\b'||c==127){if(column)screen[line_count-1][--column]=0;return;}
-    if(c=='\t'){do {output(NULL,' ');}while(column%8);return;}
+    if(c=='\r'){column=used=0;return;}
+    if(c=='\b'||c==127){if(used){do{used--;}while(used&&((unsigned char)screen[line_count-1][used]&0xc0)==0x80);screen[line_count-1][used]=0;if(column)column--;}return;}
+    if(c=='\t'){do {append((const unsigned char *)" ",1,1);}while(column%8);return;}
     if(c<32||c>126)return;
-    if(column>=80)newline();
-    screen[line_count-1][column++]=(char)c;
+    append(&c,1,1);
 }
 static int input(void *unused) {
     (void)unused;if(key_read==key_write)return -1;
@@ -46,7 +67,7 @@ void linux_guest_key(unsigned char c) {
 }
 void linux_guest_clear(void) {
     running=paused=false;key_read=key_write=0;
-    memset(keys,0,sizeof keys);memset(screen,0,sizeof screen);line_count=1;column=escape=0;
+    memset(keys,0,sizeof keys);memset(screen,0,sizeof screen);line_count=1;column=used=escape=utf_count=utf_need=0;
     /* Keep one bounded allocation for reuse; wipe across EVERY host account
      * boundary. No MNFS credentials, host files or devices are shared. */
     if(ram)auth_wipe(ram,GUEST_RAM);

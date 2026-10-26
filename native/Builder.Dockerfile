@@ -4,6 +4,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc g++ make libc6-dev zlib1g-dev clang-19 lld-19 llvm-19 \
     qemu-system-x86 qemu-system-arm qemu-efi-aarch64 ovmf \
     grub-pc-bin grub-efi-amd64-bin grub-common xorriso mtools dosfstools \
-    curl xz-utils bzip2 bc bison flex cpio rsync libelf-dev libssl-dev \
+    ca-certificates curl xz-utils bzip2 bc bison flex cpio rsync libelf-dev libssl-dev \
     gcc-riscv64-linux-gnu gcc-riscv64-unknown-elf device-tree-compiler \
     && rm -rf /var/lib/apt/lists/*
