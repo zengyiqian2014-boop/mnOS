@@ -338,10 +338,11 @@ kernel shutdown
 
 tools [native|linux]
 工具环境与可用状态
-native 列出内置工具和静态 ELF 环境；linux 说明集成安装包的
-Linux 工具环境中 Firefox、VS Code 和 APT 的用法。
-这些程序目前不能运行在自研内核上；原生环境暂无网络和包管理器。
-安装第三方 Linux 软件、使用完整编译器，需要进入 Linux 工具环境。
+native 列出内置工具和静态 ELF 环境；linux 说明内置软件模拟的
+Linux 客体与单独发布的 Linux 版。linux start 启动真实客体，
+其中 busybox --list 列出实际编入的命令。客体文件临时保存，
+暂无虚拟网卡或 GPU。Firefox、VS Code、APT 和完整 CTF 桌面
+需要 Linux Edition，当前原生客体运行环境尚不支持它们。
 示例：
 tools linux
 

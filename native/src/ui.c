@@ -264,17 +264,19 @@ static void tools_help(const char *cmd) {
         add_line("exec /ram/bin/hello  /  ps  /  kill PID");
         add_line("Build-host SDK: native/user/api.h; make -C native user-programs");
         add_line("No native network stack, APT, dynamic linker or Linux ABI yet.");
-        add_line("Firefox and VS Code require the Linux tools environment.");
-        add_line("Use tools linux for that environment's commands.");
+        add_line("linux start: boot the bundled software Linux guest in this desktop.");
+        add_line("Firefox and VS Code require the separate Linux Edition. See tools linux.");
     } else if (streq(cmd,"tools linux")) {
-        add_line("The combined Linux installer includes Firefox ESR and official VS Code.");
-        add_line("Those applications cannot run in this native desktop ISO.");
-        add_line("In the Linux tools environment, as an ordinary user:");
+        add_line("Native guest: linux start; then help, help -cn, busybox --list.");
+        add_line("Real RV64IMAC Linux shell programs; temporary files; no network/GPU.");
+        add_line("The separate Linux Edition includes Firefox ESR and official VS Code.");
+        add_line("In Linux Edition, as an ordinary user:");
         add_line("  firefox-esr     code .     nano file.txt");
         add_line("  apt search NAME     apt show PACKAGE");
         add_line("  sudo apt update     sudo apt install PACKAGE");
         add_line("  cc file.c -o app     c++ file.cpp -o app     make");
-        add_line("Read help -cn tools in that environment for packages and permissions.");
+        add_line("  mnos-admin help -cn     mnos-center --ctf");
+        add_line("Read help -cn editions for runtime boundaries and permissions.");
     } else add_line("Usage: tools [native|linux]");
 }
 static void kernel_command(const char *cmd) {

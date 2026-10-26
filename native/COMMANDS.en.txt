@@ -351,10 +351,11 @@ kernel shutdown
 tools [native|linux]
 Application environment and availability
 native lists built-in tools and the static ELF environment. linux
-explains Firefox/VS Code and APT in the Linux tools environment of the
-combined installer. Those programs do not run on this native kernel.
-No network/package manager is implemented in the native environment.
-Use the Linux tools environment for apt, compilers and Linux apps.
+explains the bundled software Linux guest and separate Linux Edition.
+Use linux start for real guest shell programs; busybox --list gives its
+compiled inventory. The guest has temporary files and no network/GPU.
+Firefox, VS Code, APT and the complete CTF desktop need Linux Edition.
+They are not supported by this initial native guest runtime.
 Example:
 tools linux
 

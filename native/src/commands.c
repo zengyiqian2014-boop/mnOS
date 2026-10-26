@@ -136,8 +136,8 @@ static const struct manual guide[] = {
  "Available to the signed-in local-console user. Opens the confirmation\ndialog; S powers off, R restarts, Escape cancels. Firmware support is\nrequired for power-off. No automatic shutdown timer is implemented.",
  "本地已登录用户可用，打开电源确认：S 关机，R 重启，Esc 取消。\n关机依赖固件支持，尚未实现自动关机定时器。", "kernel shutdown"},
 {"tools", "tools [native|linux]", "Application environment and availability", "工具环境与可用状态",
- "native lists built-in tools and the static ELF environment. linux\nexplains Firefox/VS Code and APT in the Linux tools environment of the\ncombined installer. Those programs do not run on this native kernel.\nNo network/package manager is implemented in the native environment.\nUse the Linux tools environment for apt, compilers and Linux apps.",
- "native 列出内置工具和静态 ELF 环境；linux 说明集成安装包的\nLinux 工具环境中 Firefox、VS Code 和 APT 的用法。\n这些程序目前不能运行在自研内核上；原生环境暂无网络和包管理器。\n安装第三方 Linux 软件、使用完整编译器，需要进入 Linux 工具环境。", "tools linux"}
+ "native lists built-in tools and the static ELF environment. linux\nexplains the bundled software Linux guest and separate Linux Edition.\nUse linux start for real guest shell programs; busybox --list gives its\ncompiled inventory. The guest has temporary files and no network/GPU.\nFirefox, VS Code, APT and the complete CTF desktop need Linux Edition.\nThey are not supported by this initial native guest runtime.",
+ "native 列出内置工具和静态 ELF 环境；linux 说明内置软件模拟的\nLinux 客体与单独发布的 Linux 版。linux start 启动真实客体，\n其中 busybox --list 列出实际编入的命令。客体文件临时保存，\n暂无虚拟网卡或 GPU。Firefox、VS Code、APT 和完整 CTF 桌面\n需要 Linux Edition，当前原生客体运行环境尚不支持它们。", "tools linux"}
 };
 static void lines(const char *s, command_output output) {
     char line[256];
