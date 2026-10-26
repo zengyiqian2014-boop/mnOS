@@ -1,5 +1,11 @@
 # mnOS offline installation ISO
 
+Current builds produce **Linux Edition** by default. The independent Native
+Edition has its own installer and software Linux guest. See [EDITIONS.md](../EDITIONS.md).
+`mnos-admin gui` opens system management; `mnos-admin help -cn` documents the
+unified command interface. The combined layout described below is historical
+and now requires explicit `EDITION=combined` when building.
+
 Both architecture-specific installers provide two independent environments: the original freestanding
 [mnOS native kernel](../native/README.md), and a usable desktop built from
 maintained Debian 13 packages (Linux 6.12 LTS, Xfce, Firefox ESR, system management,

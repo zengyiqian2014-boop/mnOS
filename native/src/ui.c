@@ -6,6 +6,9 @@
 #include "font.h"
 #include "icons.h"
 #include "commands.h"
+#include "linux_guest.h"
+#define APP_COUNT 8
+static void focus_app(int);
 static uint32_t canvas[2560 * 1440] __attribute__((aligned(4096)));
 static int width, height, page = -1, cursor_x = 640, cursor_y = 360, old_x = 640, old_y = 360;
 static bool ready, dirty = true, cursor_dirty, left_down, power_dialog;
@@ -278,6 +281,18 @@ static void kernel_command(const char *cmd) {
     if (!*cmd || streq(cmd,"help")) command_help("",add_line);
     else if (!strncmp(cmd,"help ",5)) command_help(cmd+5,add_line);
     else if (auth_command(cmd, add_line)) {}
+    else if (linux_guest_command(cmd,add_line)) {
+        if(streq(cmd,"linux start") || streq(cmd,"linux resume") || streq(cmd,"linux restart"))focus_app(7);
+    }
+    else if(streq(cmd,"system")||!strncmp(cmd,"system ",7)) {
+        const char *p=cmd[6]?cmd+7:"status";
+        if(streq(p,"status")){kernel_command("info");kernel_command("memory");kernel_command("security");add_line(linux_guest_status());}
+        else if(streq(p,"cpu")||streq(p,"memory")||streq(p,"security")||streq(p,"display"))kernel_command(p);
+        else if(streq(p,"processes"))kernel_command("ps");
+        else if(streq(p,"storage"))kernel_command("disk status");
+        else if(streq(p,"guest"))kernel_command("linux status");
+        else add_line("Usage: system status|cpu|memory|processes|storage|security|display|guest");
+    }
     else if (streq(cmd,"exit")) add_line("No elevated session to leave. Use lock to lock the session.");
     else if (streq(cmd, "info") || streq(cmd,"uname")) {
         add_line("mnOS native / " MNOS_ARCH " / original C + assembly kernel");
@@ -380,16 +395,16 @@ struct window {
     int x, y, w, h;
     bool open, minimized;
 };
-static struct window windows[7];
-static unsigned order[7] = {0, 1, 2, 3, 4, 5, 6};
+static struct window windows[APP_COUNT];
+static unsigned order[APP_COUNT] = {0, 1, 2, 3, 4, 5, 6, 7};
 static bool layout_ready, menu_open, dragging;
 static int drag_dx, drag_dy;
 static const char *app_names[] = {"Welcome",  "Files",   "Text editor", "System monitor",
-                                  "Terminal", "Devices", "Settings"};
+                                  "Terminal", "Devices", "Settings", "Linux environment"};
 static const char *app_desc[] = {"Your native desktop",           "Browse your home folder",
                                  "Create and edit text files",    "Memory and kernel status",
                                  "Commands and native programs",  "Detected hardware",
-                                 "Display, wallpaper and session"};
+                                 "Display, wallpaper and session", "Linux inside the native desktop"};
 static char search[40], notice[120];
 static uint64_t notice_until;
 static unsigned search_len;
@@ -426,6 +441,7 @@ static bool inside(int x, int y, int a, int b, int w, int h) {
 }
 static void app_icon(int x, int y, unsigned app, unsigned size) {
     unsigned group = size == 20 ? 0 : size == 24 ? 1 : size == 40 ? 2 : 3;
+    if (app == 7) app = 3;
     if (app >= 7) return;
     const struct icon_asset *asset = &icon_assets[group * 7 + app];
     for (unsigned j = 0; j < asset->size; j++) for (unsigned i = 0; i < asset->size; i++) {
@@ -447,11 +463,11 @@ static void focus_app(int app) {
     windows[app].open = true;
     windows[app].minimized = false;
     unsigned pos = 0;
-    while (pos < 7 && order[pos] != (unsigned)app)
+    while (pos < APP_COUNT && order[pos] != (unsigned)app)
         pos++;
-    for (unsigned i = pos; i + 1 < 7; i++)
+    for (unsigned i = pos; i + 1 < APP_COUNT; i++)
         order[i] = order[i + 1];
-    order[6] = app;
+    order[APP_COUNT-1] = app;
     menu_open = false;
     dirty = true;
     log_write("UI: page ");
@@ -869,6 +885,18 @@ static void window_content(unsigned app) {
             text(x, y + 98 + (int)i * 34, row, 18, MUTED);
         }
         text(x, y + 390, "A detected device requires a compatible native driver.", 18, MUTED);
+    } else if (app == 7) {
+        button(x,y,102,"Start",false);
+        button(x+112,y,102,"Pause",false);
+        button(x+224,y,102,"Resume",false);
+        button(x+336,y,102,"Stop",false);
+        text_fit(x,y+39,linux_guest_status(),16,ACCENT,w);
+        rounded(x,y+73,w,v->h-165,0x0c1720);
+        unsigned rows=(unsigned)(v->h-180)/23,count=linux_guest_lines();
+        unsigned first=count>rows?count-rows:0;
+        for(unsigned i=first;i<count;i++)
+            text_fit(x+12,y+78+(int)(i-first)*23,linux_guest_line(i),FONT_MONO18,FG,w-24);
+        text_fit(x,v->y+v->h-32,"Temporary RAM / no host sharing / F5: host terminal",16,MUTED,w);
     } else {
         text(x, y, "Display and workspace", 28, FG);
         char mode[32];
@@ -887,7 +915,7 @@ static void window_content(unsigned app) {
 }
 static int task_width(void) {
     unsigned count = 0;
-    for (unsigned i = 0; i < 7; i++) count += windows[i].open;
+    for (unsigned i = 0; i < APP_COUNT; i++) count += windows[i].open;
     int w = (width - 365) / (int)(count ? count : 1);
     return w > 150 ? 150 : w;
 }
@@ -906,7 +934,7 @@ static void draw(void) {
         dirty = false;
         return;
     }
-    for (unsigned i = 0; i < 7; i++)
+    for (unsigned i = 0; i < APP_COUNT; i++)
         if (windows[order[i]].open && !windows[order[i]].minimized)
             window_content(order[i]);
     rect(0, 0, width, 36, 0x101923);
@@ -914,7 +942,7 @@ static void draw(void) {
     text(45, 4, "Applications", 16, FG);
     unsigned slot = 0;
     int task = task_width();
-    for (unsigned i = 0; i < 7; i++)
+    for (unsigned i = 0; i < APP_COUNT; i++)
         if (windows[i].open) {
             int x = 185 + (int)slot++ * task;
             if (page == (int)i && !windows[i].minimized)
@@ -940,7 +968,7 @@ static void draw(void) {
         rounded(22, 106, 341, 38, 0x101c28);
         text(33, 110, search_len ? search : "Type to search...", 18, search_len ? FG : MUTED);
         unsigned row = 0;
-        for (unsigned i = 0; i < 7; i++)
+        for (unsigned i = 0; i < APP_COUNT; i++)
             if (search_match(app_names[i])) {
                 int y = 160 + (int)row++ * 51;
                 app_icon(27, y + 3, i, 40);
@@ -987,7 +1015,7 @@ void ui_init(void) {
     if (width > 2560 || height > 1440)
         return;
     int w = width > 1100 ? 900 : width - 176, h = height > 740 ? 590 : height - 104;
-    for (unsigned i = 0; i < 7; i++) {
+    for (unsigned i = 0; i < APP_COUNT; i++) {
         windows[i].x = (width > 1100 ? (width - w) / 2 : 144) + (int)(i % 3) * 12;
         windows[i].y = 58 + (int)(i % 3) * 16;
         windows[i].w = w;
@@ -1015,6 +1043,7 @@ void ui_tick(void) {
     process_session_check();
     static uint32_t last_user = UINT32_MAX;
     if (auth_uid() != last_user) {
+        linux_guest_clear();
         last_user = auth_uid();
         history_count = 0;
         auth_wipe(command, sizeof command);
@@ -1028,7 +1057,7 @@ void ui_tick(void) {
         menu_open = false;
         dialog = 0;
         notice[0] = 0;
-        for (unsigned i = 0; i < 7; i++) {
+        for (unsigned i = 0; i < APP_COUNT; i++) {
             windows[i].open = false;
             windows[i].minimized = false;
         }
@@ -1056,6 +1085,8 @@ void ui_tick(void) {
         log_write(last_prompt);
         log_write("\n");
     }
+    linux_guest_tick();
+    if (windows[7].open && !windows[7].minimized && ticks % 10 == 0)dirty=true;
     if (ticks % PIT_HZ == 0)
         dirty = true;
     if (dirty && ticks % 5 == 0)
@@ -1106,7 +1137,7 @@ void ui_key(char key) {
         if (key == 27)
             menu_open = false;
         else if (key == '\n' || key == '\r') {
-            for (unsigned i = 0; i < 7; i++)
+            for (unsigned i = 0; i < APP_COUNT; i++)
                 if (search_match(app_names[i])) {
                     focus_app(i);
                     if (page == 1)
@@ -1124,7 +1155,7 @@ void ui_key(char key) {
     }
     if (key == 27) {
         page = -1;
-        for (unsigned i = 0; i < 7; i++)
+        for (unsigned i = 0; i < APP_COUNT; i++)
             windows[i].minimized = true;
         return;
     }
@@ -1174,6 +1205,10 @@ void ui_key(char key) {
             edit_size++;
             edit_changed = true;
         }
+        return;
+    }
+    if (page == 7) {
+        linux_guest_key(k);
         return;
     }
     if (page == 4) {
@@ -1282,7 +1317,7 @@ void ui_pointer(int x, int y, bool pressed) {
                     log_write("DESKTOP: launcher opened by pointer\n");
             } else {
                 unsigned slot = 0;
-                for (unsigned i = 0; i < 7; i++)
+                for (unsigned i = 0; i < APP_COUNT; i++)
                     if (windows[i].open) {
                         int task = task_width();
                         if (inside(x, y, 185 + (int)slot * task, 0, task - 4, 36)) {
@@ -1295,7 +1330,7 @@ void ui_pointer(int x, int y, bool pressed) {
         } else if (menu_open) {
             unsigned row = 0;
             bool found = false;
-            for (unsigned i = 0; i < 7; i++)
+            for (unsigned i = 0; i < APP_COUNT; i++)
                 if (search_match(app_names[i])) {
                     if (inside(x, y, 20, 160 + (int)row * 51, 340, 51)) {
                         focus_app(i);
@@ -1311,7 +1346,7 @@ void ui_pointer(int x, int y, bool pressed) {
             dirty = true;
         } else {
             int hit = -1;
-            for (int z = 6; z >= 0; z--) {
+            for (int z = APP_COUNT-1; z >= 0; z--) {
                 unsigned a = order[z];
                 struct window *v = &windows[a];
                 if (v->open && !v->minimized && inside(x, y, v->x, v->y, v->w, v->h)) {
@@ -1357,6 +1392,11 @@ void ui_pointer(int x, int y, bool pressed) {
                                 refresh_files();
                             break;
                         }
+                } else if (hit == 7) {
+                    if(yy>=0 && yy<32) {
+                        const char *action=xx<102?"linux start":xx<214?"linux pause":xx<326?"linux resume":xx<438?"linux stop":NULL;
+                        if(action)linux_guest_command(action,add_line);
+                    }
                 } else if (hit == 1) {
                     if (yy >= 0 && yy < 32) {
                         if (xx < 72) {

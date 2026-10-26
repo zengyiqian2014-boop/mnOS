@@ -1,3 +1,26 @@
+[kernel] linux start|status|pause|resume|stop|restart|send COMMAND
+管理软件模拟的 Linux 客体
+无需 root：start 在自研桌面打开 Linux 控制台。自研 C 模拟器
+执行 RV64IMAC/Sv39 指令，运行真实 Linux 内核及 BusyBox。
+客体使用 64 MiB RAM、一个软件 CPU；pause/resume 保留状态，
+stop/restart 会丢弃全部客体文件。宿主切换账号时擦除客体 RAM。
+客体 root 不能访问宿主文件、磁盘、设备和网络。
+仅运行兼容 RV64IMAC/LP64 的程序，未实现客体 GPU、浮点指令或桌面应用。
+Firefox、VS Code 和完整 CTF 桌面使用 Linux Edition。
+客体内 busybox --list 列命令、命令 --help 查帮助；F5 返回宿主。
+send 发送客体命令，不作为宿主命令执行。
+示例：
+linux start
+
+system [status|cpu|memory|processes|storage|security|display|guest]
+统一原生系统管理入口
+只读状态调用真实原生服务：processes 列原生进程，storage 查 MNFS，
+guest 查 Linux 模拟机。设置窗口管理个人显示与壁纸；ps/kill 管理
+自己的进程；passwd 改自己的密码。账号和卷管理需要 su 验证。
+Linux 的服务和软件包由 Linux 环境管理，不冒充原生驱动能力。
+示例：
+system status
+
 help [-cn] [COMMAND|all]
 阅读命令手册
 默认使用英文；-cn 指定中文；all 展开全部条目。

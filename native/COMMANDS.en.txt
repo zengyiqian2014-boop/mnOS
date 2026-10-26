@@ -1,3 +1,28 @@
+[kernel] linux start|status|pause|resume|stop|restart|send COMMAND
+Manage the software Linux guest
+No root: start opens a Linux console in the native GUI. Original C
+RV64IMAC/Sv39 interpretation runs an actual Linux kernel and BusyBox.
+64 MiB guest RAM, one emulated CPU. pause/resume preserve guest state;
+stop/restart discard ALL guest files. Host account changes wipe RAM.
+Guest root cannot access host files, disks, devices or network.
+Only compatible RV64IMAC/LP64 programs run; no guest GPU, floating-point
+ISA or desktop apps. Use Linux Edition for Firefox, VS Code and full CTF.
+In the guest: busybox --list and COMMAND --help. F5 returns to host.
+send queues a Linux command; it does not execute a native host command.
+Example:
+linux start
+
+system [status|cpu|memory|processes|storage|security|display|guest]
+Unified native system management
+Read-only status queries use native services; processes lists native
+applications, storage reports MNFS, guest reports the emulated Linux
+machine. Use Settings for personal display and wallpaper, ps/kill for
+owned processes, passwd for your password. su authenticates account
+and volume administration. Linux services/packages are managed inside
+the Linux environment, not by pretending native drivers exist.
+Example:
+system status
+
 help [-cn] [COMMAND|all]
 Read the command manual
 Default language: English. -cn selects Chinese. Use all for every entry.

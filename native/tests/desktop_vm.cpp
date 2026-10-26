@@ -335,6 +335,31 @@ int main(int argc, char **argv) {
             m=vm.send("ker\tsec\t\n");
             vm.wait("Session privilege: ordinary user",m);
             vm.command("kernel tools", "No native network stack, APT");
+            if(std::getenv("MNOS_TEST_LINUX_GUEST")) {
+                vm.command("linux start","UI: page 7");
+                vm.wait("linux-guest# ");
+                vm.command("uname -s", "\r\nLinux\r\n");
+                vm.command("printf abc | sha256sum", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  -");
+                vm.command("awk 'BEGIN { print 6*7 }'", "\r\n42\r\n");
+                vm.command("echo guest-private > /tmp/note; cat /tmp/note", "\r\nguest-private\r\n");
+                vm.command("test ! -e /disk && printf '%s%s\\n' NO_HOST_ DISK", "\r\nNO_HOST_DISK\r\n");
+                vm.command("busybox --list | wc -l", "\r\n402\r\n");
+                vm.screenshot(build/(arch+"-linux-guest.ppm"));
+                vm.send(std::string(1,(char)0x85));
+                vm.command("linux pause","Paused / guest RAM retained");
+                vm.command("system memory","Free physical pages");
+                vm.command("linux resume","UI: page 7");
+                vm.command("cat /tmp/note", "\r\nguest-private\r\n");
+                vm.send(std::string(1,(char)0x85));
+                vm.command("linux stop","Stopped / guest RAM cleared");
+                auto restart=vm.send("linux start\n");
+                vm.wait("UI: page 7",restart);
+                vm.wait("linux-guest# ",restart);
+                vm.command("test ! -e /tmp/note && printf '%s%s\\n' RAM_ CLEARED", "\r\nRAM_CLEARED\r\n");
+                vm.send(std::string(1,(char)0x85));
+                vm.command("linux stop","Stopped / guest RAM cleared");
+                std::cout << "NATIVE LINUX GUEST PASS " << arch << ": actual Linux, userspace, checksums, text, files, guest-only paths, pause/resume and RAM reset\n";
+            }
             vm.command("kernel su", "Root password:");
             vm.command("rootadmintest785", "Root session:");
             vm.send(std::string(1,(char)0x85));

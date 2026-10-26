@@ -135,5 +135,67 @@
       "sudo",
       "mnos-security-check"
     ]
+  },
+  {
+    "name": "系统概况",
+    "description": "版本、架构及实际运行的宿主内核",
+    "category": "系统设置",
+    "icon": "computer",
+    "command": [
+      "@terminal",
+      "mnos-admin",
+      "info"
+    ]
+  },
+  {
+    "name": "磁盘与文件系统",
+    "description": "分区、文件系统、挂载与设备健康",
+    "category": "系统设置",
+    "icon": "drive-harddisk",
+    "command": [
+      "gnome-disks"
+    ]
+  },
+  {
+    "name": "网络连接",
+    "description": "有线、Wi-Fi、DNS 与连接配置",
+    "category": "系统设置",
+    "icon": "network-workgroup",
+    "command": [
+      "nm-connection-editor"
+    ]
+  },
+  {
+    "name": "进程管理",
+    "description": "CPU、内存与进程；修改受账户权限约束",
+    "category": "系统设置",
+    "icon": "utilities-system-monitor",
+    "command": [
+      "xfce4-taskmanager"
+    ]
+  },
+  {
+    "name": "系统管理命令",
+    "description": "服务、账户、存储、日志、启动和工具的统一命令入口",
+    "category": "系统设置",
+    "icon": "utilities-terminal",
+    "command": [
+      "@terminal",
+      "mnos-admin",
+      "help",
+      "-cn"
+    ]
+  },
+  {
+    "name": "两版系统说明",
+    "description": "自研宿主、软件 Linux 客体与 Linux Edition 的区别",
+    "category": "系统设置",
+    "icon": "help-browser",
+    "command": [
+      "@terminal",
+      "mnos-help",
+      "-cn",
+      "editions"
+    ]
   }
 ]

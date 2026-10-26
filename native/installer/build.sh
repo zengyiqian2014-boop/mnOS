@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 set -eu
 cd "$(dirname "$0")/.."
-make -j4 all
-make -f arch/arm64/Makefile -j4 all
+make -j4 GUEST="${GUEST:-0}" all
+make -f arch/arm64/Makefile -j4 GUEST="${GUEST:-0}" all
 mkdir -p build/desktop/amd64 build/desktop/arm64
-make build/desktop/kernel-x86_64.elf
+make GUEST="${GUEST:-0}" build/desktop/kernel-x86_64.elf
 flags='-O2 -ffreestanding -fno-builtin -fno-stack-protector -mno-stack-arg-probe -fshort-wchar -mgeneral-regs-only -Wall -Wextra -Werror -Wno-misleading-indentation -Iarch/arm64/freestanding -Iinclude'
 clang-19 --target=x86_64-unknown-windows $flags -c arch/x86_64/efi.c -o build/desktop/amd64/loader.obj
 clang-19 --target=x86_64-unknown-windows $flags -c src/string.c -o build/desktop/amd64/string.obj
@@ -25,7 +25,11 @@ for arch in amd64 arm64; do
     work=$(mktemp -d)
     mkdir -p "$work/iso/EFI/BOOT"
     cp "build/desktop/$arch/INSTALL.EFI" "$work/iso/EFI/BOOT/$efi"
-    truncate -s 16M "$work/esp.img"
+    # The native edition embeds its Linux guest. Size the ISO's boot partition
+    # from the actual installer payload instead of silently exceeding 16 MiB.
+    bytes=$(wc -c < "build/desktop/$arch/INSTALL.EFI")
+    size=$(( (bytes + 8 * 1024 * 1024 + 1048575) / 1048576 ))
+    truncate -s "${size}M" "$work/esp.img"
     mkfs.vfat "$work/esp.img" >/dev/null
     mmd -i "$work/esp.img" ::EFI ::EFI/BOOT
     mcopy -i "$work/esp.img" "build/desktop/$arch/INSTALL.EFI" "::EFI/BOOT/$efi"

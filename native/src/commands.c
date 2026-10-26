@@ -6,6 +6,12 @@ struct manual {
 };
 /* This table is also the completion registry. Entries describe real handlers. */
 static const struct manual guide[] = {
+{"linux", "[kernel] linux start|status|pause|resume|stop|restart|send COMMAND", "Manage the software Linux guest", "管理软件模拟的 Linux 客体",
+ "No root: start opens a Linux console in the native GUI. Original C\nRV64IMAC/Sv39 interpretation runs an actual Linux kernel and BusyBox.\n64 MiB guest RAM, one emulated CPU. pause/resume preserve guest state;\nstop/restart discard ALL guest files. Host account changes wipe RAM.\nGuest root cannot access host files, disks, devices or network.\nOnly compatible RV64IMAC/LP64 programs run; no guest GPU, floating-point\nISA or desktop apps. Use Linux Edition for Firefox, VS Code and full CTF.\nIn the guest: busybox --list and COMMAND --help. F5 returns to host.\nsend queues a Linux command; it does not execute a native host command.",
+ "无需 root：start 在自研桌面打开 Linux 控制台。自研 C 模拟器\n执行 RV64IMAC/Sv39 指令，运行真实 Linux 内核及 BusyBox。\n客体使用 64 MiB RAM、一个软件 CPU；pause/resume 保留状态，\nstop/restart 会丢弃全部客体文件。宿主切换账号时擦除客体 RAM。\n客体 root 不能访问宿主文件、磁盘、设备和网络。\n仅运行兼容 RV64IMAC/LP64 的程序，未实现客体 GPU、浮点指令或桌面应用。\nFirefox、VS Code 和完整 CTF 桌面使用 Linux Edition。\n客体内 busybox --list 列命令、命令 --help 查帮助；F5 返回宿主。\nsend 发送客体命令，不作为宿主命令执行。", "linux start"},
+{"system", "system [status|cpu|memory|processes|storage|security|display|guest]", "Unified native system management", "统一原生系统管理入口",
+ "Read-only status queries use native services; processes lists native\napplications, storage reports MNFS, guest reports the emulated Linux\nmachine. Use Settings for personal display and wallpaper, ps/kill for\nowned processes, passwd for your password. su authenticates account\nand volume administration. Linux services/packages are managed inside\nthe Linux environment, not by pretending native drivers exist.",
+ "只读状态调用真实原生服务：processes 列原生进程，storage 查 MNFS，\nguest 查 Linux 模拟机。设置窗口管理个人显示与壁纸；ps/kill 管理\n自己的进程；passwd 改自己的密码。账号和卷管理需要 su 验证。\nLinux 的服务和软件包由 Linux 环境管理，不冒充原生驱动能力。", "system status"},
 {"help", "help [-cn] [COMMAND|all]", "Read the command manual", "阅读命令手册",
  "Default language: English. -cn selects Chinese. Use all for every entry.\nUse Up/Down to scroll output; Tab completes command names.\nExamples use USER as a placeholder for your own account name.",
  "默认使用英文；-cn 指定中文；all 展开全部条目。\n上下方向键翻阅输出，Tab 补全命令。\n示例中的 USER 要替换为你自己的账号名。", "help -cn kernel display"},
@@ -185,6 +191,8 @@ bool command_complete(char *line, size_t cap, command_output output) {
     else if(!strncmp(prefix,"snapshot ",9)){start+=9;choices[n++]="save";choices[n++]="restore";choices[n++]="drop";}
     else if(!strncmp(prefix,"wallpaper ",10)){start+=10;choices[n++]="0";choices[n++]="1";choices[n++]="2";}
     else if(!strncmp(prefix,"tools ",6)){start+=6;choices[n++]="native";choices[n++]="linux";}
+    else if(!strncmp(prefix,"linux ",6)){start+=6;choices[n++]="start";choices[n++]="status";choices[n++]="pause";choices[n++]="resume";choices[n++]="stop";choices[n++]="restart";choices[n++]="send";}
+    else if(!strncmp(prefix,"system ",7)){start+=7;choices[n++]="status";choices[n++]="cpu";choices[n++]="memory";choices[n++]="processes";choices[n++]="storage";choices[n++]="security";choices[n++]="display";choices[n++]="guest";}
     else { for(unsigned i=0;i<command_count();i++) choices[n++]=guide[i].name; choices[n++]="uname";choices[n++]="mem";choices[n++]="pci";choices[n++]="logout"; }
     size_t typed=length-start,common=0;const char *first=NULL;unsigned matches=0;
     for(unsigned i=0;i<n;i++)if(!strncmp(choices[i],line+start,typed)) {

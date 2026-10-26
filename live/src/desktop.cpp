@@ -630,6 +630,7 @@ int main(int argc, char **argv) {
         if (argc > 1 && std::string(argv[1]) == "--ctf") { selected = "CTF 工具"; popup = false; }
         else if (argc > 1 && std::string(argv[1]) == "--commands") { selected = "Linux 命令"; popup = false; }
         else if (argc > 1 && std::string(argv[1]) == "--tools") { selected = "常用"; popup = false; }
+        else if (argc > 1 && std::string(argv[1]) == "--management") { selected = "系统设置"; popup = false; }
         else if (argc > 1 && !testing) {
             std::cerr << "Usage: mnos-center [--tools|--ctf|--commands|--list-commands]\n"
                          "       mnos-tools [--help-tool ID]\n";

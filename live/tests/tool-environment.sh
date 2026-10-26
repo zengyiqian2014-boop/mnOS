@@ -3,12 +3,15 @@
 # Run against the completed Linux rootfs. Read-only package queries; no scans.
 set -eu
 for program in firefox-esr code nano cc c++ make cmake ninja pkg-config clangd gdb \
-    apt apt-get apt-cache dpkg dpkg-query man mnos-help mnos-pkg nmap tcpdump; do
+    apt apt-get apt-cache dpkg dpkg-query man mnos-help mnos-pkg mnos-admin nmap tcpdump; do
     command -v "$program" >/dev/null
 done
 mnos-help --list | grep -qx packages
 mnos-help -cn packages | grep -q '依赖'
 mnos-help code | grep -q 'sandbox'
+mnos-help -cn editions | grep -q '自研版'
+mnos-help management | grep -q 'mnos-admin services'
+sh "$(dirname "$0")/admin.sh"
 mnos-pkg show libc6 >/dev/null || test -s /usr/share/doc/mnos/packages.tsv
 mnos-pkg check
 # Never let a wrapper accept options or local scripts as package names.

@@ -10,10 +10,10 @@ printf '%s\n' "$MNOS_PROFILE" > /etc/mnos/profile
 printf '%s\n' "${MNOS_SOURCE_COMMIT:-working-tree}" > /etc/mnos/source-commit
 # Docker mounts hosts/hostname read-only while building; pack.sh writes them.
 cat > /usr/lib/os-release <<'EOF'
-PRETTY_NAME="mnOS Desktop 2.0 Preview"
-NAME="mnOS Desktop"
-VERSION_ID="2.0"
-VERSION="2.0 Preview (Debian 13)"
+PRETTY_NAME="mnOS Linux Edition 2.1 Preview"
+NAME="mnOS Linux Edition"
+VERSION_ID="2.1"
+VERSION="2.1 Preview (Debian 13)"
 VERSION_CODENAME=trixie
 ID=mnos
 ID_LIKE=debian
