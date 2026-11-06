@@ -31,3 +31,15 @@ checked. A guest address never becomes a host pointer. No filesystem/syscall
 passthrough or host shell execution exists. Guest root is an isolated guest
 identity, not host root. The interpreter is nevertheless kernel-resident and
 experimental; it has not received an independent security audit.
+
+Linux simulation is disabled by default and after every host session boundary.
+The native launcher and `linux open APP` request a GUI confirmation before any
+guest RAM allocation or execution. Settings (F7, Linux 模拟 / L) can disable it
+immediately; this stops the interpreter and wipes private RAM and queued input.
+Closing the window only hides it. No enable flag is persisted.
+
+`make host-tests` exercises consent, cancellation, failed starts, queued apps,
+pause/resume, disable, logout and account changes under ASan/UBSan. Set
+`MNOS_TEST_LINUX_GUEST=1` when running `build/desktop-vm` to test actual Linux
+execution through the native GUI on AMD64 and ARM64, including consent buttons,
+the Settings switch and clearing guest files across disable/re-enable.

@@ -42,10 +42,21 @@ arbitrary Apple Silicon boards are not claimed supported.
 
 ## Native operation
 
-Open **Linux environment** from the launcher and press Start, or enter
-`linux start` in the host Terminal. `linux pause`, `linux resume`, `linux status`,
-`linux stop` and `linux restart` control the guest. Stop/restart discard guest
-files; closing the window only hides it. F5 returns to the host Terminal.
+**Linux simulation is off by default.** Open **Linux 模拟** from the launcher,
+or run `linux open system` in the host Terminal. The dialog **是否开启 Linux 模拟？**
+asks for consent: Enter enables and opens the selected application; Esc cancels
+without starting the guest. While enabled, opening another supported Linux
+application does not ask again. Approval applies only to the current login.
+
+F7 opens Settings. Click **Linux 模拟 / L**, or press L, to turn it off immediately
+and clear its RAM and temporary files. Logging out, switching host accounts or
+rebooting also leaves simulation off. Closing its window only hides it.
+`linux apps` lists console launchers: `terminal`, `files`, `processes`, `system`,
+`commands`. `linux open APP` waits for the real guest shell before running the
+selected program. `linux start`/`enable` request the terminal, `status` queries
+state, `pause`/`resume` preserve RAM, `stop`/`disable` clear it, and `restart`
+discards it. Starting or resuming an off guest always asks permission.
+F5 returns to the host Terminal; `help linux` and `help -cn linux` explain the controls.
 The guest window is a UTF-8 line console (`TERM=dumb`), not a full ANSI terminal.
 Use line-oriented commands and batch output (for example `top -b -n 1`);
 interactive full-screen editors and cursor-addressed applications are not yet

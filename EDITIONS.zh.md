@@ -15,8 +15,8 @@
 
 ## 自研版：Linux 客体怎么用
 
-安装后，在左上角 **Applications → Linux environment** 点 **Start**，或者在原生
-Terminal 中输入 `linux start`。客体提示符是 `linux-guest#`。
+安装后，在左上角 **Applications → Linux 模拟** 打开，或者在原生
+Terminal 中输入 `linux start`，确认「是否开启 Linux 模拟？」后启动。客体提示符是 `linux-guest#`。
 
 ```sh
 uname -a                          # 查看实际运行的客体 Linux
@@ -41,6 +41,18 @@ F5 回到宿主终端，`linux pause`／`linux resume` 暂停和恢复，`linux 
 窗口是 UTF-8 行式控制台（`TERM=dumb`），尚未实现完整 ANSI 光标控制和全屏编辑器。
 可使用行式程序或 `top -b -n 1` 这类批量输出；编辑原生文件可用宿主 Text editor。
 命令编入清单不等于相关设备、服务或所有操作都已实现。
+
+**Linux 模拟默认关闭。** 从启动器打开「Linux 模拟」，或在宿主终端执行
+`linux open system`，会弹出「是否开启 Linux 模拟？」。Enter 确认开启并打开所选程序，
+Esc 取消；取消不会启动客体。已开启时打开其他受支持的 Linux 程序不重复询问。
+
+F7 系统设置中的「Linux 模拟 / L」可随时关闭，立即停止并清除客体内存与临时文件。
+开启状态仅在本次登录有效；注销、切换账号、重启后默认关闭。关闭窗口只隐藏窗口。
+`linux apps` 列出终端、文件列表、进程、系统信息、命令目录五个实际的命令行入口；
+`linux open APP` 在客体 shell 就绪后执行所选程序。`linux start`／`enable` 请求打开终端，
+`status` 查询状态，`pause`／`resume` 保留状态，`stop`／`disable` 停止并清除状态，
+`restart` 重新启动。关闭状态下恢复或重新启动也须确认。F5 返回宿主终端。
+`help linux` 为英文详细帮助，`help -cn linux` 为中文。
 
 客体文件仅在 RAM 中，停止、重启或宿主切换账号后会丢弃。客体 root 没有宿主文件或
 设备接口。模拟器当前仍运行在宿主内核中，还不是独立用户态进程，没有经过独立安全认证。

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later
  * Install from ISO to a fresh disk, remove ISO, boot original GUI, save a file
- * and settings, reboot again. No guest Linux or Python is involved. */
+ * and settings, reboot again. MNOS_TEST_LINUX_GUEST also tests bundled Linux
+ * inside the original host kernel; the harness uses C++, not Python. */
 #include <chrono>
 #include <csignal>
 #include <cstring>
@@ -208,6 +209,9 @@ struct VM {
             name + "\"}}");
         std::this_thread::sleep_for(200ms);
     }
+    void page_key(const std::string &name,unsigned page) {
+        auto mark=output.size();key(name);wait("UI: page "+std::to_string(page),mark);
+    }
     void mouse_move(int dx, int dy) {
         qmp_command("{\"execute\":\"input-send-event\",\"arguments\":{\"events\":[{\"type\":"
                     "\"rel\",\"data\":{\"axis\":\"x\",\"value\":" +
@@ -223,6 +227,10 @@ struct VM {
                         std::string(down ? "true" : "false") + ",\"button\":\"left\"}}]}}");
             std::this_thread::sleep_for(150ms);
         }
+    }
+    void click_at(int x,int y) {
+        for(unsigned i=0;i<20;i++)mouse_move(-100,-100);
+        mouse_move(x,y);mouse_click();
     }
     void login(bool first) {
         wait(first ? "AUTH PROMPT: New username" : "AUTH PROMPT: Username:");
@@ -300,10 +308,12 @@ int main(int argc, char **argv) {
             for (unsigned i = 0; i < 20; i++) vm.mouse_move(-100, -100);
             vm.mouse_move(text_left + 1, 225);
             vm.mouse_click();
-            vm.send("Note: ");
+            /* Keep this edit on one ordered keyboard channel. Serial input
+             * can still be queued when a PS/2 arrow arrives on the x86 host. */
+            for(const char *key:{"shift-n","o","t","e","shift-semicolon","spc"})vm.key(key);
             vm.key("left");
             vm.key("backspace");
-            vm.send(":");
+            vm.key("shift-semicolon");
             vm.key("right");
             m = vm.output.size();
             vm.key("ctrl-s");
@@ -336,8 +346,29 @@ int main(int argc, char **argv) {
             vm.wait("Session privilege: ordinary user",m);
             vm.command("kernel tools", "No native network stack, APT");
             if(std::getenv("MNOS_TEST_LINUX_GUEST")) {
-                vm.command("linux start","UI: page 7");
-                vm.wait("linux-guest# ");
+                vm.command("linux status","Stopped / guest RAM cleared");
+                require(vm.output.find("LINUX GUEST: start")==std::string::npos,"guest started without consent");
+                vm.click_at(60,18);
+                auto request=vm.send("linux\n");
+                vm.wait("LINUX SIMULATION: confirmation requested",request);
+                vm.screenshot(build/(arch+"-linux-guest-consent.ppm"));
+                vm.click_at((screen_width-650)/2+460,(screen_height-280)/2+227);
+                vm.wait("LINUX SIMULATION: cancelled",request);
+                require(vm.output.find("LINUX GUEST: start")==std::string::npos,"cancel booted a guest");
+                vm.page_key("f5",4);
+                vm.command("linux open system","LINUX SIMULATION: confirmation requested");
+                auto enabled=vm.output.size();
+                vm.click_at((screen_width-650)/2+150,(screen_height-280)/2+227);
+                vm.wait("LINUX GUEST: start",enabled);
+                vm.wait("LINUX SIMULATION: app sent to guest shell",enabled);
+                vm.wait("Linux mnos-linux-guest",enabled);
+                vm.wait("Swap:",enabled);
+                vm.wait("linux-guest# ",vm.output.find("Swap:",enabled));
+                vm.page_key("f5",4);
+                auto opened=vm.send("linux open files\n");
+                vm.wait("LINUX SIMULATION: app sent to guest shell",opened);
+                vm.wait("linux-guest# ",vm.output.find("LINUX SIMULATION: app sent to guest shell",opened));
+                require(vm.output.find("LINUX SIMULATION: confirmation requested",opened)==std::string::npos,"enabled guest asked again");
                 vm.command("uname -s", "\r\nLinux\r\n");
                 vm.command("printf abc | sha256sum", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  -");
                 vm.command("awk 'BEGIN { print 6*7 }'", "\r\n42\r\n");
@@ -352,15 +383,25 @@ int main(int argc, char **argv) {
                 vm.command("system memory","Free physical pages");
                 vm.command("linux resume","UI: page 7");
                 vm.command("cat /tmp/note", "\r\nguest-private\r\n");
-                vm.send(std::string(1,(char)0x85));
-                vm.command("linux stop","Stopped / guest RAM cleared");
+                vm.page_key("f5",4);
+                vm.command("linux pause","Paused / guest RAM retained");
+                vm.page_key("f7",6);
+                vm.screenshot(build/(arch+"-linux-guest-settings-on.ppm"));
+                auto disabled=vm.output.size();
+                vm.click_at((screen_width>1100?(screen_width-900)/2:144)+100,58+52+358);
+                vm.wait("LINUX SIMULATION: disabled",disabled);
+                vm.screenshot(build/(arch+"-linux-guest-settings-off.ppm"));
+                vm.page_key("f5",4);
+                vm.command("linux status","Stopped / guest RAM cleared");
                 auto restart=vm.send("linux start\n");
-                vm.wait("UI: page 7",restart);
+                vm.wait("LINUX SIMULATION: confirmation requested",restart);
+                vm.key("ret");
+                vm.wait("LINUX GUEST: start",restart);
                 vm.wait("linux-guest# ",restart);
                 vm.command("test ! -e /tmp/note && printf '%s%s\\n' RAM_ CLEARED", "\r\nRAM_CLEARED\r\n");
                 vm.send(std::string(1,(char)0x85));
                 vm.command("linux stop","Stopped / guest RAM cleared");
-                std::cout << "NATIVE LINUX GUEST PASS " << arch << ": actual Linux, userspace, checksums, text, files, guest-only paths, pause/resume and RAM reset\n";
+                std::cout << "NATIVE LINUX GUEST PASS " << arch << ": consent/cancel, actual app launch, settings disable, actual Linux, checksums, text, files, pause/resume and RAM reset\n";
             }
             vm.command("kernel su", "Root password:");
             vm.command("rootadmintest785", "Root session:");
@@ -392,6 +433,10 @@ int main(int argc, char **argv) {
             vm.wait("Note: Hello from the original mnOS desktop.");
             vm.command("cat /disk/home/demo/untitled.txt", "A first save must retain the untitled document.");
             vm.command("write /disk/root/denied.txt blocked", "Permission denied");
+            if(std::getenv("MNOS_TEST_LINUX_GUEST")) {
+                vm.command("linux status","Stopped / guest RAM cleared");
+                require(vm.output.find("LINUX GUEST: start")==std::string::npos,"guest enabled after reboot");
+            }
             vm.screenshot(build / (arch + "-reboot.ppm"));
         }
         fs::remove_all(work);

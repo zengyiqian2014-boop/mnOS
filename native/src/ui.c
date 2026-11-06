@@ -284,7 +284,8 @@ static void kernel_command(const char *cmd) {
     else if (!strncmp(cmd,"help ",5)) command_help(cmd+5,add_line);
     else if (auth_command(cmd, add_line)) {}
     else if (linux_guest_command(cmd,add_line)) {
-        if(streq(cmd,"linux start") || streq(cmd,"linux resume") || streq(cmd,"linux restart"))focus_app(7);
+        if(streq(cmd,"linux start") || streq(cmd,"linux enable") || streq(cmd,"linux resume") ||
+           streq(cmd,"linux restart") || !strncmp(cmd,"linux open ",11))focus_app(7);
     }
     else if(streq(cmd,"system")||!strncmp(cmd,"system ",7)) {
         const char *p=cmd[6]?cmd+7:"status";
@@ -402,11 +403,11 @@ static unsigned order[APP_COUNT] = {0, 1, 2, 3, 4, 5, 6, 7};
 static bool layout_ready, menu_open, dragging;
 static int drag_dx, drag_dy;
 static const char *app_names[] = {"Welcome",  "Files",   "Text editor", "System monitor",
-                                  "Terminal", "Devices", "Settings", "Linux environment"};
+                                  "Terminal", "Devices", "Settings", "Linux 模拟"};
 static const char *app_desc[] = {"Your native desktop",           "Browse your home folder",
                                  "Create and edit text files",    "Memory and kernel status",
                                  "Commands and native programs",  "Detected hardware",
-                                 "Display, wallpaper and session", "Linux inside the native desktop"};
+                                 "Display, wallpaper and Linux", "默认关闭，打开 Linux 程序时询问"};
 static char search[40], notice[120];
 static uint64_t notice_until;
 static unsigned search_len;
@@ -475,6 +476,17 @@ static void focus_app(int app) {
     log_write("UI: page ");
     log_dec(app);
     log_write("\n");
+}
+static void launch_app(int app) {
+    focus_app(app);
+    if(app==7)linux_guest_open("terminal",add_line);
+}
+static void toggle_linux(void) {
+    if(linux_guest_enabled()||linux_guest_prompting()) {
+        linux_guest_command("linux disable",add_line);
+        setting_message("Linux 模拟已关闭，临时文件已清除。");
+    } else linux_guest_open("terminal",add_line);
+    dirty=true;
 }
 static void home_folder(bool persistent) {
     copy_string(folder, sizeof folder, persistent ? "/disk" : "/ram");
@@ -888,19 +900,22 @@ static void window_content(unsigned app) {
         }
         text(x, y + 390, "A detected device requires a compatible native driver.", 18, MUTED);
     } else if (app == 7) {
-        button(x,y,102,"Start",false);
-        button(x+112,y,102,"Pause",false);
-        button(x+224,y,102,"Resume",false);
-        button(x+336,y,102,"Stop",false);
-        text_fit(x,y+39,linux_guest_status(),16,ACCENT,w);
-        rounded(x,y+73,w,v->h-165,0x0c1720);
-        unsigned rows=(unsigned)(v->h-180)/23,count=linux_guest_lines();
+        button(x,y,102,"开启",linux_guest_enabled());
+        button(x+112,y,102,"暂停",false);
+        button(x+224,y,102,"继续",false);
+        button(x+336,y,102,"关闭",false);
+        const char *labels[]={"终端","文件列表","进程","系统信息","命令目录"};
+        for(unsigned i=0;i<5;i++)button(x+(int)i*122,y+42,112,labels[i],false);
+        text_fit(x,y+81,linux_guest_status(),16,ACCENT,w);
+        rounded(x,y+115,w,v->h-207,0x0c1720);
+        unsigned rows=(unsigned)(v->h-222)/23,count=linux_guest_lines();
         unsigned first=count>rows?count-rows:0;
         for(unsigned i=first;i<count;i++)
-            text_fit(x+12,y+78+(int)(i-first)*23,linux_guest_line(i),FONT_MONO18,FG,w-24);
-        text_fit(x,v->y+v->h-32,"Temporary RAM / no host sharing / F5: host terminal",16,MUTED,w);
+            text_fit(x+12,y+120+(int)(i-first)*23,linux_guest_line(i),FONT_MONO18,FG,w-24);
+        text_fit(x,v->y+v->h-32,"关闭会清除临时文件 / RV64 Linux 命令行程序 / F5 返回宿主",16,MUTED,w);
     } else {
-        text(x, y, "Display and workspace", 28, FG);
+        text(x, y, "System settings", 28, FG);
+        text(x+242, y+10, "系统设置", 18, MUTED);
         char mode[32];
         resolution_text(mode);
         line(x, y + 62, w, "Display", graphics_driver());
@@ -911,8 +926,11 @@ static void window_content(unsigned app) {
         button(x, y + 220, 235, "Save settings / S", true);
         button(x, y + 291, 145, "Lock session", false);
         button(x + 160, y + 291, 145, "Power", false);
-        text(x, y + 349, setting_status, 18, MUTED);
-        text(x, y + 390, "Saved settings belong to your account.", 18, MUTED);
+        text_fit(x, y + 258, setting_status, 16, MUTED,w);
+        button(x,y+342,235,"Linux 模拟 / L",linux_guest_enabled());
+        text(x+264,y+342,linux_guest_enabled()?"已开启 / 本次登录":"已关闭 / 默认状态",18,ACCENT);
+        text_fit(x,y+381,"关闭立即停止 Linux，并清除其中的临时文件。",18,MUTED,w);
+        text_fit(x,y+419,"登录或重启后默认关闭。打开 Linux 程序时会再次询问。",16,MUTED,w);
     }
 }
 static int task_width(void) {
@@ -965,19 +983,19 @@ static void draw(void) {
     uptime[clock_end] = 0;
     text(width - 70, 4, uptime, 16, MUTED);
     if (menu_open) {
-        rounded(8, 44, 370, 525, 0x20313f);
+        rounded(8, 44, 370, 540, 0x20313f);
         text(26, 54, "Applications", 28, FG);
         rounded(22, 106, 341, 38, 0x101c28);
         text(33, 110, search_len ? search : "Type to search...", 18, search_len ? FG : MUTED);
         unsigned row = 0;
         for (unsigned i = 0; i < APP_COUNT; i++)
             if (search_match(app_names[i])) {
-                int y = 160 + (int)row++ * 51;
+                int y = 160 + (int)row++ * 48;
                 app_icon(27, y + 3, i, 40);
                 text(80, y, app_names[i], 18, FG);
                 text_fit(80, y + 24, app_desc[i], 16, MUTED, 280);
             }
-        text(25, 529, "Esc close / Enter open first result", 16, MUTED);
+        text(25, 554, "Esc close / Enter open first result", 16, MUTED);
     }
     if (*notice) {
         int w = text_width(notice, 16) + 32;
@@ -1004,6 +1022,17 @@ static void draw(void) {
             text(x + 24, y + 146, "Enter create / Esc cancel", 18, MUTED);
         } else
             text(x + 24, y + 81, "Enter confirms / Esc keeps your files", 18, FG);
+    }
+    if(linux_guest_prompting()) {
+        int x=(width-650)/2,y=(height-280)/2;
+        rounded(x,y,650,280,0x304454);
+        text(x+24,y+26,"是否开启 Linux 模拟？",18,ACCENT);
+        text(x+24,y+76,"即将打开：",18,MUTED);
+        text_fit(x+136,y+76,linux_guest_requested_app(),18,ACCENT,480);
+        text(x+24,y+116,"开启后运行 Linux 内核和所选程序。",18,FG);
+        text(x+24,y+151,"本次登录有效，可随时在设置中关闭。",18,MUTED);
+        button(x+24,y+211,280,"开启并打开 / Enter",true);
+        button(x+326,y+211,280,"取消 / Esc",false);
     }
     display_rect(0, 0, width, height);
     cursor();
@@ -1106,6 +1135,13 @@ void ui_key(char key) {
     }
     unsigned char k = (unsigned char)key;
     dirty = true;
+    if(linux_guest_prompting()) {
+        if(key==27)linux_guest_confirm(false,add_line);
+        else if(key=='\n'||key=='\r') {
+            if(linux_guest_confirm(true,add_line))focus_app(7);
+        }
+        return;
+    }
     if (power_dialog) {
         if (key == 'r' || key == 'R')
             reboot();
@@ -1141,7 +1177,7 @@ void ui_key(char key) {
         else if (key == '\n' || key == '\r') {
             for (unsigned i = 0; i < APP_COUNT; i++)
                 if (search_match(app_names[i])) {
-                    focus_app(i);
+                    launch_app(i);
                     if (page == 1)
                         refresh_files();
                     break;
@@ -1258,6 +1294,9 @@ void ui_key(char key) {
             change_wallpaper((wallpaper + 1) % ARRAY_SIZE(wallpapers));
         else if (key == 's')
             save_settings();
+        else if (key == 'l' || key == 'L') {
+            toggle_linux();return;
+        }
     }
     if (key == 't')
         focus_app(4);
@@ -1289,6 +1328,17 @@ void ui_pointer(int x, int y, bool pressed) {
     if (auth_prompting()) {
         left_down = pressed;
         return;
+    }
+    if(linux_guest_prompting()) {
+        dragging=false;
+        if(pressed&&!left_down) {
+            int dx=(width-650)/2,dy=(height-280)/2;
+            if(inside(x,y,dx+24,dy+211,280,32)) {
+                if(linux_guest_confirm(true,add_line))focus_app(7);
+            } else if(inside(x,y,dx+326,dy+211,280,32))linux_guest_confirm(false,add_line);
+            dirty=true;
+        }
+        left_down=pressed;return;
     }
     if (dragging) {
         if (!pressed)
@@ -1334,8 +1384,8 @@ void ui_pointer(int x, int y, bool pressed) {
             bool found = false;
             for (unsigned i = 0; i < APP_COUNT; i++)
                 if (search_match(app_names[i])) {
-                    if (inside(x, y, 20, 160 + (int)row * 51, 340, 51)) {
-                        focus_app(i);
+                    if (inside(x, y, 20, 160 + (int)row * 48, 340, 48)) {
+                        launch_app(i);
                         if (page == 1)
                             refresh_files();
                         found = true;
@@ -1343,7 +1393,7 @@ void ui_pointer(int x, int y, bool pressed) {
                     }
                     row++;
                 }
-            if (!found && !inside(x, y, 8, 44, 370, 525))
+            if (!found && !inside(x, y, 8, 44, 370, 540))
                 menu_open = false;
             dirty = true;
         } else {
@@ -1398,6 +1448,10 @@ void ui_pointer(int x, int y, bool pressed) {
                     if(yy>=0 && yy<32) {
                         const char *action=xx<102?"linux start":xx<214?"linux pause":xx<326?"linux resume":xx<438?"linux stop":NULL;
                         if(action)linux_guest_command(action,add_line);
+                    } else if(yy>=42&&yy<74&&xx>=0) {
+                        const char *apps[]={"terminal","files","processes","system","commands"};
+                        unsigned app=(unsigned)xx/122;
+                        if(app<5&&(unsigned)xx%122<112)linux_guest_open(apps[app],add_line);
                     }
                 } else if (hit == 1) {
                     if (yy >= 0 && yy < 32) {
@@ -1442,7 +1496,7 @@ void ui_pointer(int x, int y, bool pressed) {
                             auth_lock();
                         else if (xx < 305)
                             power_dialog = true;
-                    }
+                    } else if(yy>=342&&yy<374&&xx>=0&&xx<235)toggle_linux();
                 }
                 dirty = true;
             }

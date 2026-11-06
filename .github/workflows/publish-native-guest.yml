@@ -8,7 +8,7 @@ on:
       release_tag:
         description: Native edition preview tag matching the built filenames
         required: true
-        default: v0.5-native-preview.1
+        default: v0.5-native-preview.2
 permissions:
   contents: write
   actions: read
@@ -60,6 +60,9 @@ jobs:
             grep -q "DESKTOP PASS $arch" "evidence/guest-validation-$arch.log"
             test -s "evidence/$arch-linux-guest.ppm"
             test -s "evidence/$arch-linux-guest-help.ppm"
+            test -s "evidence/$arch-linux-guest-consent.ppm"
+            test -s "evidence/$arch-linux-guest-settings-on.ppm"
+            test -s "evidence/$arch-linux-guest-settings-off.ppm"
           done
       - name: Publish the verified native preview
         env:
@@ -69,7 +72,7 @@ jobs:
           if gh release view "$TAG" --json isDraft,targetCommitish > /tmp/existing.json 2>/dev/null; then
             jq -e --arg sha "$SOURCE_SHA" '.isDraft == true and .targetCommitish == $sha' /tmp/existing.json
           else
-            gh release create "$TAG" --target "$SOURCE_SHA" --draft --prerelease --title 'mnOS Native Edition 0.5 Preview — 自研 GUI 与真实 Linux 客体' --notes-file native/GUEST-RELEASE.md
+            gh release create "$TAG" --target "$SOURCE_SHA" --draft --prerelease --title 'mnOS Native Edition 0.5 Preview 2 — Linux 模拟按需开启' --notes-file native/GUEST-RELEASE.md
           fi
           for file in release/*; do gh release upload "$TAG" "$file" --clobber; done
           gh release edit "$TAG" --draft=false --prerelease --latest=false

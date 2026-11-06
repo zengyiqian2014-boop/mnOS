@@ -4,6 +4,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 bool linux_guest_command(const char *, void (*)(const char *));
+bool linux_guest_open(const char *app, void (*)(const char *));
+bool linux_guest_enabled(void);
+bool linux_guest_prompting(void);
+const char *linux_guest_requested_app(void);
+bool linux_guest_confirm(bool enable, void (*)(const char *));
 void linux_guest_tick(void);
 void linux_guest_key(unsigned char);
 void linux_guest_clear(void);
