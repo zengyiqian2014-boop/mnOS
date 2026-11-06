@@ -9,11 +9,15 @@ Firefox, VS Code, the full CTF suite and a unified C system-management command.
 The guest initially supports RV64IMAC/LP64 console programs, not Linux GUI apps.
 See the edition guide for commands, permissions, build steps and limits.
 
-**Native Edition 0.5 Preview is available:**
-[AMD64 installer](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.5-native-preview.1/mnOS-native-0.5-preview.1-amd64.iso)
-· [ARM64 installer](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.5-native-preview.1/mnOS-native-0.5-preview.1-arm64.iso)
-· [Checksums, source and tested scope](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.5-native-preview.1).
+**Native Edition 0.5 Preview 2 is available:**
+[AMD64 installer](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.5-native-preview.2/mnOS-native-0.5-preview.2-amd64.iso)
+· [ARM64 installer](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.5-native-preview.2/mnOS-native-0.5-preview.2-arm64.iso)
+· [Checksums, source and tested scope](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.5-native-preview.2).
 Both architectures passed GUI installation, disk boot without the ISO and actual Linux guest commands.
+Linux simulation is off by default. Opening a supported Linux console app asks for
+confirmation; Settings can disable it and clear guest RAM immediately. This preview
+also fixes delayed AMD64 keyboard/mouse input and colon/quote key mapping.
+The attached images were tested locally in QEMU; see the release evidence and provenance.
 
 ![Actual native desktop executing Linux guest programs](assets/native-linux-guest.png)
 
