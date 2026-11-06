@@ -5,11 +5,14 @@
 以及统一系统管理入口。初期客体支持 RV64IMAC/LP64 控制台程序，尚不支持 Linux 图形软件。
 构建、权限、命令和兼容范围见版本说明。
 
-**自研版 0.5 Preview 已发布：**
-[AMD64 安装 ISO](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.5-native-preview.1/mnOS-native-0.5-preview.1-amd64.iso)
-· [ARM64 安装 ISO](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.5-native-preview.1/mnOS-native-0.5-preview.1-arm64.iso)
-· [校验和、源码和测试范围](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.5-native-preview.1)。
+**自研版 0.5 Preview 2 已发布：**
+[AMD64 安装 ISO](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.5-native-preview.2/mnOS-native-0.5-preview.2-amd64.iso)
+· [ARM64 安装 ISO](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.5-native-preview.2/mnOS-native-0.5-preview.2-arm64.iso)
+· [校验和、源码和测试范围](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.5-native-preview.2)。
 两架构均通过图形安装、移除 ISO 后磁盘启动，以及在真实 Linux 客体中执行程序的测试。
+Linux 模拟默认关闭，打开受支持的 Linux 命令行程序时先询问；系统设置可随时关闭并清除客体内存。
+本版修复 AMD64 在模拟忙碌时的键鼠响应，以及冒号、双引号映射。两份发布镜像均在本地 QEMU
+完成安装与启动测试，具体日志、截图、校验和及验证来源见发布页。
 
 ![原生桌面内运行 Linux 客体程序的实测画面](assets/native-linux-guest.png)
 
