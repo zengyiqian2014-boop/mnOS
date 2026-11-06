@@ -90,7 +90,7 @@ void keyboard_event(uint8_t code) {
     if (control && c >= 'a' && c <= 'z') c -= 'a' - 1;
     else if (shift) {
         const char *normal_symbols = "1234567890-=[];',./`\\";
-        const char *shift_symbols = "!@#$%^&*()_+{}\":<>?~|";
+        const char *shift_symbols = "!@#$%^&*()_+{}:\"<>?~|";
         if (c >= 'a' && c <= 'z') c -= 32;
         else for (unsigned i=0;normal_symbols[i];i++) if (c==normal_symbols[i]) {c=shift_symbols[i];break;}
     }

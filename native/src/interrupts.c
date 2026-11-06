@@ -265,7 +265,12 @@ struct irq_frame *irq_dispatch(struct irq_frame *f) {
     }
     if (f->vector == 128)
         return syscall(f);
-    if (f->vector == 33 || f->vector == 44) {
+    /* Guest interpretation can keep IRQ0 pending longer than one PIT period.
+     * The legacy PIC then prioritizes it over keyboard/mouse IRQs. Drain the
+     * bounded PS/2 queue on the BSP timer too, before the next guest slice, so
+     * users can still switch windows and disable Linux simulation. */
+    if (f->vector == 33 || f->vector == 44 ||
+        (!cpu_this()->index && (f->vector == 32 || f->vector == 64))) {
         unsigned count = 32;
         while (count--) {
             uint8_t status = inb(0x64);
