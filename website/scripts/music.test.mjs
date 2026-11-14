@@ -30,7 +30,7 @@ try{
   return{duration:decoded.duration,peak,rms:Math.sqrt(sum/channel.length),source:a.currentSrc,mime:response.headers.get('Content-Type'),range:range.status,rangeBytes:(await range.arrayBuffer()).byteLength};
  });
  assert.ok(Math.abs(decoded.duration-24)<.1);assert.ok(decoded.peak>.1&&decoded.rms>.01,'The production recording must contain actual music');
- assert.equal(new URL(decoded.source).origin,new URL(base).origin);assert.ok(decoded.mime.includes('audio/mpeg'));
+ assert.equal(new URL(decoded.source).origin,new URL(base).origin);assert.ok(/^audio\/(mpeg|mp3)(?:;|$)/i.test(decoded.mime),'Accept MP3 MIME types served by both the preview server and GitHub Pages');
  assert.equal(decoded.range,206);assert.equal(decoded.rangeBytes,64);
  await p.locator('audio').evaluate(a=>{a.currentTime=8;});
  await p.waitForFunction(()=>{const a=document.querySelector('audio');return!a.seeking&&Math.abs(a.currentTime-8)<.1;});
