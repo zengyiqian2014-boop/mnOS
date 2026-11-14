@@ -11,6 +11,17 @@ COMMON += src/guest.c src/guest_memory.c src/guest_dtb.c src/linux_guest.c
 COMMON += src/factor.c src/clock.c vendor/monocypher/monocypher.c
 COMMON += vendor/qrcodegen/qrcodegen.c
 GUEST ?= 0
+ifneq ($(GUEST),0)
+ifneq ($(GUEST),1)
+$(error GUEST must be 0 or 1)
+endif
+endif
+.PHONY: FORCE_GUEST
+FORCE_GUEST:
+build/arm64/guest-config: FORCE_GUEST
+	@mkdir -p build/arm64
+	@printf '%s\n' '$(GUEST)' > $@.tmp
+	@cmp -s $@.tmp $@ || cp $@.tmp $@
 FLAVOR ?= full
 ifneq ($(filter $(FLAVOR),full lite),$(FLAVOR))
 $(error FLAVOR must be full or lite)
@@ -61,12 +72,12 @@ build/arm64/elf/%.o: arch/arm64/%.S
 build/arm64/pe/%.obj: arch/arm64/%.S
 	mkdir -p $(dir $@)
 	$(CLANG) --target=aarch64-unknown-windows -c $< -o $@
-build/arm64/mnos.elf: $(ELF) arch/arm64/linker.ld
+build/arm64/mnos.elf: $(ELF) arch/arm64/linker.ld build/arm64/guest-config
 	$(LLD) -nostdlib -T arch/arm64/linker.ld -o $@ $(ELF)
 build/arm64/Image: build/arm64/mnos.elf
 	$(OBJCOPY) -O binary $< $@
-build/arm64/BOOTAA64.EFI: $(PE)
+build/arm64/BOOTAA64.EFI: $(PE) build/arm64/guest-config
 	$(EFI_LD) /subsystem:efi_application /entry:efi_main /nodefaultlib /machine:arm64 /base:0x100000 /filealign:512 /out:$@ $(PE)
-build/arm64/BOOTAA64-TEST.EFI: $(PE)
+build/arm64/BOOTAA64-TEST.EFI: $(PE) build/arm64/guest-config
 	$(EFI_LD) /subsystem:efi_application /entry:efi_test_main /nodefaultlib /machine:arm64 /base:0x100000 /filealign:512 /out:$@ $(PE)
 -include $(ELF:.o=.d) $(PE:.obj=.d)

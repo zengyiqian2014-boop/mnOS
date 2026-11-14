@@ -19,6 +19,7 @@ jobs:
               exit 1
             fi
             make host-tests
+            bash tests/guest_build.sh
             GUEST=1 installer/build.sh
             c++ -std=c++17 -O2 -Wall -Wextra -Werror tests/desktop_vm.cpp -o build/desktop-vm'
       - name: Install and execute guest Linux in both native desktops

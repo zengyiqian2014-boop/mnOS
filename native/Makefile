@@ -20,6 +20,17 @@ SOURCES += src/process.c src/usercopy.c src/file_api.c src/disk_layout.c src/tex
 SOURCES += src/factor.c src/clock.c src/rtc.c vendor/monocypher/monocypher.c
 SOURCES += vendor/qrcodegen/qrcodegen.c
 GUEST ?= 0
+ifneq ($(GUEST),0)
+ifneq ($(GUEST),1)
+$(error GUEST must be 0 or 1)
+endif
+endif
+.PHONY: FORCE_GUEST
+FORCE_GUEST:
+build/guest-config: FORCE_GUEST
+	@mkdir -p build
+	@printf '%s\n' '$(GUEST)' > $@.tmp
+	@cmp -s $@.tmp $@ || cp $@.tmp $@
 OBJECTS = $(patsubst %.c,build/%.o,$(SOURCES)) build/boot.o build/ap.o build/interrupts.o build/user.o build/exec-image.o
 OBJECTS += build/guest-image-$(GUEST).o
 build/guest-image-$(GUEST).o: src/guest-image.S $(if $(filter 1,$(GUEST)),build/guest/Image build/guest/machine.dtb)
@@ -78,7 +89,7 @@ host-tests:
 	$(CC) -std=c11 -O2 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -DMNOS_LITE=1 -Iinclude tests/lite_auth.c src/auth.c src/password.c src/factor.c src/clock.c vendor/monocypher/monocypher.c -lcrypto -o build/lite-auth-test
 	./build/lite-auth-test
 
-build/mnos.elf: $(OBJECTS) linker.ld
+build/mnos.elf: $(OBJECTS) linker.ld build/guest-config
 	$(LD) -nostdlib -z max-page-size=0x1000 -T linker.ld -o $@ $(OBJECTS)
 
 build/%.o: %.c build/flavor-config include/kernel.h include/boot_layout.h include/phys.h include/mnfs.h include/block.h include/auth.h include/factor.h include/clock.h include/exec.h include/process.h include/file_api.h include/usercopy.h include/font.h include/icons.h include/commands.h include/guest.h include/guest_memory.h include/linux_guest.h
@@ -93,6 +104,6 @@ build/%.o: src/%.S
 	mkdir -p $(dir $@)
 	$(CC) -m64 -ffreestanding -fno-pie -c $< -o $@
 
-build/desktop/kernel-x86_64.elf: $(OBJECTS) linker.ld
+build/desktop/kernel-x86_64.elf: $(OBJECTS) linker.ld build/guest-config
 	mkdir -p build/desktop
 	$(LD) -nostdlib -z max-page-size=0x1000 --defsym=native_efi_link=1 -e efi_kernel_entry -T linker.ld -o $@ $(OBJECTS)
