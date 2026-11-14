@@ -1,43 +1,35 @@
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url);
-const{chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright-core');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright-core');
 const base=process.env.MNOS_SITE_URL||'http://127.0.0.1:4173/';
-const browser=await chromium.launch({executablePath:process.env.CHROMIUM||'/usr/bin/chromium',args:['--no-sandbox','--enable-unsafe-swiftshader','--autoplay-policy=document-user-activation-required']});
-try{
+const browser=await chromium.launch({executablePath:process.env.CHROMIUM||'/usr/bin/chromium',args:['--no-sandbox','--enable-unsafe-swiftshader']});
+try {
  const context=await browser.newContext({viewport:{width:390,height:844}});
  await context.route('https://raw.githubusercontent.com/**',r=>r.abort());
- const p=await context.newPage(),errors=[],musicServices=[];
- p.on('pageerror',e=>errors.push(e.message));p.on('request',r=>{if(/soundcloud|music\.163|y\.qq\.com/.test(r.url()))musicServices.push(r.url());});
- await p.goto(base,{waitUntil:'domcontentloaded'});
- // Do not grant activation through Playwright evaluation before checking autoplay.
- const cdp=await context.newCDPSession(p);let state;
- for(let i=0;i<80;i++){
-  const result=await cdp.send('Runtime.evaluate',{expression:'JSON.stringify({...document.querySelector(".scroll-film").dataset})',returnByValue:true,userGesture:false});
-  state=JSON.parse(result.result.value);if(state.audio==='blocked')break;
-  await p.waitForTimeout(250);
- }
- assert.equal(state.audio,'blocked',JSON.stringify(state));await cdp.detach();
- await p.locator('.film-sound').click();
- await p.waitForFunction(()=>{const a=document.querySelector('audio');return!a.paused&&a.readyState>=3&&a.currentTime>.1;});
- await p.keyboard.press('Escape');assert.equal(await p.locator('audio').evaluate(a=>a.paused),true);
- const decoded=await p.evaluate(async()=>{
-  const a=document.querySelector('audio'),response=await fetch(a.currentSrc);
-  const context=new OfflineAudioContext(2,44100,44100),decoded=await context.decodeAudioData(await response.arrayBuffer());
-  let peak=0,sum=0;const channel=decoded.getChannelData(0);
-  for(const v of channel){peak=Math.max(peak,Math.abs(v));sum+=v*v;}
-  const range=await fetch(a.currentSrc,{headers:{Range:'bytes=0-63'}});
-  return{duration:decoded.duration,peak,rms:Math.sqrt(sum/channel.length),source:a.currentSrc,mime:response.headers.get('Content-Type'),range:range.status,rangeBytes:(await range.arrayBuffer()).byteLength};
+ const page=await context.newPage(),errors=[],mediaRequests=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ page.on('request',r=>{if(r.resourceType()==='media')mediaRequests.push(r.url());});
+ await page.goto(base,{waitUntil:'domcontentloaded'});
+ const response=await context.request.get(new URL('media/music.json',base).href);
+ assert.equal(response.status(),200);
+ const config=await response.json();
+ assert.equal(config.title,'3 Strikes');
+ assert.equal(config.artist,'Terror Jr');
+ assert.deepEqual(config.sources,[],'No verified original audio source is configured; do not silently substitute a different recording');
+ await page.waitForFunction(()=>{
+  const film=document.querySelector('.scroll-film');
+  return film.dataset.audio==='unconfigured'&&Number(film.dataset.progress)>.02;
  });
- assert.ok(Math.abs(decoded.duration-24)<.1);assert.ok(decoded.peak>.1&&decoded.rms>.01,'The production recording must contain actual music');
- assert.equal(new URL(decoded.source).origin,new URL(base).origin);assert.ok(/^audio\/(mpeg|mp3)(?:;|$)/i.test(decoded.mime),'Accept MP3 MIME types served by both the preview server and GitHub Pages');
- assert.equal(decoded.range,206);assert.equal(decoded.rangeBytes,64);
- await p.locator('audio').evaluate(a=>{a.currentTime=8;});
- await p.waitForFunction(()=>{const a=document.querySelector('audio');return!a.seeking&&Math.abs(a.currentTime-8)<.1;});
- await p.locator('.film-play').click();await p.waitForFunction(()=>!document.querySelector('audio').paused);
- await p.locator('.film-sound').click();assert.equal(await p.locator('audio').evaluate(a=>a.paused),true);
- assert.equal(await p.locator('.film-play').getAttribute('aria-pressed'),'true','Muting must leave the film running');
- assert.ok((await p.locator('.music-credit').textContent()).includes('Kevin MacLeod'));assert.deepEqual(errors,[]);assert.deepEqual(musicServices,[]);
- console.log('PASS bundled Cipher MP3: real decoding, audible samples, 24-second duration, same-origin byte ranges, autoplay unlock, seeking, pause/mute and credit');
- console.log(JSON.stringify(decoded));await context.close();
-}finally{await browser.close();}
+ assert.equal(await page.locator('.film-sound').isVisible(),false,'Do not imply that a listening-page link supplies background audio');
+ assert.equal(await page.locator('audio').evaluate(a=>a.currentSrc),'');
+ const credit=page.locator('.music-credit');
+ assert.ok((await credit.textContent()).includes('Terror Jr —《3 Strikes》'));
+ assert.equal(await credit.locator('a').nth(0).getAttribute('href'),'https://www.kugou.com/song/cnygy2e.html');
+ assert.equal(await credit.locator('a').nth(1).getAttribute('href'),'https://music.163.com/#/song?id=409647388');
+ await page.keyboard.press('Escape');
+ assert.equal(await page.locator('.scroll-film').getAttribute('data-playing'),'false');
+ assert.deepEqual(mediaRequests,[]);assert.deepEqual(errors,[]);
+ console.log('PASS original 3 Strikes selection, official listening links, no substitute audio and working silent introduction');
+ await context.close();
+} finally {await browser.close();}

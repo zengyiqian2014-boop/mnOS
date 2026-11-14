@@ -40,29 +40,28 @@ while playing; blocked or unavailable audio cannot stop the visual introduction.
 Audible autoplay still follows browser policy: when blocked, a genuine tap or key
 press can start it. Reduced motion does not request audio or construct WebGL.
 
-The configured soundtrack is **Cipher — Kevin MacLeod**, under CC BY 4.0.
-The 24-second edited excerpt is bundled as `media/cipher-intro.mp3` (337,208
-bytes), served by the same site as the introduction. It does not contact
-SoundCloud, NetEase or another music platform. The source, modifications and
-checksums are in `media/cipher-LICENSE.txt`; the footer displays the credit and
-license. This replaces the earlier unconfigured Three Strikes selection.
+The selected recording is **3 Strikes — Terror Jr**, the original 2016
+recording. The previously substituted Cipher excerpt has been removed.
+Official song pages: [Kugou](https://www.kugou.com/song/cnygy2e.html) and
+[NetEase Music](https://music.163.com/#/song?id=409647388).
+These are listening pages, not audio file URLs. The Kugou web player requests
+login. Playback and direct embedding in China have not been verified.
 
-The source tempo is 150 BPM. The excerpt starts at source time 12.8 seconds
-and is sped up by 6.6667% to 160 BPM (80 BPM at half time), retaining its pitch.
-Sixteen four-beat bars fit the 24-second film. Fades and peak limiting soften the
-start and finish. Browser autoplay policy still applies: a first tap/key or the
-corner sound button enables sound when autoplay is blocked.
+No playable original recording is bundled or configured. The introduction
+currently plays silently and the footer links to the original track; a song
+page must never be presented as a working background-audio source. Do not
+substitute another song when this recording is unavailable.
 
-`media/music.json` selects the recording, the offset within the bundled file,
-the film duration and up to three local/HTTPS sources in preference order:
+`media/music.json` selects the recording, its offset, the film duration and
+up to three authorized local/HTTPS audio sources in preference order:
 
 ```json
 {
-  "title": "Cipher",
-  "artist": "Kevin MacLeod",
-  "start": 0,
+  "title": "3 Strikes",
+  "artist": "Terror Jr",
+  "start": 12.06,
   "duration": 24,
-  "sources": ["./media/cipher-intro.mp3"]
+  "sources": []
 }
 ```
 
