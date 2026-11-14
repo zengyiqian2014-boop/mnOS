@@ -38,7 +38,7 @@ jobs:
           set -euo pipefail
           find diagnostic/validation -maxdepth 1 -type f -printf '%f %s bytes\n'
           for file in diagnostic/validation/install.log; do
-            detail=$(tail -c 6000 "$file")
+            detail=$(tail -c 3000 "$file")
             detail=${detail//%/%25}
             detail=${detail//$'\r'/%0D}
             detail=${detail//$'\n'/%0A}
@@ -53,7 +53,9 @@ jobs:
           # Only the known, disposable QA account is used in this VM. The
           # screenshot contains its masked form and validation dialog, not
           # credentials from a real installation. Keep annotations bounded.
-          base64 -w 0 diagnostic/last-screen.jpg | fold -w 24000 > diagnostic/screen-chunks.txt
+          # GitHub's check API truncates each annotation message at 4096
+          # characters, even when a longer runner annotation was accepted.
+          base64 -w 0 diagnostic/last-screen.jpg | fold -w 3000 > diagnostic/screen-chunks.txt
           index=0
           while IFS= read -r part || [ -n "$part" ]; do
             index=$((index+1))
