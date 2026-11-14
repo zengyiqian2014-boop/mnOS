@@ -163,6 +163,7 @@ void memory_init(void) {
         region(platform.gicr, platform.gicr_size, DEVICE);
     for (unsigned i = 0; i < platform.virtio_count; ++i)
         region(platform.virtio[i], 512, DEVICE);
+    if(platform.rtc)region(platform.rtc,4096,DEVICE);
     if (boot.fb.pixels)
         region((uintptr_t)boot.fb.pixels, (uint64_t)boot.fb.pitch * boot.fb.height, DEVICE);
     /* Every root shares the heap's lower tables before task roots are cloned. */

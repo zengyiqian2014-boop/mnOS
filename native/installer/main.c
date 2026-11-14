@@ -191,7 +191,7 @@ static void draw(void) {
         text(x, y + 247, message, 18, 0xe2ebf0);
         if (!failed) {
             text(x, y + 302, "Eject this ISO, then restart from the installed disk.", 18, 0xe2ebf0);
-            text(x, y + 348, "Create your account on first boot. Your files stay on disk.", 18,
+            text(x, y + 348, "First boot: create passwords, then choose optional 2FA.", 18,
                  0x9aacba);
         }
         text(x, y + 422, "R restart    Esc return to disk selection", 18, 0x83d5bc);

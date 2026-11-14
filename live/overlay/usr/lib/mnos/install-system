@@ -28,6 +28,13 @@ IFS= read -r account || fail 'Missing account.'
 IFS= read -r secret || fail 'Missing password.'
 read -r policy || fail 'Missing network policy.'
 case "$policy" in root|delegated) ;; *) fail 'Invalid network policy.' ;; esac
+IFS= read -r factor_policy || factor_policy=password
+case "$factor_policy" in password|authenticator) ;; *) fail 'Invalid authentication policy.' ;; esac
+IFS= read -r face_policy || face_policy=off
+case "$face_policy" in off|face-preview) ;; *) fail 'Invalid face preview choice.' ;; esac
+if [ "$factor_policy" = authenticator ]; then
+    [ -S /proc/self/fd/3 ] || fail 'Missing private authentication channel.'
+fi
 password_hash=$(printf '%s\n%s\n' "$account" "$secret" |
     /usr/lib/mnos/account-preflight --hash) || fail 'Account validation failed before disk changes.'
 unset secret
@@ -85,6 +92,22 @@ chroot "$target" useradd --create-home --shell /bin/bash --groups sudo,netdev,pl
 printf '%s:%s\n' "$account" "$password_hash" | chroot "$target" chpasswd --encrypted
 unset password_hash
 chroot "$target" passwd --lock root
+if [ "$face_policy" = face-preview ]; then
+    account_uid=$(chroot "$target" id -u "$account")
+    install -d -m 755 "$target/var/lib/mnos/face-setup"
+    touch "$target/var/lib/mnos/face-setup/$account_uid"
+    chmod 644 "$target/var/lib/mnos/face-setup/$account_uid"
+fi
+if [ "$factor_policy" = authenticator ]; then
+    account_uid=$(chroot "$target" id -u "$account")
+    printf 'MNOS SECURITY CONFIGURE %s\n' "$account_uid"
+    chroot "$target" /usr/lib/mnos/login-helper --install "$account_uid" <&3 >&3 || true
+    if [ -f "$target/var/lib/mnos-login-process/$account_uid.factor" ]; then
+        echo 'MNOS AUTHENTICATOR ENABLED'
+    else
+        echo 'MNOS AUTHENTICATOR NOT ENABLED: password login; configure later in Login Security.'
+    fi
+fi
 if [ "$policy" = delegated ]; then
     chroot "$target" /usr/sbin/mnos-network-policy netadmin "$account"
 else

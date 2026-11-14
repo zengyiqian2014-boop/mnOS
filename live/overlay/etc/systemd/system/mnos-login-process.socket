@@ -1,0 +1,12 @@
+[Unit]
+Description=mnOS private authentication socket
+
+[Socket]
+ListenStream=/run/mnos-login-process.sock
+SocketUser=root
+SocketGroup=root
+SocketMode=0600
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

@@ -370,3 +370,41 @@ Example: sudo mnos-admin services restart NetworkManager.service
 Restarting a network service can interrupt connections. No changes occur on
 opening the management center or on status queries. Management tools authenticate
 when applying changes. Host administration is separate from guest administration.
+
+@@2fa
+LOGIN SECURITY: PASSWORD + AUTHENTICATOR
+  mnos-security                  Open your account's graphical settings.
+  mnos-security --help           Print a short overview without opening a display.
+  help 2fa / help -cn 2fa        English / Chinese manual.
+
+Enrollment is optional during installation and can be enabled later in Settings.
+Scan the locally generated QR code OR manually enter the same Base32 key. Choose
+TOTP, SHA-1, six digits, 30 seconds. Enter a valid code to finish pairing. Nothing
+is enabled until the encrypted record has been saved. Store the eight one-use
+recovery codes elsewhere; they replace a code, never the account password.
+
+Login and disabling the feature require the password first, then a fresh code or
+unused recovery code. Reusing an accepted code is denied. Incorrect time can be
+recovered with a recovery code. An unavailable service or failed save denies
+access to enrolled accounts. ISO sessions do not enroll additional login factors.
+
+Linux password changes: disable the authenticator in Settings first, change the
+password, then pair again. PAM currently blocks password changes while enrolled.
+Native Edition instead re-encrypts the secret when its own passwd command runs.
+
+CAMERA PREVIEW (LINUX ONLY)
+  mnos-face-preview --enroll     Authenticate, run challenges, save encrypted template.
+  mnos-face-preview --test       Authenticate and test against the saved template.
+  mnos-face-preview --delete     Authenticate and delete the saved template.
+  mnos-face-preview --help       Print usage without opening the camera.
+
+Ordinary cameras estimate head pose; they do not measure trusted depth. Random
+blink/head-turn and color-response checks are experimental. This version does
+NOT use their results to unlock the system or replace password/TOTP. Photos and
+video are not saved or uploaded. After changing the password, enroll again.
+
+The Linux Login Process account protects encrypted TOTP files from ordinary
+users. Software permissions and encryption at rest do not protect live secrets
+from a malicious root or compromised kernel. Native authentication is still a
+kernel service, not a separate protected process. Full details and test scope:
+/usr/share/doc/mnos/authentication.md

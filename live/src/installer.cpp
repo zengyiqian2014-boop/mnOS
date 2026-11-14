@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "process.hpp"
+#include "security-ui.hpp"
 #include <gtk/gtk.h>
 #include <json-glib/json-glib.h>
 #include <csignal>
@@ -21,11 +22,14 @@ static void marker(const std::string &text) {
 
 struct Installer {
     GtkWidget *window{}, *form{}, *disks{}, *name{}, *password{}, *again{}, *network{},
-        *status{}, *progress{}, *log{}, *install{}, *refresh{}, *finish{};
+        *status{}, *progress{}, *log{}, *install{}, *refresh{}, *finish{}, *factor{}, *face{};
     GSubprocess *child{};
     GDataInputStream *output{};
     bool running = false, complete = false;
     std::string device;
+    std::string account_name;
+    int security_fd=-1;
+    bool factor_requested=false, factor_enabled=false;
 
     void message(const std::string &text, GtkMessageType type = GTK_MESSAGE_ERROR) {
         auto *dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL, type,
@@ -90,6 +94,14 @@ struct Installer {
         GError *error = nullptr;
         gchar *line = g_data_input_stream_read_line_finish_utf8(G_DATA_INPUT_STREAM(source), result, nullptr, &error);
         if (line) {
+            if (g_str_has_prefix(line,"MNOS SECURITY CONFIGURE ") && self->security_fd>=0) {
+                char *end=nullptr;errno=0;
+                unsigned long uid=strtoul(line+24,&end,10);
+                if(!errno&&end!=line+24&&!*end&&uid<=UINT32_MAX)
+                    self->factor_enabled=security::configure(GTK_WINDOW(self->window),self->security_fd,
+                        static_cast<uint32_t>(uid),self->account_name,true);
+                shutdown(self->security_fd,SHUT_RDWR);close(self->security_fd);self->security_fd=-1;
+            }
             self->append(line);
             if (g_str_has_prefix(line, "STAGE ")) {
                 char *end = nullptr;
@@ -112,9 +124,12 @@ struct Installer {
         bool ok = g_subprocess_wait_check_finish(G_SUBPROCESS(source), result, &error);
         self->running = false;
         self->complete = ok;
+        if(self->security_fd>=0) {close(self->security_fd);self->security_fd=-1;}
         if (ok) {
             gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(self->progress), 1);
-            gtk_label_set_text(GTK_LABEL(self->status), "安装完成。先关机，移除 ISO / 安装 U 盘，再从硬盘启动。");
+            gtk_label_set_text(GTK_LABEL(self->status), self->factor_enabled ?
+                "安装完成，已开启密码 + 验证器。关机后移除安装介质，再从硬盘启动。" :
+                "安装完成，使用密码登录。可在系统设置中开启验证器。关机后移除安装介质，再从硬盘启动。");
             gtk_widget_show(self->finish);
         } else {
             self->message("安装未完成。请查看下方日志；目标盘可能已被重新分区。\n" +
@@ -179,11 +194,22 @@ struct Installer {
         gtk_widget_destroy(dialog);
         if (!confirmed) { mnos::erase(secret); return; }
         GError *error = nullptr;
-        child = g_subprocess_new(static_cast<GSubprocessFlags>(G_SUBPROCESS_FLAGS_STDIN_PIPE |
-            G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_MERGE), &error,
+        auto *launcher=g_subprocess_launcher_new(static_cast<GSubprocessFlags>(G_SUBPROCESS_FLAGS_STDIN_PIPE |
+            G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_MERGE));
+        factor_requested=gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(factor));
+        account_name=account;
+        if(factor_requested) {
+            int pair[2];
+            if(socketpair(AF_UNIX,SOCK_STREAM|SOCK_CLOEXEC,0,pair)) {g_object_unref(launcher);mnos::erase(secret);message("无法开启认证设置通道，尚未修改磁盘。");return;}
+            security_fd=pair[0];g_subprocess_launcher_take_fd(launcher,pair[1],3);
+        }
+        child = g_subprocess_launcher_spawn(launcher, &error,
             "/usr/lib/mnos/install-system", "--install", device.c_str(), "--confirm", device.c_str(), nullptr);
+        g_object_unref(launcher);
         std::string input = account + '\n' + secret + '\n' +
-            (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(network)) ? "delegated\n" : "root\n");
+            (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(network)) ? "delegated\n" : "root\n")+
+            (factor_requested ? "authenticator\n" : "password\n")+
+            (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(face)) ? "face-preview\n" : "off\n");
         mnos::erase(secret);
         bool sent = child && g_output_stream_write_all(g_subprocess_get_stdin_pipe(child), input.data(), input.size(), nullptr, nullptr, &error);
         mnos::erase(input);
@@ -191,6 +217,7 @@ struct Installer {
         gtk_entry_set_text(GTK_ENTRY(again), "");
         if (child) g_output_stream_close(g_subprocess_get_stdin_pipe(child), nullptr, nullptr);
         if (!sent) {
+            if(security_fd>=0) {close(security_fd);security_fd=-1;}
             message(error ? error->message : "Cannot start installer");
             if (error) g_error_free(error);
             if (child) { g_subprocess_force_exit(child); g_object_unref(child); child = nullptr; }
@@ -257,9 +284,15 @@ struct Installer {
         network = gtk_check_button_new_with_label("向此账号开放 NET_ADMIN / NET_RAW 网络工具权限");
         gtk_grid_attach(GTK_GRID(form), network, 1, 4, 2, 1);
         gtk_grid_attach(GTK_GRID(form), label("默认关闭：特权网络操作需 sudo；日常应用无需 root。", "muted"), 1, 5, 2, 1);
+        factor=gtk_check_button_new_with_label("为安装后的系统开启验证器（2FA）：扫码或手动填写");
+        gtk_grid_attach(GTK_GRID(form),factor,1,6,2,1);
+        gtk_grid_attach(GTK_GRID(form),label("可跳过，之后在系统设置中开启。ISO 安装环境只使用密码。","muted"),1,7,2,1);
+        face=gtk_check_button_new_with_label("首次登录时录入人脸辅助模板（实验性）");
+        gtk_grid_attach(GTK_GRID(form),face,1,8,2,1);
+        gtk_grid_attach(GTK_GRID(form),label("普通摄像头：支持动作与颜色响应测试，暂不作为系统登录凭据。","muted"),1,9,2,1);
         install = gtk_button_new_with_mnemonic("开始安装 (_I)");
         gtk_style_context_add_class(gtk_widget_get_style_context(install), "suggested-action");
-        gtk_grid_attach(GTK_GRID(form), install, 1, 6, 1, 1);
+        gtk_grid_attach(GTK_GRID(form), install, 1, 10, 1, 1);
         status = label("正在发现磁盘…", "muted");
         gtk_box_pack_start(GTK_BOX(body), status, false, false, 0);
         g_signal_connect_swapped(name, "changed", G_CALLBACK(+[](Installer *s) {

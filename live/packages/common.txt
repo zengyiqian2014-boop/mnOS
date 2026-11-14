@@ -14,6 +14,13 @@ apparmor
 apparmor-utils
 auditd
 libpam-pwquality
+libopencv-core410
+libopencv-imgproc410
+libopencv-dnn410
+libopencv-objdetect410
+libopencv-calib3d410
+libopencv-videoio410
+opencv-data
 libpwquality-tools
 cracklib-runtime
 wamerican

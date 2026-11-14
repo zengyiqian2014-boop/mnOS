@@ -20,6 +20,10 @@
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
 using Clock = std::chrono::steady_clock;
+static std::string firmware(const char *path) {
+    const char *root = std::getenv("MNOS_FIRMWARE_ROOT");
+    return std::string(root ? root : "") + path;
+}
 static void require(bool ok, const std::string &why) {
     if (!ok)
         throw std::runtime_error(why);
@@ -68,7 +72,7 @@ struct VM {
                  "-machine",
                  "virt,gic-version=3,acpi=off",
                  "-bios",
-                 "/usr/share/qemu-efi-aarch64/QEMU_EFI.fd",
+                 firmware("/usr/share/qemu-efi-aarch64/QEMU_EFI.fd"),
                  "-device",
                  "ramfb",
                  "-global",
@@ -85,10 +89,10 @@ struct VM {
                  "virtio-blk-device,drive=data"};
         else {
             if (phase == 0)
-                fs::copy_file("/usr/share/OVMF/OVMF_VARS_4M.fd", vars);
+                fs::copy_file(firmware("/usr/share/OVMF/OVMF_VARS_4M.fd"), vars);
             a = {"qemu-system-x86_64",
                  "-drive",
-                 "if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd",
+                 "if=pflash,format=raw,readonly=on,file=" + firmware("/usr/share/OVMF/OVMF_CODE_4M.fd"),
                  "-drive",
                  "if=pflash,format=raw,file=" + vars.string(),
                  "-vga",
@@ -97,6 +101,9 @@ struct VM {
                  "virtio-rng-pci",
                  "-drive",
                  "file=" + disk.string() + ",format=raw,if=ide,index=0"};
+        }
+        if (const char *data = std::getenv("MNOS_QEMU_DATA")) {
+            a.push_back("-L"); a.push_back(data);
         }
         if (phase == 0) {
             a.push_back("-cdrom");
@@ -232,7 +239,7 @@ struct VM {
         for(unsigned i=0;i<20;i++)mouse_move(-100,-100);
         mouse_move(x,y);mouse_click();
     }
-    void login(bool first) {
+    void login(bool first,bool configure_factor=false) {
         wait(first ? "AUTH PROMPT: New username" : "AUTH PROMPT: Username:");
         command("demo", first ? "New password (12+ characters)" : "AUTH PROMPT: Password:");
         if (first) {
@@ -240,6 +247,8 @@ struct VM {
             command("ordinarytest491", "Set a separate password for root");
             command("rootadmintest785", "Confirm new password");
             command("rootadmintest785", "Accounts created. Signed in as the ordinary user.");
+            if(configure_factor) {command("y","Enter your password to bind an authenticator");return;}
+            command("n", "Password-only setup complete.");
         } else
             command("ordinarytest491", "Signed in as an ordinary user.");
         wait("DESKTOP READY: original native GUI");

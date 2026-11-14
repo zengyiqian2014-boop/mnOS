@@ -3,6 +3,7 @@
  * memory, ExitBootServices, then run the same freestanding EL1 kernel.
  */
 #include "platform.h"
+#include "clock.h"
 struct guid {
     uint32_t a;
     uint16_t b, c;
@@ -170,6 +171,18 @@ uint64_t efi_main(void *image_handle, struct system_table *s) {
     if (!s || !s->services)
         return 0x8000000000000002ULL;
     struct services *bs = s->services;
+    if(s->runtime) {
+        struct efi_time {uint16_t year;uint8_t month,day,hour,minute,second,pad;uint32_t nano;int16_t zone;uint8_t daylight,pad2;} t;
+        struct runtime {struct header hdr;uint64_t (*get_time)(void *,void *);};
+        struct runtime *rt=s->runtime;
+        if(!rt->get_time(&t,NULL)) {
+            uint64_t epoch;
+            if(clock_calendar(t.year,t.month,t.day,t.hour,t.minute,t.second,&epoch)) {
+                if(t.zone>=-1440&&t.zone<=1440)epoch=(uint64_t)((int64_t)epoch-(int64_t)t.zone*60);
+                platform.firmware_epoch=epoch;
+            }
+        }
+    }
     uint64_t (*watchdog)(size_t, uint64_t, size_t, uint16_t *) = (void *)bs->fn[29];
     watchdog(0, 0, 0, NULL);
     uint64_t (*get_map)(size_t *, void *, size_t *, size_t *, uint32_t *) = (void *)bs->fn[4];

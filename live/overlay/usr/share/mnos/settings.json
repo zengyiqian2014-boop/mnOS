@@ -1,5 +1,12 @@
 [
   {
+    "name": "登录安全",
+    "description": "开启或关闭验证器，支持扫码和手动填写",
+    "category": "系统设置",
+    "icon": "preferences-system-privacy",
+    "command": ["mnos-security"]
+  },
+  {
     "name": "内核管理",
     "description": "查询内核、CPU、内存和驱动；系统修改需要管理员认证",
     "category": "系统设置",

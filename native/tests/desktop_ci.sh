@@ -8,6 +8,10 @@ c++ -std=c++17 -O2 -Wall -Wextra -Werror tests/desktop_vm.cpp -o build/desktop-v
 for arch in amd64 arm64; do
   build/desktop-vm build/desktop "$arch" 2>&1 | tee "build/desktop/validation-$arch.log"
 done
+c++ -std=c++17 -O2 -Wall -Wextra -Werror tests/factor_vm.cpp -lcrypto -o build/factor-vm
+for arch in amd64 arm64; do
+  build/factor-vm build/desktop "$arch" 2>&1 | tee "build/desktop/factor-validation-$arch.log"
+done
 # The desktop changes focus after an authentication boundary. Exercise the
 # existing process/isolation and ARM console suites before publishing too.
 bash tests/process_ci.sh 2>&1 | tee build/desktop/process-regression.log

@@ -1,0 +1,40 @@
+name: Authentication and enrollment
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['native/**', 'live/**', '.github/workflows/authentication.yml']
+  pull_request:
+    paths: ['native/**', 'live/**', '.github/workflows/authentication.yml']
+permissions:
+  contents: read
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t mnos-auth-test -f live/tests/Authentication.Dockerfile .
+      - run: bash live/fetch-face-models.sh
+      - name: Verify real PAM, daemon, installer enrollment and QR/manual parity
+        run: |
+          docker run --rm --network none -e MNOS_AUTH_TEST_CONTAINER=1 \
+            -v "$PWD:/source" -w /source/live mnos-auth-test bash tests/authentication.sh
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t mnos-native-builder -f native/Builder.Dockerfile .
+      - name: Verify both real native installations and authenticator logins
+        run: |
+          docker run --rm --network none -v "$PWD/native:/native" -w /native mnos-native-builder bash -ec '
+            make host-tests
+            sh installer/build.sh
+            c++ -std=c++17 -O2 -Wall -Wextra -Werror tests/factor_vm.cpp -lcrypto -o build/factor-vm
+            build/factor-vm build/desktop amd64
+            build/factor-vm build/desktop arm64'

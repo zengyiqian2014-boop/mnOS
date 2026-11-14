@@ -1,0 +1,9 @@
+Name: mnOS password-bound authenticator
+Default: yes
+Priority: 1024
+Auth-Type: Additional
+Auth:
+ required pam_mnos_2fa.so
+Password-Type: Additional
+Password:
+ requisite pam_mnos_2fa.so

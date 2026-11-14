@@ -96,6 +96,7 @@ struct VM {
             command("ordinarytest491", "Set a separate password for root");
             command("rootadmintest785", "Confirm new password");
             command("rootadmintest785", "Accounts created. Signed in as the ordinary user.");
+            command("n", "Password-only setup complete.");
         } else command("ordinarytest491", "Signed in as an ordinary user.");
         auto m = send("t"); wait("UI: page 4", m);
     }

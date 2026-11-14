@@ -56,6 +56,16 @@ static void hmac(struct password_kdf *p,const void *data,size_t n,uint8_t out[32
     struct sha256 s=p->inner;uint8_t digest[32];update(&s,data,n);finish(&s,digest);
     s=p->outer;update(&s,digest,32);finish(&s,out);auth_wipe(digest,sizeof digest);
 }
+void auth_hmac_sha256(const void *secret,size_t length,const void *data,size_t n,uint8_t out[32]) {
+    struct password_kdf p;memset(&p,0,sizeof p);
+    uint8_t key[64]={0},pad[64];
+    if(length>64)sha256_digest(secret,length,key);else memcpy(key,secret,length);
+    for(unsigned i=0;i<64;++i)pad[i]=key[i]^0x36;
+    init(&p.inner);update(&p.inner,pad,64);
+    for(unsigned i=0;i<64;++i)pad[i]=key[i]^0x5c;
+    init(&p.outer);update(&p.outer,pad,64);hmac(&p,data,n,out);
+    auth_wipe(&p,sizeof p);auth_wipe(key,sizeof key);auth_wipe(pad,sizeof pad);
+}
 void password_begin(struct password_kdf *p,const char *password,const uint8_t salt[16],uint32_t rounds) {
     memset(p,0,sizeof *p);uint8_t key[64]={0},pad[64],message[20];size_t n=strlen(password);
     if(n>64) sha256_digest(password,n,key);else memcpy(key,password,n);

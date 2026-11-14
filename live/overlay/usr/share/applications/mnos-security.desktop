@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Login Security
+Name[zh_CN]=登录安全
+Comment=Password and authenticator verification
+Comment[zh_CN]=设置密码与验证器认证
+Exec=mnos-security
+Icon=preferences-system-privacy
+Terminal=false
+Categories=Settings;Security;
+Keywords=2FA;TOTP;Authenticator;Password;

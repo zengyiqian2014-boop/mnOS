@@ -2,6 +2,10 @@ out
 build/**
 !build/native-src
 !build/native-src/**
+!build/security-src
+!build/security-src/**
+!build/face-models
+!build/face-models/**
 tests
 __pycache__
 build-ca

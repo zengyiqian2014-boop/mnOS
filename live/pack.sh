@@ -53,14 +53,15 @@ else
 fi
 sed -i -E '/^userAutoLogin:/d; s/^doAutologin:.*/doAutologin: false/; s/^setRootPassword:.*/setRootPassword: false/; s/^allowWeakPasswords:.*/allowWeakPasswords: false/' "$ROOT/etc/calamares/modules/users.conf"
 cp /source/overlay/usr/share/doc/mnos/guide.zh.txt "$ROOT/usr/share/doc/mnos/guide.zh.txt"
+cp /source/build/AUTHENTICATION.md "$ROOT/usr/share/doc/mnos/authentication.md"
 # Include the original kernel source and font license with the bootable binary.
 mkdir -p "$ROOT/usr/src/mnos-native"
-cp -a /native/src /native/include /native/tests /native/tools /native/arch /native/user /native/installer /native/guest /native/Makefile /native/linker.ld /native/README.md /native/FILESYSTEM.md "$ROOT/usr/src/mnos-native/"
+cp -a /native/src /native/include /native/tests /native/tools /native/arch /native/user /native/installer /native/guest /native/vendor /native/Makefile /native/linker.ld /native/README.md /native/FILESYSTEM.md "$ROOT/usr/src/mnos-native/"
 mkdir -p "$ROOT/usr/src/mnos-admin"
 cp /source/src/kernel.c /source/src/kernel-admin.c /source/src/kernel-common.h "$ROOT/usr/src/mnos-admin/"
 cp /source/src/net-admin.c "$ROOT/usr/src/mnos-admin/"
 mkdir -p "$ROOT/usr/src/mnos-desktop"
-cp /source/src/*.cpp /source/src/*.hpp /source/src/*.c /source/src/Makefile "$ROOT/usr/src/mnos-desktop/"
+cp /source/src/*.cpp /source/src/*.hpp /source/src/*.h /source/src/*.c /source/src/Makefile "$ROOT/usr/src/mnos-desktop/"
 find "$ROOT/usr/src/mnos-desktop" -type d -exec chmod 755 {} +
 find "$ROOT/usr/src/mnos-desktop" -type f -exec chmod 644 {} +
 mkdir -p "$ROOT/usr/src/mnos-native/assets"

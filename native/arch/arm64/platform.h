@@ -12,7 +12,8 @@ struct arm_platform {
     size_t fdt_size;
     struct arm_range ram[ARM_RANGES], reserved[ARM_RANGES];
     unsigned ram_count, reserved_count;
-    uintptr_t uart, gicd, gicc, gicr;
+    uintptr_t uart, gicd, gicc, gicr, rtc;
+    uint64_t firmware_epoch;
     uint64_t gicr_size;
     unsigned gic_version, timer_irq;
     bool psci_hvc, uefi;

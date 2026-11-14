@@ -2,6 +2,11 @@
 
 [English](README.md) | [中文](README.zh.md)
 
+**Authentication in development:** optional password + authenticator enrollment,
+QR/manual pairing and settings controls. See [implemented behavior and tests](AUTHENTICATION.md).
+The ordinary-camera feature is an enrollment/test preview, not a login factor.
+Existing release ISOs below do not yet contain these source changes.
+
 **Current development: two distinct editions.** [Native Edition and Linux Edition](EDITIONS.md)
 have separate installers and honest runtime labels. The native GUI now has an
 original C software machine for a real Linux/BusyBox guest; Linux Edition keeps

@@ -24,6 +24,13 @@ printf 'en_US.UTF-8 UTF-8\nzh_CN.UTF-8 UTF-8\n' > /etc/locale.gen
 locale-gen
 ln -snf /usr/share/zoneinfo/Etc/UTC /etc/localtime
 passwd --lock root
+systemd-sysusers /usr/lib/sysusers.d/mnos-login.conf
+install -d -o login-process -g login-process -m 700 /var/lib/mnos-login-process
+chown root:root /usr/lib/mnos/login-helper
+chmod 4755 /usr/lib/mnos/login-helper
+pam-auth-update --package
+systemctl enable mnos-login-process.socket
+(cd /usr/share/mnos/face && sha256sum --check SOURCES.sha256)
 update-cracklib
 chmod 440 /etc/sudoers.d/50-mnos
 chmod 755 /usr/lib/mnos/first-boot /usr/lib/mnos/wallpaper /usr/bin/mnos-center /usr/bin/mnos-security-check

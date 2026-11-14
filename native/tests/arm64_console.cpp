@@ -201,6 +201,7 @@ int main(int argc, char **argv) {
                 vm.command("ordinarytest491", "Set a separate password for root");
                 vm.command("rootadmintest785", "Confirm new password");
                 vm.command("rootadmintest785", "Accounts created. Signed in as the ordinary user.");
+                vm.command("n", "Password-only setup complete.");
             } else {
                 vm.command("demo", "AUTH PROMPT: Password:");
                 vm.command("ordinarytest491", "Signed in as an ordinary user.");

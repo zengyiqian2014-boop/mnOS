@@ -29,7 +29,7 @@ struct node {
     unsigned ac, sc, pac, psc;
     const uint8_t *reg;
     uint32_t reglen;
-    bool memory, cpu, reserved, disabled, uart, gic2, gic3, virtio, psci, hvc;
+    bool memory, cpu, reserved, disabled, uart, gic2, gic3, virtio, psci, hvc, rtc;
 };
 static bool walk(const void *data, bool collect, void (*cpu)(uint64_t)) {
     const uint8_t *b = data;
@@ -97,6 +97,7 @@ static bool walk(const void *data, bool collect, void (*cpu)(uint64_t)) {
                 s->memory = true;
             if (streq(name, "compatible")) {
                 s->uart = compat(p, n, "arm,pl011");
+                s->rtc = compat(p,n,"arm,pl031");
                 s->gic2 = compat(p, n, "arm,cortex-a15-gic") || compat(p, n, "arm,gic-400");
                 s->gic3 = compat(p, n, "arm,gic-v3");
                 s->virtio = compat(p, n, "virtio,mmio");
@@ -144,6 +145,7 @@ static bool walk(const void *data, bool collect, void (*cpu)(uint64_t)) {
                 }
                 if (!at && s->uart)
                     platform.uart = base;
+                if(!at&&s->rtc&&size>=4096)platform.rtc=base;
                 if (!at && (s->gic2 || s->gic3)) {
                     platform.gicd = base;
                     platform.gic_version = s->gic3 ? 3 : 2;

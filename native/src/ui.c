@@ -7,6 +7,7 @@
 #include "icons.h"
 #include "commands.h"
 #include "linux_guest.h"
+#include "../vendor/qrcodegen/qrcodegen.h"
 #define APP_COUNT 8
 static void focus_app(int);
 static uint32_t canvas[2560 * 1440] __attribute__((aligned(4096)));
@@ -926,6 +927,7 @@ static void window_content(unsigned app) {
         button(x, y + 220, 235, "Save settings / S", true);
         button(x, y + 291, 145, "Lock session", false);
         button(x + 160, y + 291, 145, "Power", false);
+        button(x + 320,y + 291,235,auth_factor_enabled()?"Disable 2FA / A":"Enable 2FA / A",auth_factor_enabled());
         text_fit(x, y + 258, setting_status, 16, MUTED,w);
         button(x,y+342,235,"Linux 模拟 / L",linux_guest_enabled());
         text(x+264,y+342,linux_guest_enabled()?"已开启 / 本次登录":"已关闭 / 默认状态",18,ACCENT);
@@ -942,14 +944,34 @@ static int task_width(void) {
 static void draw(void) {
     background();
     if (auth_prompting()) {
-        int w = width > 850 ? 780 : width - 50, x = (width - w) / 2, y = (height - 370) / 2;
-        rounded(x, y, w, 370, PANEL);
+        bool enrollment=*auth_setup_secret()||*auth_recovery_code();
+        int box_height=*auth_setup_secret()?560:enrollment?450:370;
+        int w = width > 850 ? 780 : width - 50, x = (width - w) / 2, y = (height - box_height) / 2;
+        rounded(x, y, w, box_height, PANEL);
         text(x + 28, y + 17, "mnOS / Welcome", 28, FG);
-        text(x + 28, y + 75, auth_status(), 18, MUTED);
-        text(x + 28, y + 131, auth_prompt(), 18, ACCENT);
+        text_fit(x + 28, y + 75, auth_status(), 18, MUTED,w-56);
+        text_fit(x + 28, y + 131, auth_prompt(), 18, ACCENT,w-56);
         rounded(x + 28, y + 185, w - 56, 52, 0x101b25);
         text(x + 42, y + 194, auth_input(), 18, FG);
         text(x + 28, y + 267, "Enter to continue     Esc to return to sign in", 18, MUTED);
+        if(enrollment) {
+            if(*auth_setup_secret()) {
+                uint8_t temporary[qrcodegen_BUFFER_LEN_FOR_VERSION(10)],qr[qrcodegen_BUFFER_LEN_FOR_VERSION(10)];
+                if(qrcodegen_encodeText(auth_setup_uri(),temporary,qr,qrcodegen_Ecc_MEDIUM,1,10,qrcodegen_Mask_AUTO,true)) {
+                    int size=qrcodegen_getSize(qr),scale=180/(size+8),edge=(size+8)*scale,left=x+(w-edge)/2;
+                    rect(left,y+302,edge,edge,0xffffff);
+                    for(int row=0;row<size;++row)for(int col=0;col<size;++col)
+                        if(qrcodegen_getModule(qr,col,row))rect(left+(col+4)*scale,y+302+(row+4)*scale,scale,scale,0x000000);
+                }
+                auth_wipe(temporary,sizeof temporary);auth_wipe(qr,sizeof qr);
+                text(x+28,y+488,"Manual entry / Base32 / Time-based (SHA1)",16,ACCENT);
+                text_fit(x+28,y+518,auth_setup_secret(),FONT_MONO18,FG,w-56);
+            } else {
+                text(x+28,y+324,"One-use recovery code",18,ACCENT);
+                text_fit(x+28,y+362,auth_recovery_code(),FONT_MONO18,FG,w-56);
+                text(x+28,y+406,"Keep this private. It will not be printed in logs.",16,MUTED);
+            }
+        }
         display_rect(0, 0, width, height);
         dirty = false;
         return;
@@ -1288,6 +1310,7 @@ void ui_key(char key) {
         }
     }
     if (page == 6) {
+        if(key=='a'||key=='A') {auth_command(auth_factor_enabled()?"2fa disable":"2fa enable",add_line);return;}
         if (key == 'r')
             change_resolution();
         else if (key == 'w')
@@ -1496,6 +1519,7 @@ void ui_pointer(int x, int y, bool pressed) {
                             auth_lock();
                         else if (xx < 305)
                             power_dialog = true;
+                        else if(xx>=320&&xx<555)auth_command(auth_factor_enabled()?"2fa disable":"2fa enable",add_line);
                     } else if(yy>=342&&yy<374&&xx>=0&&xx<235)toggle_linux();
                 }
                 dirty = true;

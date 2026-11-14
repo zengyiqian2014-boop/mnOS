@@ -33,6 +33,7 @@ void number(char *s,uint64_t n) { sprintf(s,"%" PRIu64,n); }
 void log_write(const char *s) { (void)s; }
 _Noreturn void panic(const char *s) { fprintf(stderr,"panic: %s\n",s); abort(); }
 bool arch_random(uint8_t *p,size_t n) { while(n--) *p++ = (uint8_t)++salt; return true; }
+bool arch_time(uint64_t *time) { *time=1800000000;return true; }
 bool process_command(const char *s,void (*print)(const char *)) { (void)s; (void)print; return false; }
 int process_start(const void *p,size_t n,const char *s) { (void)p; (void)n; (void)s; abort(); }
 unsigned block_discover(struct block_device *d,unsigned count) {
@@ -154,6 +155,7 @@ int main(void) {
     struct mnfs f;struct mnfs_io io={NULL,sizeof disk_image/MNFS_BLOCK,read_block,write_block,flush,malloc,free};
     assert(!mnfs_format(&f,&io));mnfs_close(&f);files_init();
     input("alice");password("Ordinary-test-491");password("Root-admin-test-785");
+    input("n");
     assert(auth_logged_in()&&auth_uid()==1000);files_session();
     boundaries();files();permissions();
     /* Keep pool-backed volume state alive until process exit (same as kernel). */

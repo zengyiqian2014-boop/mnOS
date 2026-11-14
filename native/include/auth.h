@@ -4,9 +4,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "factor.h"
 #define AUTH_USERS 16
 #define AUTH_ROUNDS 600000u
-struct auth_user { uint32_t uid; char name[32]; uint8_t salt[16], hash[32]; };
+struct auth_user { uint32_t uid; char name[32]; uint8_t salt[16], hash[32]; struct factor_record factor; };
 struct auth_database { uint32_t magic, version, rounds, count; struct auth_user users[AUTH_USERS]; };
 struct auth_io {
     /* load: 0 success, 1 absent, -1 damaged/unreadable. All writes must be durable. */
@@ -14,6 +15,7 @@ struct auth_io {
     int (*save)(const struct auth_database *);
     bool (*random)(uint8_t *, size_t);
     bool persistent;
+    bool (*wall_time)(uint64_t *);
 };
 void auth_init(const struct auth_io *);
 void auth_tick(uint64_t seconds);
@@ -26,6 +28,12 @@ const char *auth_name(void);
 const char *auth_prompt(void);
 const char *auth_status(void);
 const char *auth_input(void); /* Masked for passwords. */
+/* Visible only in the foreground enrollment modal; NEVER log these strings. */
+const char *auth_setup_secret(void);
+const char *auth_setup_uri(void);
+const char *auth_recovery_code(void);
+bool auth_factor_enabled(void);
+bool auth_decode_database(const void *,size_t,struct auth_database *);
 bool auth_command(const char *, void (*)(const char *));
 bool auth_path(const char *, bool write);
 void auth_lock(void);
@@ -37,6 +45,7 @@ struct password_kdf {
     uint32_t done, rounds;
 };
 void sha256_digest(const void *, size_t, uint8_t [32]);
+void auth_hmac_sha256(const void *, size_t, const void *, size_t, uint8_t [32]);
 void password_begin(struct password_kdf *, const char *, const uint8_t [16], uint32_t);
 bool password_step(struct password_kdf *, unsigned);
 void auth_wipe(void *, size_t);

@@ -1,0 +1,4 @@
+# Password-only reauthentication inside the broker. No include of common-auth:
+# the broker performs the separate second factor itself, avoiding recursion.
+auth requisite pam_unix.so
+account required pam_unix.so

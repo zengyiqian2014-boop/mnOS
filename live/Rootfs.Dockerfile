@@ -25,12 +25,15 @@ RUN --mount=type=secret,id=build_ca \
 FROM common AS components
 RUN --mount=type=secret,id=build_ca \
     if [ -r /run/secrets/build_ca ]; then printf 'Acquire::https::CaInfo "/run/secrets/build_ca";\n' > /etc/apt/apt.conf.d/99-mnos-build-ca; fi \
-    && apt-get update && apt-get install -y --no-install-recommends g++ make pkg-config libgtk-3-dev libjson-glib-dev
+    && apt-get update && apt-get install -y --no-install-recommends g++ make pkg-config libgtk-3-dev libjson-glib-dev libpam0g-dev libopencv-dev
 COPY src /src
-RUN make -C /src -j4 OUT=/build && make -C /src OUT=/build DESTDIR=/compiled install
+COPY build/security-src /security-src
+RUN make -C /src -j4 OUT=/build SECURITY_SRC=/security-src && make -C /src OUT=/build SECURITY_SRC=/security-src DESTDIR=/compiled install
 
 FROM common AS final
 COPY --from=components /compiled/ /
+COPY build/face-models /usr/share/mnos/face
+COPY face/SOURCES.sha256 /usr/share/mnos/face/SOURCES.sha256
 ARG PROFILE
 RUN --mount=type=secret,id=build_ca \
     --mount=type=bind,source=packages,target=/tmp/packages \

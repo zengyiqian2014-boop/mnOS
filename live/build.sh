@@ -17,8 +17,14 @@ if [ "$ARCH" = arm64 ]; then
         make -f arch/arm64/Makefile -j"${JOBS:-4}" all
 fi
 mkdir -p "$ROOT/build/native-src"
+cp "$ROOT/../AUTHENTICATION.md" "$ROOT/build/AUTHENTICATION.md"
 cp "$ROOT/../native/src/mnfs.c" "$ROOT/../native/include/mnfs.h" "$ROOT/build/native-src/"
 cp "$ROOT/../native/tools/mnfs.c" "$ROOT/build/native-src/mnfs-tool.c"
+mkdir -p "$ROOT/build/security-src/include" "$ROOT/build/security-src/src" "$ROOT/build/security-src/vendor"
+cp "$ROOT/../native/include/auth.h" "$ROOT/../native/include/factor.h" "$ROOT/build/security-src/include/"
+cp "$ROOT/../native/src/password.c" "$ROOT/../native/src/factor.c" "$ROOT/build/security-src/src/"
+cp -a "$ROOT/../native/vendor/monocypher" "$ROOT/../native/vendor/qrcodegen" "$ROOT/build/security-src/vendor/"
+bash "$ROOT/fetch-face-models.sh"
 OUT=${OUT:-$ROOT/out}
 mkdir -p "$OUT"
 OUT=$(cd "$OUT" && pwd)

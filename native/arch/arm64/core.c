@@ -1,6 +1,11 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "auth.h"
 #include "platform.h"
+bool arch_time(uint64_t *epoch) {
+    if(platform.rtc) {*epoch=*(volatile uint32_t *)platform.rtc;return *epoch>=1577836800ULL;}
+    if(platform.firmware_epoch) {*epoch=platform.firmware_epoch+ticks/PIT_HZ;return true;}
+    return false;
+}
 struct boot_info boot;
 struct arm_platform platform;
 char cpu_brand[49] = "ARM64 / original mnOS kernel";

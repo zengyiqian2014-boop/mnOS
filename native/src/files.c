@@ -116,9 +116,11 @@ static int accounts_load(struct auth_database *db) {
     if(!disk_present)return 1;
     struct mnfs_stat st;int e=mnfs_stat(&disk,"/system/accounts.bin",&st);
     if(e==MN_NOENT)return 1;
-    if(e||st.directory||st.size!=sizeof *db)return -1;
-    size_t got;e=mnfs_read(&disk,"/system/accounts.bin",0,db,sizeof *db,&got);
-    return e||got!=sizeof *db?-1:0;
+    if(e||st.directory||st.size>sizeof *db)return -1;
+    uint8_t encoded[sizeof *db];size_t got;
+    e=mnfs_read(&disk,"/system/accounts.bin",0,encoded,sizeof encoded,&got);
+    bool valid=!e&&got==st.size&&auth_decode_database(encoded,got,db);
+    auth_wipe(encoded,sizeof encoded);return valid?0:-1;
 }
 static int accounts_save(const struct auth_database *db) {
     if(homes(&ram,db))return -1;
@@ -129,12 +131,12 @@ static int accounts_save(const struct auth_database *db) {
     if(!e)e=make_directory(&disk,"/system");
     struct mnfs_stat st;
     if(!e) {e=mnfs_stat(&disk,"/system/accounts.bin",&st);if(e==MN_NOENT)e=mnfs_create(&disk,"/system/accounts.bin",false);}
-    /* The fixed-size credential record fits in one CoW data block. */
+    /* One CoW file transaction includes the encrypted factors and replay state. */
     if(!e)e=mnfs_write(&disk,"/system/accounts.bin",0,db,sizeof *db);
     disk.writable=!disk.poisoned&&(was||!disk_locked);return e?-1:0;
 }
 static void accounts_init(void) {
-    struct auth_io io={accounts_load,accounts_save,arch_random,disk_present};auth_init(&io);
+    struct auth_io io={accounts_load,accounts_save,arch_random,disk_present,arch_time};auth_init(&io);
 }
 void files_session(void) {
     if(!auth_logged_in())return;

@@ -34,12 +34,13 @@ int main(void) {
     struct password_kdf long_key;password_begin(&long_key,long_password,(const uint8_t *)"0123456789abcdef",4096);
     while(!password_step(&long_key,73)){}hex(long_key.result,text);
     assert(!strcmp(text,"1bcd073e6448fe006604d2fcc50ecbb6ae4265a6a8ca62b767ce008c9b44cdd2"));
-    const struct auth_io io={load,save,random_bytes,true};auth_init(&io);auth_tick(seconds);
+    const struct auth_io io={load,save,random_bytes,true,NULL};auth_init(&io);auth_tick(seconds);
     assert(!auth_logged_in()&&!auth_admin()&&!auth_path("/home/readme.txt",false));
     input("root");assert(strstr(auth_status(),"valid ordinary"));input("alice");
     input("short");assert(strstr(auth_status(),"12-128"));
     input("Ordinary-test-491");input("not-the-same");assert(strstr(auth_status(),"did not match"));
     new_password("Ordinary-test-491");new_password("Root-admin-test-785");
+    assert(strstr(auth_prompt(),"Enable an authenticator"));input("n");
     assert(auth_logged_in()&&!auth_admin()&&auth_uid()==1000&&exists);
     assert(saved.rounds==600000&&!memcmp(saved.users[1].name,"alice",6));
     assert(memcmp(saved.users[0].salt,saved.users[1].salt,16));

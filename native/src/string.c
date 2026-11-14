@@ -1,5 +1,13 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "kernel.h"
+int abs(int n) {return n<0?-n:n;}
+char *strchr(const char *s,int c) {do {if(*s==(char)c)return (char *)s;}while(*s++);return NULL;}
+long labs(long n) {return n<0?-n:n;}
+void *memmove(void *dst,const void *src,size_t n) {
+    uint8_t *d=dst;const uint8_t *s=src;
+    if((uintptr_t)d<(uintptr_t)s)for(size_t i=0;i<n;++i)d[i]=s[i];
+    else while(n) {--n;d[n]=s[n];}return dst;
+}
 void *memset(void *dst, int c, size_t n) {
     uint8_t *d = dst;
     while (n--)

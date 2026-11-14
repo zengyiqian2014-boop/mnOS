@@ -24,6 +24,11 @@ for arch in amd64 arm64; do
     lld-link-19 /subsystem:efi_application /entry:efi_main /nodefaultlib /machine:$machine "/out:build/desktop/$arch/INSTALL.EFI" $objects "build/desktop/$arch/payload.obj"
     work=$(mktemp -d)
     mkdir -p "$work/iso/EFI/BOOT"
+    mkdir -p "$work/iso/licenses"
+    cp vendor/README.md "$work/iso/licenses/THIRD_PARTY.md"
+    cp vendor/monocypher/LICENCE.md "$work/iso/licenses/Monocypher-LICENCE.md"
+    cp vendor/qrcodegen/qrcodegen.h "$work/iso/licenses/QR-Code-Generator-NOTICE.h"
+    cp assets/*LICENSE.txt "$work/iso/licenses/"
     cp "build/desktop/$arch/INSTALL.EFI" "$work/iso/EFI/BOOT/$efi"
     # The native edition embeds its Linux guest. Size the ISO's boot partition
     # from the actual installer payload instead of silently exceeding 16 MiB.

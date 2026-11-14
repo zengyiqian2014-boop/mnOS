@@ -6,6 +6,8 @@ LD ?= ld
 CFLAGS = -std=c11 -O2 -g -ffreestanding -U_FORTIFY_SOURCE -fno-builtin -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-unwind-tables -m64 -mno-red-zone -mgeneral-regs-only -Wall -Wextra -Werror -Wno-misleading-indentation -Iinclude
 SOURCES = src/core.c src/string.c src/phys.c src/memory.c src/smp.c src/interrupts.c src/devices.c src/rng.c src/block.c src/mnfs.c src/files.c src/password.c src/auth.c src/ui.c src/exec.c assets/font.c
 SOURCES += src/process.c src/usercopy.c src/file_api.c src/disk_layout.c src/text.c src/commands.c assets/icons.c src/guest.c src/linux_guest.c
+SOURCES += src/factor.c src/clock.c src/rtc.c vendor/monocypher/monocypher.c
+SOURCES += vendor/qrcodegen/qrcodegen.c
 GUEST ?= 0
 OBJECTS = $(patsubst %.c,build/%.o,$(SOURCES)) build/boot.o build/ap.o build/interrupts.o build/user.o build/exec-image.o
 OBJECTS += build/guest-image-$(GUEST).o
@@ -50,21 +52,27 @@ host-tests:
 	./build/exec-test
 	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -DMNOS_HOST_PROCESS_TEST -Iinclude tests/process.c src/process.c src/exec.c src/usercopy.c -o build/process-test
 	./build/process-test
-	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude tests/file_api.c src/file_api.c src/disk_layout.c src/usercopy.c src/files.c src/mnfs.c src/auth.c src/password.c -o build/file-api-test
+	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude tests/file_api.c src/file_api.c src/disk_layout.c src/usercopy.c src/files.c src/mnfs.c src/auth.c src/password.c src/factor.c vendor/monocypher/monocypher.c -o build/file-api-test
 	./build/file-api-test
 	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -Iinclude tests/phys.c src/phys.c -o build/phys-test
 	./build/phys-test
 	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude tests/mnfs.c src/mnfs.c -o build/mnfs-test
 	./build/mnfs-test
-	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude tests/auth.c src/auth.c src/password.c -o build/auth-test
+	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude tests/auth.c src/auth.c src/password.c src/factor.c vendor/monocypher/monocypher.c -o build/auth-test
 	./build/auth-test
+	$(CC) -std=c11 -O2 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude tests/factor.c src/auth.c src/password.c src/factor.c src/clock.c vendor/monocypher/monocypher.c -lcrypto -o build/factor-test
+	./build/factor-test
 
 build/mnos.elf: $(OBJECTS) linker.ld
 	$(LD) -nostdlib -z max-page-size=0x1000 -T linker.ld -o $@ $(OBJECTS)
 
-build/%.o: %.c include/kernel.h include/boot_layout.h include/phys.h include/mnfs.h include/block.h include/auth.h include/exec.h include/process.h include/file_api.h include/usercopy.h include/font.h include/icons.h include/commands.h include/guest.h include/linux_guest.h
+build/%.o: %.c include/kernel.h include/boot_layout.h include/phys.h include/mnfs.h include/block.h include/auth.h include/factor.h include/clock.h include/exec.h include/process.h include/file_api.h include/usercopy.h include/font.h include/icons.h include/commands.h include/guest.h include/linux_guest.h
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+build/vendor/qrcodegen/qrcodegen.o: vendor/qrcodegen/qrcodegen.c vendor/qrcodegen/qrcodegen.h
+	mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -Iinclude/freestanding -c $< -o $@
 
 build/%.o: src/%.S
 	mkdir -p $(dir $@)

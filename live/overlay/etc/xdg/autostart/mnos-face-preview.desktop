@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=mnOS optional face enrollment
+Name[zh_CN]=mnOS 可选人脸录入
+Exec=mnos-face-preview --first-run
+OnlyShowIn=XFCE;
+NoDisplay=true
