@@ -40,21 +40,29 @@ while playing; blocked or unavailable audio cannot stop the visual introduction.
 Audible autoplay still follows browser policy: when blocked, a genuine tap or key
 press can start it. Reduced motion does not request audio or construct WebGL.
 
-**The requested recording is not bundled or configured.** The old SoundCloud
-player has been removed. The checked-in `media/music.json` has an empty `sources`
-array, so the public page is silent and hides its sound control. Do not describe
-it as successfully streaming Three Strikes or as verified reachable in China.
+The configured soundtrack is **Cipher — Kevin MacLeod**, under CC BY 4.0.
+The 24-second edited excerpt is bundled as `media/cipher-intro.mp3` (337,208
+bytes), served by the same site as the introduction. It does not contact
+SoundCloud, NetEase or another music platform. The source, modifications and
+checksums are in `media/cipher-LICENSE.txt`; the footer displays the credit and
+license. This replaces the earlier unconfigured Three Strikes selection.
 
-To configure a licensed recording, add a same-origin file or publicly reachable
-HTTPS CDN URLs in `media/music.json`, ordered by preference (up to three):
+The source tempo is 150 BPM. The excerpt starts at source time 12.8 seconds
+and is sped up by 6.6667% to 160 BPM (80 BPM at half time), retaining its pitch.
+Sixteen four-beat bars fit the 24-second film. Fades and peak limiting soften the
+start and finish. Browser autoplay policy still applies: a first tap/key or the
+corner sound button enables sound when autoplay is blocked.
+
+`media/music.json` selects the recording, the offset within the bundled file,
+the film duration and up to three local/HTTPS sources in preference order:
 
 ```json
 {
-  "title": "3 Strikes",
-  "artist": "Terror Jr",
-  "start": 12.06,
+  "title": "Cipher",
+  "artist": "Kevin MacLeod",
+  "start": 0,
   "duration": 24,
-  "sources": ["./media/intro.m4a", "https://your-cdn.example/intro.m4a"]
+  "sources": ["./media/cipher-intro.mp3"]
 }
 ```
 
@@ -85,6 +93,7 @@ With Playwright and Chromium available, run these against the preview server:
 ```sh
 node website/scripts/film.test.mjs
 node website/scripts/cinema.test.mjs
+node website/scripts/music.test.mjs
 node website/scripts/download-consent.test.mjs
 ```
 
@@ -92,8 +101,9 @@ node website/scripts/download-consent.test.mjs
 The cinema test renders real WebGL at 1440, 390 and 320 pixels and uses a
 generated WAV to exercise Chromium's real decoder, audio clock and autoplay
 policy. It verifies seeking, pause/resume, failed-source failover and image or
-context-loss fallback. The fixture is not the requested song and does not prove
-that a production audio server works in China. Download tests separately check
+context-loss fallback. The fixture is not the production recording. `music.test.mjs` separately
+checks the bundled MP3, actual decoding, seeking, autoplay and pause. No test
+from this build machine proves reachability from all mainland Chinese networks. Download tests separately check
 both system families, architectures, delivery modes and consent.
 
 The Pages workflow has separate read-only build and Pages deployment permissions.

@@ -1,0 +1,20 @@
+Cipher — Kevin MacLeod (incompetech.com)
+ISRC: USUAN1100844
+Licensed under Creative Commons Attribution 4.0 International.
+https://creativecommons.org/licenses/by/4.0/
+
+Track and attribution:
+https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100844
+Original recording:
+https://incompetech.com/music/royalty-free/mp3-royaltyfree/Cipher2.mp3
+
+The mnOS introduction uses an edited excerpt: the source begins at 12.8 seconds,
+tempo is increased by 6.6667% without changing pitch, the result is cut to 24
+seconds, faded in/out, peak limited, and encoded as 112 kb/s stereo MP3.
+The track's copyright and license are independent of the mnOS source-code license.
+No endorsement by the composer is implied.
+
+Original file SHA-256:
+d3d0614535a61d748e2fd8d5117fc4d781022a7624794802a2462d8af3fdd522
+Edited file SHA-256:
+093f1fd220fe6192834325569a48e41f627199030f3a02bb68788555d129909f

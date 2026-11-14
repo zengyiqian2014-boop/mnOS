@@ -158,3 +158,5 @@ body{background:radial-gradient(ellipse at 90% 28%,#0c1a2b77,transparent 35%),li
 }
 @media(max-width:350px){.film-webgl .film-copy h2{font-size:26px}.film-webgl .film-copy>p:last-child{font-size:10px}.film-ready .film-topline{letter-spacing:0}.film-title h1{font-size:82px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+.music-credit{margin:22px 0 0;font-size:11px;color:var(--muted);line-height:1.9}.music-credit a{text-underline-offset:3px}.music-credit a:hover{text-decoration:underline;color:var(--text)}

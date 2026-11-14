@@ -8,6 +8,8 @@ try{
  for(const width of [1440,390,320]){
   const context=await browser.newContext({viewport:{width,height:width===320?640:900},reducedMotion:'no-preference'});
   await context.route('https://raw.githubusercontent.com/**',r=>r.abort());
+  // Exercise the deliberately unconfigured soundtrack independently of the bundled song.
+  await context.route('**/media/music.json*',r=>r.fulfill({contentType:'application/json',body:JSON.stringify({sources:[]})}));
   const page=await context.newPage(),errors=[],thirdParty=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(/soundcloud|youtube|music\.163/.test(r.url()))thirdParty.push(r.url());});
   await page.goto(base);
