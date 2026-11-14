@@ -9,13 +9,13 @@ const output = path.resolve(source, '../_site');
 const catalogPath = process.env.MNOS_SITE_CATALOG || path.join(source, 'catalog.json');
 readCatalog(JSON.parse(await readFile(catalogPath, 'utf8')));
 await mkdir(output, { recursive: true });
-for (const file of ['index.html', 'linux.html', 'terms.html', 'support.html', 'styles.css', 'app.mjs', 'film.mjs', 'film-scene.mjs', 'film-audio.mjs', 'film-timing.mjs', 'catalog.mjs', 'assets', 'vendor', 'media']) {
+for (const file of ['index.html', 'linux.html', 'terms.html', 'support.html', 'styles.css', 'app.mjs', 'film.mjs', 'film-scene.mjs', 'film-audio.mjs', 'film-timing.mjs', 'music-player.mjs', 'catalog.mjs', 'assets', 'vendor', 'media']) {
   await cp(path.join(source, file), path.join(output, file), { recursive: true });
 }
 // Keep both pages on the same UI revision after deployment. A cached old script
 // must not select a native image on the new independent Linux download page.
 const revision = createHash('sha256');
-for (const file of ['styles.css', 'app.mjs', 'film.mjs', 'film-scene.mjs', 'film-audio.mjs', 'film-timing.mjs', 'media/music.json', 'catalog.mjs']) {
+for (const file of ['styles.css', 'app.mjs', 'film.mjs', 'film-scene.mjs', 'film-audio.mjs', 'film-timing.mjs', 'music-player.mjs', 'media/music.json', 'catalog.mjs']) {
   revision.update(await readFile(path.join(source, file)));
 }
 const version = revision.digest('hex').slice(0, 16);
@@ -27,7 +27,8 @@ for (const file of ['index.html', 'linux.html', 'terms.html', 'support.html']) {
 }
 const script = (await readFile(path.join(source, 'app.mjs'), 'utf8'))
   .replace("from './catalog.mjs'", `from './catalog.mjs?v=${version}'`)
-  .replace("from './film.mjs'", `from './film.mjs?v=${version}'`);
+  .replace("from './film.mjs'", `from './film.mjs?v=${version}'`)
+  .replace("from './music-player.mjs'", `from './music-player.mjs?v=${version}'`);
 await writeFile(path.join(output, 'app.mjs'), script);
 const film = (await readFile(path.join(source, 'film.mjs'), 'utf8'))
   .replace("'./film-scene.mjs'", `'./film-scene.mjs?v=${version}'`)

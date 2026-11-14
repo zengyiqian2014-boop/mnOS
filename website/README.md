@@ -44,13 +44,20 @@ The selected recording is **3 Strikes — Terror Jr**, the original 2016
 recording. The previously substituted Cipher excerpt has been removed.
 Official song pages: [Kugou](https://www.kugou.com/song/cnygy2e.html) and
 [NetEase Music](https://music.163.com/#/song?id=409647388).
-These are listening pages, not audio file URLs. The Kugou web player requests
-login. Playback and direct embedding in China have not been verified.
+The music-note button in the introduction and “站内试听” in the footer open an
+actual Apple Music embedded player for the original recording (song ID
+1165457668). Visitors press Play inside the official player; the tested signed-out
+player plays a 90-second preview. Its controls, attribution and Apple Music link
+remain visible. Closing the dialog removes the iframe and stops playback. No
+music platform requests are made before the visitor opens the player. The
+Kugou page requests login. Mainland-China network performance has not been tested.
 
-No playable original recording is bundled or configured. The introduction
-currently plays silently and the footer links to the original track; a song
-page must never be presented as a working background-audio source. Do not
-substitute another song when this recording is unavailable.
+The official player is separate from the film clock. Apple's preview terms do
+not permit using its preview files as advertising soundtracks or synchronizing
+them with video: https://performance-partners.apple.com/search-api . Do not copy
+preview audio into this repository or silently substitute another track.
+The native background-audio interface remains available for an authorized
+recording; until one is configured, the introduction itself is silent.
 
 `media/music.json` selects the recording, its offset, the film duration and
 up to three authorized local/HTTPS audio sources in preference order:

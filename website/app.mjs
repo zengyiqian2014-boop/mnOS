@@ -1,5 +1,6 @@
 import { RAW_CATALOG, REPOSITORY, readCatalog, findImage, formatBytes } from './catalog.mjs';
 import { mountFilm } from './film.mjs';
+import { mountMusicPlayer } from './music-player.mjs';
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -12,6 +13,7 @@ let userPaused = false;
 try { userPaused = localStorage.getItem('mnos-motion') === 'paused'; } catch { /* Storage is optional. */ }
 const isPaused = () => reducedMotion.matches || userPaused;
 const film = mountFilm({ isPaused });
+mountMusicPlayer();
 let toastTimer;
 function toast(message) {
   $('#toast').textContent = message;
