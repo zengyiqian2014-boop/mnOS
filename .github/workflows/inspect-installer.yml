@@ -49,13 +49,16 @@ jobs:
           set -euo pipefail
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends imagemagick
-          convert diagnostic/validation/install-current.ppm -resize 960x540 -quality 88 diagnostic/last-screen.jpg
+          convert diagnostic/validation/install-current.ppm -resize 800x450 -quality 60 diagnostic/last-screen.jpg
           # Only the known, disposable QA account is used in this VM. The
           # screenshot contains its masked form and validation dialog, not
           # credentials from a real installation. Keep annotations bounded.
           # GitHub's check API truncates each annotation message at 4096
           # characters, even when a longer runner annotation was accepted.
           base64 -w 0 diagnostic/last-screen.jpg | fold -w 3000 > diagnostic/screen-chunks.txt
+          # A step also has a ten-notice limit. Fail instead of silently
+          # presenting a truncated picture as diagnostic evidence.
+          test "$(wc -c < diagnostic/last-screen.jpg)" -le 22500
           index=0
           while IFS= read -r part || [ -n "$part" ]; do
             index=$((index+1))
