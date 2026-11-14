@@ -8,7 +8,10 @@ on:
       release_tag:
         description: Native edition preview tag matching the built filenames
         required: true
-        default: v0.5-native-preview.2
+        default: v0.6-native-preview.1
+      authentication_run:
+        description: Successful authentication run at the same source commit
+        required: true
 permissions:
   contents: write
   actions: read
@@ -21,6 +24,7 @@ jobs:
       GH_REPO: ${{ github.repository }}
       SOURCE_RUN: ${{ inputs.build_run }}
       TAG: ${{ inputs.release_tag }}
+      AUTH_RUN: ${{ inputs.authentication_run }}
     steps:
       - uses: actions/checkout@v4
       - name: Require a successful complete native installation and Linux guest run
@@ -33,6 +37,10 @@ jobs:
           jq -e --arg repo "$GH_REPO" '.repository.full_name == $repo and .path == ".github/workflows/native-linux-guest.yml" and .conclusion == "success"' /tmp/source.json
           gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN/jobs" > /tmp/jobs.json
           jq -e 'any(.jobs[]; .name == "native" and .conclusion == "success" and any(.steps[]; .name == "Install and execute guest Linux in both native desktops" and .conclusion == "success"))' /tmp/jobs.json
+          [[ "$AUTH_RUN" =~ ^[0-9]+$ ]]
+          source_sha=$(jq -r .head_sha /tmp/source.json)
+          gh api "repos/$GH_REPO/actions/runs/$AUTH_RUN" > /tmp/auth.json
+          jq -e --arg sha "$source_sha" --arg repo "$GH_REPO" '.head_sha == $sha and .repository.full_name == $repo and .path == ".github/workflows/authentication.yml" and .conclusion == "success"' /tmp/auth.json
           printf 'sha=%s\n' "$(jq -r .head_sha /tmp/source.json)" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v4
         with:
@@ -55,7 +63,10 @@ jobs:
           version=${TAG#v}
           version=${version/-native/}
           for arch in amd64 arm64; do
-            test -s "release/mnOS-native-$version-$arch.iso"
+            images=(release/mnOS-native-*"-$arch.iso")
+            test "${#images[@]}" = 1 && test -s "${images[0]}"
+            new="release/mnOS-native-$version-$arch.iso"
+            if [ "${images[0]}" != "$new" ]; then mv "${images[0]}" "$new"; fi
             grep -q "NATIVE LINUX GUEST PASS $arch" "evidence/guest-validation-$arch.log"
             grep -q "DESKTOP PASS $arch" "evidence/guest-validation-$arch.log"
             test -s "evidence/$arch-linux-guest.ppm"
@@ -64,6 +75,22 @@ jobs:
             test -s "evidence/$arch-linux-guest-settings-on.ppm"
             test -s "evidence/$arch-linux-guest-settings-off.ppm"
           done
+          printf 'Authentication: https://github.com/%s/actions/runs/%s\n' "$GH_REPO" "$AUTH_RUN" >> release/PROVENANCE.txt
+          cp AUTHENTICATION.md release/
+          (cd release && sha256sum *.iso *.tar *.tar.gz *.config *.txt *.md SOURCES.sha256 > SHA256SUMS && sha256sum -c SHA256SUMS)
+          cat > /tmp/native-notes.md <<EOF
+          自研 C / 汇编内核和原生 GUI，AMD64 / ARM64 图形安装 ISO。
+
+          本次加入可选的密码 + 验证器登录，本机二维码 / 手动密钥、一次性恢复码、加密保存和重放拒绝。首次配置可跳过，之后在设置或 2fa 命令中管理。help 为英文，help -cn 为中文。
+
+          默认关闭的 Linux 模拟环境继续运行真实 Linux / BusyBox。客体等待输入时暂停解释执行，输入和定时器唤醒；显式 pause / resume 保留内存，stop 清空临时状态。
+
+          当前客体仍无 APT、网络和 Linux 图形应用兼容；Firefox、VS Code 和完整 CTF 应用请使用 Linux Edition。普通摄像头解锁也未完成。这里不宣称完成了所有硬件支持或日常使用稳定性认证。
+
+          两种架构均通过真实安装、移除 ISO 后启动、桌面和 Linux 客体执行测试；同一源码的验证器测试通过。校验和、源码、上游许可证及截图日志见附件。
+
+          [安装与客体测试](https://github.com/$GH_REPO/actions/runs/$SOURCE_RUN) · [认证测试](https://github.com/$GH_REPO/actions/runs/$AUTH_RUN)
+          EOF
       - name: Publish the verified native preview
         env:
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
@@ -72,7 +99,7 @@ jobs:
           if gh release view "$TAG" --json isDraft,targetCommitish > /tmp/existing.json 2>/dev/null; then
             jq -e --arg sha "$SOURCE_SHA" '.isDraft == true and .targetCommitish == $sha' /tmp/existing.json
           else
-            gh release create "$TAG" --target "$SOURCE_SHA" --draft --prerelease --title 'mnOS Native Edition 0.5 Preview 2 — Linux 模拟按需开启' --notes-file native/GUEST-RELEASE.md
+            gh release create "$TAG" --target "$SOURCE_SHA" --draft --prerelease --title "mnOS Native Edition ${TAG#v}" --notes-file /tmp/native-notes.md
           fi
           for file in release/*; do gh release upload "$TAG" "$file" --clobber; done
-          gh release edit "$TAG" --draft=false --prerelease --latest=false
+          gh release edit "$TAG" --draft=false --prerelease --latest=false --notes-file /tmp/native-notes.md

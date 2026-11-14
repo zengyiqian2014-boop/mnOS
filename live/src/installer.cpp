@@ -132,6 +132,7 @@ struct Installer {
                 "安装完成，使用密码登录。可在系统设置中开启验证器。关机后移除安装介质，再从硬盘启动。");
             gtk_widget_show(self->finish);
         } else {
+            marker("MNOS INSTALL FAIL: " + std::string(error ? error->message : "Installation failed"));
             self->message("安装未完成。请查看下方日志；目标盘可能已被重新分区。\n" +
                           std::string(error ? error->message : "Installation failed"));
             gtk_label_set_text(GTK_LABEL(self->status), "安装失败。日志保留在当前窗口及系统日志中。");

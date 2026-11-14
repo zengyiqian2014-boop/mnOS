@@ -9,6 +9,8 @@ iw
 locales
 ca-certificates
 gnupg
+gpgv
+e2fsprogs
 debian-archive-keyring
 apparmor
 apparmor-utils

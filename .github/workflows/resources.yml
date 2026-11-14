@@ -101,3 +101,10 @@ jobs:
           for file in resources/*.tar.gz resources/SOURCE_COMMIT.txt resources/SHA256SUMS resources/Packages resources/Packages.gz resources/Release resources/Release.gpg resources/InRelease; do
             gh release upload updates-stable "$file" --clobber
           done
+          gh release edit updates-stable --notes-file live/update/RELEASE.md
+      - name: Publish unified signed Raw resource catalog
+        run: |
+          set -euo pipefail
+          export GNUPGHOME="$RUNNER_TEMP/mnos-signing"
+          key=$(gpg --show-keys --with-colons live/keys/mnos-archive.gpg | awk -F: '$1=="fpr" {print $10;exit}')
+          bash live/update/catalog.sh "$key" "$(cat live/VERSION)"

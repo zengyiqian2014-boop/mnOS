@@ -398,6 +398,7 @@ sudo apt install ./文件.deb       安装可信的本地 Debian 软件包
 示例：
   sudo apt update
   sudo apt install nmap nano build-essential
+  sudo mnos apt install nano nmap --without nmap
   apt show nmap
   nmap --version
 
@@ -406,6 +407,10 @@ Linux 完整版和精简版均直接使用真实 APT，安装位置是该 Linux 
 软件架构须与 dpkg --print-architecture 一致。APT 本身不依赖 Python，
 不要为了使用 APT 安装 pip。安装前会列出新增依赖和磁盘用量，确认后执行。
 安装完成后用普通账号启动桌面软件，不要给 Firefox、VS Code 加 sudo。
+
+C++ 命令 mnos 提供 --without：后面的所有名称均从本次安装中排除，依赖也
+不能把它们装回来。已安装的软件不卸载；必要依赖发生冲突时中止安装。
+这是 mnos 扩展参数，不是上游 apt 的参数；选装 Full 组件见 help -cn updates。
 
 在支持 APT 的 Linux 客体中，软件装进该客体，不会变成自研内核的原生程序。
 当前 Native Edition 内置的 RV64 BusyBox 客体尚无 APT、虚拟网卡和 Debian
@@ -421,11 +426,27 @@ mnOS 更新、完整版与精简版功能包
 
 mnos status                       查看功能版本和受管理的软件包版本
 mnos source                       查看配置的签名更新源
+mnos list [full|lite|patch|all]     列出或筛选 GitHub 统一目录中的全部资源
+mnos packages [installed|full]    列出本机软件包版本，或 Full 功能组件名称
 sudo mnos full                    给精简版补装完整版功能包
+sudo mnos full --without code     补装选定完整版组件，排除指定软件包
+sudo mnos apt install nano nmap --without nmap
+                                 安装 nano，不安装 nmap
 sudo mnos update                  更新已安装的 mnOS runtime/auth/full 组件
 apt-cache policy mnos-runtime     查看更新源保留的版本号
 sudo mnos rollback 版本号          回退到指定、仍保留在源中的 mnOS 版本
 mnos apt search 名称              调用真正的 APT，也可以直接用 apt
+
+统一资源入口：https://github.com/zengyiqian2014-boop/mnOS/tree/resources
+目录按完整版、精简版、补丁和 CPU 架构分组；list 显示这些资源的版本及下载链接。
+update 先抓取 GitHub Raw 签名索引，验证签名并读取最新版本，然后用 APT 下载并
+安装相应版本。索引下载或签名失败时停止；不会因为旧索引而自动降级。
+Raw：https://raw.githubusercontent.com/zengyiqian2014-boop/mnOS/resources/catalog.json.asc
+
+--without 后面的所有名称都表示本次不安装的包；依赖也不能把它们装回来。
+若选定软件必须依赖被排除的包，则停止并报告冲突。已安装的包不会被卸载。
+这不是永久 APT 锁定；带此参数时只接受软件包名称，不接受其他选项、版本或通配符。
+选择性补装 Full 不会请求强制依赖所有组件的 mnos-full 元包。
 
 完整版功能包补装验证器设置、人脸采集预览，以及更广的 Linux 桌面、开发和
 CTF 软件。人脸预览目前还不是登录方式。APT 会下载依赖；如果所选完整版工具

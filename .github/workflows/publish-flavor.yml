@@ -1,0 +1,38 @@
+name: Publish tested Full or Lite installation media
+on:
+  workflow_dispatch:
+    inputs:
+      flavor:
+        type: choice
+        options: [full, lite]
+        required: true
+      build_run:
+        description: Successful installer.yml (Full) or lite.yml (Lite) run
+        required: true
+      authentication_run:
+        description: Successful authentication.yml run at the same source commit
+        required: true
+      release_tag:
+        description: New immutable preview tag, for example v2.2-full-preview.1
+        required: true
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: publish-flavor-${{ inputs.release_tag }}
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      FLAVOR: ${{ inputs.flavor }}
+      BUILD_RUN: ${{ inputs.build_run }}
+      AUTH_RUN: ${{ inputs.authentication_run }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify source, boot tests, authentication and unchanged ISO checksums
+        run: bash live/update/publish-iso.sh

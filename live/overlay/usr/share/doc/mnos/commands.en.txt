@@ -428,6 +428,7 @@ sudo apt install ./FILE.deb      Install a trusted local Debian package
 Examples:
   sudo apt update
   sudo apt install nmap nano build-essential
+  sudo mnos apt install nano nmap --without nmap
   apt show nmap
   nmap --version
 
@@ -437,6 +438,11 @@ Full. The package architecture must match dpkg --print-architecture. APT is not
 pip; there is no need to install Python to use APT itself. APT shows dependency
 and disk-space changes before installation. Run desktop applications as your
 ordinary account, without sudo.
+
+mnOS adds --without to its C++ package command: every following name is excluded
+from that installation, including dependencies. Existing packages stay installed;
+required dependency conflicts stop the transaction. This is a mnos option, not
+an upstream apt option. See help updates for selecting Full features.
 
 Inside a supported Linux guest, APT installs INTO THAT GUEST, not into the mnOS
 native kernel. Current Native Edition's RV64 BusyBox guest does NOT yet provide
@@ -453,11 +459,22 @@ mnOS updates and Full/Lite feature packages
 
 mnos status                       Show edition features and managed package versions
 mnos source                       Show the configured signed resource source
+mnos list [full|lite|patch|all]     List/filter all resources in the signed GitHub catalog
+mnos packages [installed|full]    List local package versions or Full component names
 sudo mnos full                    Add the Full feature package to a Lite installation
+sudo mnos full --without code     Select Full components, excluding the named packages
+sudo mnos apt install nano nmap --without nmap
+                                 Install nano; do not install nmap
 sudo mnos update                  Update installed mnOS runtime/auth/full packages
 apt-cache policy mnos-runtime     List retained versions in the resource source
 sudo mnos rollback VERSION        Reinstall the specified retained mnOS version
 mnos apt search NAME              Invoke the real APT client (or use apt directly)
+
+Every package name after --without is excluded for this transaction, including
+when requested as a dependency. A required dependency conflict stops installation.
+Existing packages are not removed. This is not a persistent APT hold. Use plain
+package names; options, versions and wildcards are not accepted with --without.
+The selected Full installation does not request the all-features mnos-full metapackage.
 
 The Full feature pack restores optional authenticator setup, camera preview and
 the broader Linux desktop/development/CTF package selection. Camera preview is
@@ -466,7 +483,13 @@ Full tool requires it; the Lite ISO itself has no Python runtime. Your account
 and files stay in place. There is no automatic activation of 2FA: open Login
 Security and explicitly pair your authenticator using QR or the manual key.
 
-Updates use a flat APT repository with a pinned signing key and HTTPS:
+One download directory groups Full, Lite and patches by edition/architecture:
+https://github.com/zengyiqian2014-boop/mnOS/tree/resources
+update first fetches the signed GitHub Raw catalog, verifies it against the
+installed archive key, and reads the latest Linux runtime version. It then asks
+APT to install that exact component version. No unsigned index or download is executed.
+Catalog: https://raw.githubusercontent.com/zengyiqian2014-boop/mnOS/resources/catalog.json.asc
+Packages use a flat APT repository with a pinned signing key and HTTPS:
 https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/
 The key is /usr/share/keyrings/mnos-archive.gpg. APT verifies signed InRelease
 metadata and payload hashes. Older package assets are retained for explicit

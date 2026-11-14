@@ -218,6 +218,7 @@ struct VM {
             }
             check(output.find("Kernel panic")==std::string::npos,"Kernel panic");
             check(output.find("SQUASHFS error")==std::string::npos,"SquashFS failure");
+            check(output.find("MNOS INSTALL FAIL:",after)==std::string::npos,"Installer reported failure; see "+log.string());
         }
     }
     void pause(int seconds) { auto end=Clock::now()+std::chrono::seconds(seconds); while(Clock::now()<end) pump(); }

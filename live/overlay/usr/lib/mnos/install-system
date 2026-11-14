@@ -6,6 +6,16 @@ export PATH=/usr/sbin:/usr/bin:/sbin:/bin LC_ALL=C.UTF-8
 umask 077
 ulimit -c 0
 fail() { echo "INSTALL ERROR: $*" >&2; exit 1; }
+check_environment() {
+    for program in lsblk jq flock wipefs sgdisk partprobe udevadm mkfs.vfat mkfs.ext4 \
+        mount umount mountpoint unsquashfs blkid chroot useradd chpasswd passwd \
+        systemctl update-initramfs update-grub efibootmgr; do
+        command -v "$program" >/dev/null || fail "Installation image is missing $program; no disk changes were made."
+    done
+    if [ "$(dpkg --print-architecture)" = amd64 ]; then
+        command -v grub-install >/dev/null || fail 'Installation image is missing grub-install; no disk changes were made.'
+    fi
+}
 list_disks() {
     lsblk --json --bytes --paths -o PATH,TYPE,SIZE,RO,MODEL,MOUNTPOINTS |
         jq '[.blockdevices[] | select(.type == "disk" and .ro == false and .size >= 34359738368) |
@@ -13,11 +23,13 @@ list_disks() {
             {path, size, model}]'
 }
 case "${1:-}" in
+    --check-environment) check_environment; exit 0 ;;
     --list) list_disks; exit 0 ;;
     --install) [ "$#" = 4 ] && [ "$3" = --confirm ] || fail 'Expected --install DEVICE --confirm DEVICE' ;;
     *) fail 'Use --list or --install DEVICE --confirm DEVICE' ;;
 esac
 [ "$(id -u)" = 0 ] || fail 'Administrator authentication required.'
+check_environment
 grep -qw 'boot=live' /proc/cmdline || fail 'Run from the installation ISO.'
 disk=$(readlink -f -- "$2")
 [ "$disk" = "$2" ] && [ "$disk" = "$4" ] && [ -b "$disk" ] || fail 'Disk confirmation does not match.'

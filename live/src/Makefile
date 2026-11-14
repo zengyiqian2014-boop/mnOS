@@ -13,8 +13,8 @@ PAM_LIBDIR ?= /usr/lib/$(shell $(CC) -dumpmachine)/security
 all: $(OUT)/mnos-center $(OUT)/first-boot $(OUT)/mnos-network-policy $(OUT)/wallpaper $(OUT)/installer $(OUT)/mnos-help $(OUT)/mnos-pkg $(OUT)/mnos-admin $(OUT)/mnos-security
 all: $(OUT)/mnos-session
 all: $(OUT)/mnos
-$(OUT)/mnos: mnos.cpp | $(OUT)
-	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
+$(OUT)/mnos: mnos.cpp catalog.hpp | $(OUT)
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS) $$(pkg-config --cflags --libs json-glib-1.0)
 $(OUT)/mnos-session: session.cpp | $(OUT)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 ifeq ($(FLAVOR),full)

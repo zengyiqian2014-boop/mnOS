@@ -1,0 +1,35 @@
+name: Refresh the unified resource catalog
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: [Publish tested native GUI and Linux guest, Publish tested Full or Lite installation media]
+    types: [completed]
+permissions:
+  contents: write
+concurrency:
+  group: mnos-update-resources
+  cancel-in-progress: false
+jobs:
+  catalog:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      # Always use the trusted default branch, not code from an artifact/ref.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Sign and publish the categorized catalog
+        env:
+          MNOS_APT_SIGNING_KEY: ${{ secrets.MNOS_APT_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          export GNUPGHOME="$RUNNER_TEMP/catalog-signing"
+          install -d -m700 "$GNUPGHOME"
+          printf '%s' "$MNOS_APT_SIGNING_KEY" | gpg --batch --import
+          unset MNOS_APT_SIGNING_KEY
+          key=$(gpg --show-keys --with-colons live/keys/mnos-archive.gpg | awk -F: '$1=="fpr" {print $10;exit}')
+          bash live/update/catalog.sh "$key" "$(cat live/VERSION)"

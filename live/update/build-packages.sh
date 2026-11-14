@@ -26,7 +26,10 @@ Description: $3
 EOF
 }
 copy() { install -Dm"$3" "$compiled/$1" "$work/$2/$1"; }
-control mnos-runtime 'libc6 (>= 2.41), libstdc++6, libgtk-3-0t64, libjson-glib-1.0-0, apt' 'mnOS compiled desktop and management utilities'
+control mnos-runtime 'libc6 (>= 2.41), libstdc++6, libgtk-3-0t64, libjson-glib-1.0-0, apt, curl, gpgv, ca-certificates' 'mnOS compiled desktop and management utilities'
+install -d "$work/mnos-runtime/usr/share/mnos"
+{ printf 'mnos-auth\n'; sed '/^#/d; /^$/d' "$ROOT/packages/common.txt" "$ROOT/packages/ctf.txt" "$ROOT/packages/development.txt"; } \
+    | sort -u > "$work/mnos-runtime/usr/share/mnos/full-packages.txt"
 install -Dm644 "$ROOT/keys/mnos-archive.gpg" "$work/mnos-runtime/usr/share/keyrings/mnos-archive.gpg"
 install -Dm644 "$ROOT/overlay/etc/apt/sources.list.d/mnos.sources" "$work/mnos-runtime/etc/apt/sources.list.d/mnos.sources"
 install -Dm644 "$ROOT/keys/microsoft-code.asc" "$work/mnos-runtime/usr/share/keyrings/microsoft-code.asc"

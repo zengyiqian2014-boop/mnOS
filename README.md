@@ -10,6 +10,9 @@ Existing release ISOs below do not yet contain these source changes.
 Full/Lite build profiles are being validated. Linux Lite has real APT and a
 C/C++ toolchain, without a Python runtime or extra login factors. The C++ `mnos`
 command manages signed feature packages, updates and component-version rollback;
+`mnos list` shows the [unified resource catalog](https://github.com/zengyiqian2014-boop/mnOS/tree/resources),
+`mnos packages` lists local packages, and `mnos full --without PACKAGE...` excludes
+selected components. Updates first verify the signed GitHub Raw version index.
 see [resource details](live/update/RELEASE.md) and `help apt` / `help updates`.
 Native's BusyBox guest still lacks APT/network devices; Full/Lite packaging does
 not remove that compatibility gap. Native idle execution now yields until input
