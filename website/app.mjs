@@ -4,6 +4,9 @@ const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const root = document.documentElement;
+// Each page owns exactly one system's ISO selector. Linux simulation on the
+// native page must never switch a user to an independent Linux installation.
+const edition = document.body.dataset.system === 'linux' ? 'linux' : 'native';
 let userPaused = false;
 try { userPaused = localStorage.getItem('mnos-motion') === 'paused'; } catch { /* Storage is optional. */ }
 const isPaused = () => reducedMotion.matches || userPaused;
@@ -54,7 +57,7 @@ function updateScroll() {
   scrollQueued = false;
   const distance = Math.max(1, root.scrollHeight - innerHeight);
   $('.reading-progress').style.transform = `scaleX(${Math.min(1, Math.max(0, scrollY / distance))})`;
-  if (!isPaused() && innerWidth > 760) {
+  if (stage && frame && !isPaused() && innerWidth > 760) {
     const rect = $('#experience').getBoundingClientRect();
     const progress = Math.min(1, Math.max(0, (innerHeight * 0.4 - rect.top) / (innerHeight * 0.8)));
     stage.style.setProperty('--desktop-scale', (0.88 + progress * 0.12).toFixed(3));
@@ -67,24 +70,16 @@ addEventListener('scroll', () => {
 addEventListener('resize', updateScroll, { passive: true });
 updateScroll();
 
-const previews = {
-  native: { src: './assets/native-desktop.png', title: 'mnOS Native · 原生桌面实机画面', alt: 'mnOS 原生桌面实机截图，正在自研解释器中运行 Linux 控制台程序' },
-  linux: { src: './assets/linux-desktop.png', title: 'mnOS Linux · 工具中心实机画面', alt: 'mnOS Linux Edition 实机截图，显示 CTF 工具中心和 VS Code 编辑器' },
-};
-$$('[data-preview]').forEach(button => button.addEventListener('click', () => {
-  const key = button.dataset.preview;
-  $$('[data-preview]').forEach(other => other.setAttribute('aria-pressed', String(other === button)));
-  $('#desktop-image').src = previews[key].src;
-  $('#desktop-image').alt = previews[key].alt;
-  $('#desktop-caption').textContent = previews[key].title;
-}));
-
-const commands = {
+const commands = edition === 'linux' ? {
   install: { command: 'sudo mnos apt install nano nmap', comment: '# 通过 Linux Edition 的 APT 安装软件', explanation: '保留 APT 的依赖解析和安装确认。普通应用正常运行无需 root，修改系统软件需要 sudo。', help: 'help -cn apt' },
   components: { command: 'sudo mnos full --without code', comment: '# 安装 Full 组件，本次跳过 code', explanation: '--without 后的包本次不安装。依赖冲突会停止，已安装的软件不会因此卸载。', help: 'help -cn packages' },
   update: { command: 'sudo mnos update', comment: '# 先验证签名版本索引，再更新 mnOS 组件', explanation: '从统一资源入口读取版本，并由 APT 校验和安装更新。组件回退需要明确选择已有版本。', help: 'help -cn updates' },
+} : {
+  info: { command: 'kernel info', comment: '# 在自研 mnOS 中查看原生内核信息', explanation: '这条命令在 mnOS 原生终端运行。Linux 客体中的命令在单独的模拟窗口内执行。', help: 'kernel help -cn' },
+  start: { command: 'linux start', comment: '# 请求开启系统内的 Linux 模拟环境', explanation: '默认关闭。用户确认后启动 Linux 客体；暂停、恢复和停止可通过 linux 命令或设置控制。', help: 'help -cn linux' },
+  help: { command: 'help -cn linux', comment: '# 阅读 Linux 模拟环境的中文帮助', explanation: '查看模拟环境的开启、暂停、恢复、关闭方式，以及当前支持的客体程序范围。', help: 'help -cn' },
 };
-let currentCommand = commands.install;
+let currentCommand = edition === 'linux' ? commands.install : commands.info;
 $$('[data-command]').forEach(button => button.addEventListener('click', () => {
   currentCommand = commands[button.dataset.command];
   $$('[data-command]').forEach(other => other.setAttribute('aria-pressed', String(other === button)));
@@ -96,18 +91,17 @@ $$('[data-command]').forEach(button => button.addEventListener('click', () => {
 $('#copy-command').addEventListener('click', () => copy(currentCommand.command, '命令已复制'));
 
 let catalog;
-let edition = 'native';
 let selectedImage = null;
 const downloadButton = $('#download-button');
 const guidance = {
-  native: 'Native 的 Linux 客体目前仅支持部分控制台程序。需要 Firefox、VS Code 或 APT，请选择 Linux Edition。',
-  linux: 'Linux Edition 使用 Debian Linux 内核。Full 集成桌面与工具；Lite 的已发布状态以此目录为准。',
+  native: '此 ISO 安装自研 mnOS。Linux 仅在模拟环境内运行；当前支持部分控制台程序。',
+  linux: '此 ISO 安装独立的 Linux 系统。Firefox、VS Code、APT 与 CTF 工具在 Linux 系统内运行。',
 };
 function renderDownload() {
   const architecture = $('#download-arch').value;
   const flavor = $('#download-flavor').value;
   selectedImage = findImage(catalog, edition, architecture, flavor);
-  $('#download-name').textContent = `${edition === 'native' ? 'Native' : 'Linux'} Edition`;
+  $('#download-name').textContent = edition === 'native' ? 'mnOS 自研系统' : 'Linux 独立系统';
   $('#result-arch').textContent = architecture.toUpperCase();
   $('#download-guidance').textContent = guidance[edition];
   $('#checksum-details').hidden = !selectedImage;
@@ -129,13 +123,6 @@ function renderDownload() {
     $('#checksum-value').textContent = '';
   }
 }
-function chooseEdition(value) {
-  edition = value;
-  $$('[data-edition]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.edition === value)));
-  renderDownload();
-}
-$$('[data-edition]').forEach(button => button.addEventListener('click', () => chooseEdition(button.dataset.edition)));
-$$('[data-choose-edition]').forEach(link => link.addEventListener('click', () => chooseEdition(link.dataset.chooseEdition)));
 $('#download-arch').addEventListener('change', renderDownload);
 $('#download-flavor').addEventListener('change', renderDownload);
 downloadButton.addEventListener('click', event => { if (!selectedImage) event.preventDefault(); });
@@ -176,7 +163,7 @@ $('#year').textContent = String(new Date().getFullYear());
 // A small canvas draws flowing circuit rings. It stops off-screen, when hidden,
 // or when motion is disabled, and caps resolution/frame rate on large displays.
 const canvas = $('#flow-field');
-const ctx = canvas.getContext('2d', { alpha: true });
+const ctx = canvas?.getContext('2d', { alpha: true });
 let fieldVisible = true;
 let fieldFrame = 0;
 let fieldWidth = 1;
@@ -184,6 +171,7 @@ let fieldHeight = 1;
 let lastDraw = 0;
 let time = 0;
 function resizeField() {
+  if (!canvas) return;
   const bounds = canvas.getBoundingClientRect();
   fieldWidth = bounds.width;
   fieldHeight = bounds.height;
@@ -258,16 +246,16 @@ $('#motion-toggle').addEventListener('click', () => {
 reducedMotion.addEventListener('change', setMotion);
 document.addEventListener('visibilitychange', scheduleField);
 addEventListener('resize', resizeField, { passive: true });
-if ('IntersectionObserver' in window) new IntersectionObserver(entries => {
+if (canvas && 'IntersectionObserver' in window) new IntersectionObserver(entries => {
   fieldVisible = entries[0].isIntersecting;
   scheduleField();
 }, { threshold: 0 }).observe($('.hero'));
-$('.hero').addEventListener('pointermove', event => {
+$('.hero')?.addEventListener('pointermove', event => {
   if (isPaused() || event.pointerType !== 'mouse') return;
   const x = (event.clientX / innerWidth - .5) * 7;
   const y = (event.clientY / innerHeight - .5) * 4;
   $('.core-chip').style.transform = `rotateX(${52 - y}deg) rotateZ(${-35 + x}deg)`;
 }, { passive: true });
-$('.hero').addEventListener('pointerleave', () => { $('.core-chip').style.transform = ''; });
+$('.hero')?.addEventListener('pointerleave', () => { $('.core-chip').style.transform = ''; });
 resizeField();
 setMotion();

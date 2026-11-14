@@ -11,7 +11,13 @@ node website/scripts/serve.mjs
 node website/scripts/build.mjs
 ```
 
-The page presents Native and Linux Edition separately. Screenshots in `assets/`
+The homepage presents the original mnOS kernel and its optional Linux simulation
+environment. The independent Linux system has its own `linux.html` page and ISO
+selector. Each page's selector is fixed to its system: switching architectures or
+profiles cannot substitute the other system's installation image. Linux desktop
+applications and APT are described only on the independent Linux system page.
+
+Screenshots in `assets/`
 are unmodified copies of the repository's actual `native-linux-guest.png` and
 `linux-edition-2.1.png`. The animated chip is a brand illustration, not a claim
 of a physical mnOS processor or a benchmark.
