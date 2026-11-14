@@ -3,16 +3,16 @@ import * as T from './vendor/three.module.min.js';
 import { RoundedBoxGeometry } from './vendor/RoundedBoxGeometry.js';
 import { RoomEnvironment } from './vendor/RoomEnvironment.js';
 
-const clamp = n => Math.max(0, Math.min(1, n));
-const smooth = n => { n = clamp(n); return n * n * (3 - 2 * n); };
+import {clamp,ease as smooth,sampleTrack} from './film-timing.mjs';
 const mix = (a, b, t) => a + (b - a) * t;
 export async function createFilmScene(canvas) {
-  const renderer = new T.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'low-power' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.7));
-  renderer.setClearColor(0x050609);
+  const renderer = new T.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, innerWidth < 760 ? 1.25 : 1.5));
+  renderer.transmissionResolutionScale = .5;
+  renderer.setClearColor(0x03060b, 0);
   renderer.outputColorSpace = T.SRGBColorSpace;
   renderer.toneMapping = T.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.1;
+  renderer.toneMappingExposure = .95;
   const scene = new T.Scene();
   const camera = new T.PerspectiveCamera(38, 1, .1, 100);
   const pmrem = new T.PMREMGenerator(renderer);
@@ -29,7 +29,9 @@ export async function createFilmScene(canvas) {
     const m = new T.MeshStandardMaterial({ color, roughness, metalness }); materials.push(m); return m;
   };
   const graphite = metal(0x20252d, .3), edge = metal(0x717784, .21), black = metal(0x080b10, .5, .25);
-  const glass = metal(0x080b10, .12, .5), mint = metal(0x7fdbbe, .22, .7);
+  const glass = metal(0x080b10, .12, .5);
+  const liquid = new T.MeshPhysicalMaterial({color:0xe1f3ff,metalness:0,roughness:.025,transmission:.98,thickness:.25,ior:1.45,clearcoat:1,clearcoatRoughness:.06,attenuationColor:0x8bd8f0,attenuationDistance:3,envMapIntensity:.75});
+  materials.push(liquid);
   const geometries = [];
   function rounded(parent, w, h, d, r, material, x = 0, y = 0, z = 0) {
     const geometry = new RoundedBoxGeometry(w, h, d, 3, r); geometries.push(geometry);
@@ -87,21 +89,25 @@ export async function createFilmScene(canvas) {
   backLogo.rotation.y = Math.PI; backLogo.material.transparent = true;
   const layers = new T.Group(); scene.add(layers);
   const cards = [];
-  for (const [i, map] of [desktop, editor, terminal].entries()) {
+  for (const [i, map] of [editor, terminal, desktop].entries()) {
     const card = new T.Group(); layers.add(card); cards.push(card);
-    rounded(card, 6.42, 3.67, .09, .038, i === 2 ? mint : edge);
-    rounded(card, 6.38, 3.63, .095, .038, graphite);
-    image(card, map, 6.27, 3.527, 0, 0, .052);
+    rounded(card, 6.68, 3.93, .24, .12, liquid);
+    rounded(card, 6.31, 3.59, .025, .012, black, 0, 0, .126);
+    image(card, map, 6.27, 3.527, 0, 0, .142);
   }
   const chip = new T.Group(); layers.add(chip);
-  rounded(chip, 1.85, 1.85, .18, .08, edge);
-  rounded(chip, 1.77, 1.77, .185, .07, black);
-  const chipLabel = image(chip, label('mnOS'), 1.35, .45, 0, .12, .099); chipLabel.material.transparent = true;
-  const chipSub = image(chip, label('NATIVE', '#95b7b2', 65), 1.1, .367, 0, -.32, .1); chipSub.material.transparent = true;
-  for (let i = 0; i < 14; i++) for (const side of [-1, 1]) {
-    rounded(chip, .06, .10, .055, .008, edge, -.78 + i * .12, side * .93, 0);
-    rounded(chip, .10, .06, .055, .008, edge, side * .93, -.78 + i * .12, 0);
+  rounded(chip, 2.15, 2.15, .32, .14, liquid);
+  rounded(chip, 1.77, 1.77, .025, .012, black, 0, 0, .17);
+  const chipLabel = image(chip, label('mnOS'), 1.35, .45, 0, .12, .19); chipLabel.material.transparent = true;
+  const chipSub = image(chip, label('NATIVE', '#95b7b2', 65), 1.1, .367, 0, -.32, .19); chipSub.material.transparent = true;
+  const pinGeometry = new T.BoxGeometry(.055,.10,.04); geometries.push(pinGeometry);
+  const pins = new T.InstancedMesh(pinGeometry, edge, 56);
+  let pin=0;
+  for(let i=0;i<14;i++)for(const side of [-1,1]){
+    matrix.makeTranslation(-.78+i*.12,side*.93,0);pins.setMatrixAt(pin++,matrix);
+    matrix.makeRotationZ(Math.PI/2);matrix.setPosition(side*.93,-.78+i*.12,0);pins.setMatrixAt(pin++,matrix);
   }
+  chip.add(pins);
   // Soft contact shadow, generated only once; all motion uses a real camera.
   const shadowCanvas = document.createElement('canvas'); shadowCanvas.width = shadowCanvas.height = 128;
   const g = shadowCanvas.getContext('2d'); const gradient = g.createRadialGradient(64,64,5,64,64,64);
@@ -109,16 +115,13 @@ export async function createFilmScene(canvas) {
   const shadowMap = new T.CanvasTexture(shadowCanvas); textures.push(shadowMap);
   const shadow = image(scene, shadowMap, 13, 8, 0, -2.28, 0); shadow.material.transparent = true; shadow.rotation.x = -Math.PI / 2;
   const shots = [
-    {p:0, camera:[9,1.1,9], target:[0,-.5,0], turn:-.48, tilt:-.07, lid:1.49},
-    {p:.125, camera:[8,2.3,9.8], target:[0,.1,0], turn:-.25, tilt:-.06, lid:1.15},
-    {p:.25, camera:[5.7,3.8,10.2], target:[0,.8,0], turn:-.17, tilt:0, lid:.1},
-    {p:.375, camera:[.2,2.4,10], target:[0,1.05,0], turn:0, tilt:0, lid:-.12},
-    {p:.49, camera:[0,2.28,3.9], target:[0,1.35,-1.6], turn:0, tilt:0, lid:-.12},
-    {p:.50, camera:[0,2.28,3.9], target:[0,1.35,-1.6], turn:0, tilt:0, lid:-.12},
-    {p:.625, camera:[7.4,4.5,12.5], target:[0,.2,0], turn:0, tilt:0, lid:-.12},
-    {p:.75, camera:[-5.8,3,13.3], target:[0,.3,0], turn:0, tilt:0, lid:-.12},
-    {p:.875, camera:[-4,2.5,12], target:[0,.5,0], turn:.25, tilt:.03, lid:-.12},
-    {p:1, camera:[4.4,2.3,11.2], target:[0,.65,0], turn:-.2, tilt:.02, lid:-.12},
+    {p:0, camera:[8,2.2,10.8], target:[0,.1,0], turn:-.45, tilt:-.05, lid:1.47},
+    {p:.18, camera:[7,3.1,10.8], target:[0,.5,-.2], turn:-.18, tilt:0, lid:.14},
+    {p:.34, camera:[1.6,3.3,10.6], target:[0,.9,-.5], turn:0, tilt:0, lid:-.12},
+    {p:.50, camera:[4.6,2.7,11.4], target:[0,.65,-.4], turn:0, tilt:0, lid:-.12},
+    {p:.68, camera:[-4.6,2.8,12], target:[0,.55,-.5], turn:0, tilt:0, lid:-.12},
+    {p:.84, camera:[-5,2.6,13], target:[0,.65,-.2], turn:.1, tilt:.02, lid:-.12},
+    {p:1, camera:[4.4,2.6,12], target:[0,.65,0], turn:-.2, tilt:.02, lid:-.12},
   ];
   const target = new T.Vector3();
   function render(progress) {
@@ -126,31 +129,39 @@ export async function createFilmScene(canvas) {
     const p = clamp(progress), w = canvas.clientWidth, h = canvas.clientHeight;
     if (!w || !h) return;
     if (w !== width || h !== height) { width=w;height=h;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix(); }
-    let a=shots[0],b=shots[1];
-    for(let i=1;i<shots.length;i++)if(p<=shots[i].p){a=shots[i-1];b=shots[i];break;}
-    const t=smooth((p-a.p)/(b.p-a.p));
     const portrait=w/h<.9;
-    for(let i=0;i<3;i++){camera.position.setComponent(i,mix(a.camera[i],b.camera[i],t));target.setComponent(i,mix(a.target[i],b.target[i],t));}
-    if(portrait) {camera.position.sub(target).multiplyScalar(1.1/(w/h)).add(target);target.y+=.35;}
-    camera.lookAt(target);
-    device.rotation.set(0,mix(a.turn,b.turn,t),mix(a.tilt,b.tilt,t));
-    hinge.rotation.x=mix(a.lid,b.lid,t);
-    device.visible=p<.5||p>=.86;
-    layers.visible=!device.visible;
-    screen.material.color.setScalar(.68+.32*smooth((p-.08)/.2));
-    if(layers.visible){
-      const spread=smooth((p-.5)/.12);
-      layers.rotation.set(-.1, -.18 + smooth((p-.62)/.2)*.25, -.035);
-      layers.position.set(0, mix(1.45,.45,spread), mix(-2.44,-1.3,spread));
-      cards.forEach((card,i)=>{card.visible=i===0||spread>.025;card.position.set((i-1)*spread*.25,(i-1)*spread*.55,(1-i)*spread*2.3);card.rotation.y=(i-1)*spread*.075;});
-      chip.position.set(-3.7*spread,-1.6*spread,3.8*spread);chip.rotation.set(.05,.2*spread,-.08);
-      cards[2].position.x+=smooth((p-.68)/.12)*2.1;
-      cards[2].position.y+=smooth((p-.68)/.12)*.35;
-      cards[2].position.z+=smooth((p-.68)/.12)*6;
+    for(let i=0;i<3;i++){camera.position.setComponent(i,sampleTrack(shots,p,'camera',i));target.setComponent(i,sampleTrack(shots,p,'target',i));}
+    if(portrait) {
+      camera.position.sub(target).multiplyScalar(1.2/(w/h)).add(target);
+      // Keep the physical scene above the phone's caption and controls.
+      camera.setViewOffset(w,h,0,h*.09,w,h);
+    } else {
+      camera.setViewOffset(w,h,-w*.13,0,w,h);
     }
-    rim.intensity=2.5+Math.pow(1-((p*32)%1),8)*1.1;
+    camera.lookAt(target);
+    device.rotation.set(0,sampleTrack(shots,p,'turn'),sampleTrack(shots,p,'tilt'));
+    hinge.rotation.x=sampleTrack(shots,p,'lid');
+    const reveal=smooth((p-.36)/.23)*(1-smooth((p-.80)/.20));
+    device.position.y=-5*reveal;device.scale.setScalar(1-.98*reveal);
+    device.visible=reveal<.999;
+    layers.visible=reveal>.001;
+    screen.material.color.setScalar(.75+.25*smooth((p-.05)/.15));
+    if(layers.visible){
+      layers.rotation.set(-.08*reveal,-.12*reveal,-.025*reveal);
+      layers.position.set(0,mix(1.45,.75,reveal),mix(-2.44,-.8,reveal));
+      cards.forEach((card,i)=>{
+        card.scale.setScalar(.96+.04*reveal);
+        card.position.set((i-1)*reveal*.32,(i-1)*reveal*.38,(1-i)*reveal*2);
+        card.rotation.y=(i-1)*reveal*.08;
+      });
+      chip.position.set((portrait?-2.35:-3.6)*reveal,-1.5*reveal,2.6*reveal);chip.rotation.set(.05,.2*reveal,-.08);
+      chip.scale.setScalar(reveal*(portrait?.68:1));
+    }
+    rim.intensity=2.7+.35*Math.sin(p*Math.PI*4);
+    fill.intensity=1.8+.3*Math.sin(p*Math.PI*2);
     renderer.render(scene,camera);
   }
+  function reduceQuality(){renderer.setPixelRatio(1);renderer.setSize(width,height,false);}
   function dispose(){disposed=true;for(const t of textures)t.dispose();for(const m of materials)m.dispose();for(const g of geometries)g.dispose();environment.dispose();renderer.dispose();}
-  return {render,dispose};
+  return {render,dispose,reduceQuality};
 }

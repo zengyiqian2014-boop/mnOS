@@ -1,119 +1,149 @@
-import { connectMusic, TRACK_START, FILM_DURATION } from './film-audio.mjs';
-const clamp = (n, low = 0, high = 1) => Math.min(high, Math.max(low, n));
-const ease = n => { n = clamp(n); return n * n * (3 - 2 * n); };
-export function frameAt(progress) {
-  const p = clamp(progress);
-  return { progress:p, chapter:p<.32?0:p<.65?1:2,
-    opacity:[1-ease((p-.28)/.08),ease((p-.28)/.08)*(1-ease((p-.61)/.08)),ease((p-.61)/.08)],
-    kernel:ease(p/.3),desktop:ease((p-.3)/.32),guest:ease((p-.64)/.32) };
+import {connectMusic,FILM_DURATION} from './film-audio.mjs';
+import {clamp,ease} from './film-timing.mjs';
+export function frameAt(value) {
+  const p=clamp(value);
+  return {progress:p,chapter:p<.32?0:p<.65?1:2,
+    opacity:[1-ease((p-.28)/.08),ease((p-.28)/.08)*(1-ease((p-.61)/.08)),ease((p-.61)/.08)]};
 }
-export function mountFilm({ isPaused }) {
-  const section = document.querySelector('.scroll-film');
-  if (!section) return { refresh() {} };
-  const scenes=[...section.querySelectorAll('.film-scene')];
-  const chapters=[...section.querySelectorAll('[data-chapter]')];
-  const play=section.querySelector('.film-play'), musicButton=section.querySelector('.film-music');
-  const audioPanel=section.querySelector('.film-audio'), audioStatus=section.querySelector('.film-audio-status');
-  const canvas=section.querySelector('.film-canvas');
-  let progress=0,playing=false,frame=0,last=0,mode='silent';
-  let world,worldPromise,worldFailed=false,music,musicPromise,musicWanted=false,mediaTime=0,mediaStamp=0;
-  const staticMode=()=>isPaused()||innerHeight<500;
-  function geometry(){return{top:section.getBoundingClientRect().top+scrollY-64,range:Math.max(1,section.offsetHeight-innerHeight)};}
-  function visible(){const r=section.getBoundingClientRect();return r.top<innerHeight&&r.bottom>64;}
-  async function loadWorld(){
-    if(world||worldPromise||worldFailed||staticMode()||!visible())return;
-    worldPromise=import('./film-scene.mjs').then(m=>m.createFilmScene(canvas)).then(result=>{
-      if(staticMode()){result.dispose();return;}
-      world=result;section.classList.add('film-webgl');section.dataset.renderer='webgl';draw(progress);
-    }).catch(()=>{worldFailed=true;section.dataset.renderer='fallback';section.classList.remove('film-webgl');}).finally(()=>{worldPromise=null;});
+export function mountFilm({isPaused}) {
+  const section=document.querySelector('.scroll-film');
+  if(!section)return{refresh(){}};
+  const canvas=section.querySelector('.film-canvas'),scenes=[...section.querySelectorAll('.film-scene')];
+  const controls=section.querySelector('.film-controls'),play=section.querySelector('.film-play');
+  const sound=section.querySelector('.film-sound'),status=section.querySelector('.film-status');
+  const audio=section.querySelector('audio');
+  let world,worldPromise,worldFailed=false,player,preparingMusic;
+  let progress=0,playing=false,requested=true,frame=0,last=0,lastUI=-Infinity,lastChapter=-1;
+  let soundWanted=true,soundState='loading',sync=false,ready=false,inView=false,started=false;
+  let slowFrames=0,qualityReduced=false,buffered=false;
+  const staticMode=()=>isPaused()||innerHeight<440;
+  const allowed=()=>!staticMode()&&!document.hidden&&inView;
+  function showSound(state) {
+    soundState=state;section.dataset.audio=state;
+    sound.hidden=['loading','unconfigured','configuration-unavailable'].includes(state);
+    sound.disabled=state==='unavailable';
+    const audible=state==='playing'&&soundWanted;
+    sound.setAttribute('aria-pressed',String(audible));
+    const label=audible?'关闭声音':state==='unavailable'?'音乐暂不可用':state==='blocked'?'点击开启声音':'开启声音';
+    sound.setAttribute('aria-label',label);sound.title=label;
+    sound.classList.toggle('is-audible',audible);
   }
-  function draw(value){
-    progress=clamp(value);const f=frameAt(progress);
-    section.dataset.chapter=String(f.chapter);section.dataset.progress=progress.toFixed(5);
-    section.style.setProperty('--film-progress',progress.toFixed(5));
-    section.style.setProperty('--intro-opacity',(1-ease((progress-.06)/.1)).toFixed(5));
-    section.style.setProperty('--copy-opacity',ease((progress-.12)/.08).toFixed(5));
-    // Let the screen occupy the close-up without type across its interface.
-    const closeUp = ease((progress-.37)/.045) * (1-ease((progress-.53)/.04));
-    section.style.setProperty('--camera-copy-opacity',(ease((progress-.12)/.08)*(1-closeUp)).toFixed(5));
-    section.style.setProperty('--kernel-turn',(-36+f.kernel*20)+'deg');
-    section.style.setProperty('--kernel-lift',(26+f.kernel*70)+'px');
-    section.style.setProperty('--kernel-scale',String(.9+f.kernel*.16));
-    section.style.setProperty('--screen-tilt',(14*(1-f.desktop))+'deg');
-    section.style.setProperty('--screen-scale',String(.82+f.desktop*.18));
-    section.style.setProperty('--guest-open',f.guest.toFixed(4));
-    scenes.forEach((scene,i)=>{
-      const alpha=f.opacity[i];scene.style.setProperty('--scene-opacity',alpha.toFixed(4));
-      scene.style.setProperty('--scene-shift',((1-alpha)*35)+'px');
-      scene.setAttribute('aria-hidden',String(i!==f.chapter));scene.inert=i!==f.chapter;
-    });
-    chapters.forEach((button,i)=>{button.setAttribute('aria-pressed',String(i===f.chapter));button.style.setProperty('--chapter-progress',clamp((progress-i/3)*3).toFixed(4));});
-    if(world&&visible()&&!staticMode())world.render(progress);
-  }
-  function stop(){
-    playing=false;mode='silent';musicWanted=false;cancelAnimationFrame(frame);frame=0;
-    music?.pause();play.setAttribute('aria-pressed','false');play.innerHTML='播放介绍 <span>↗</span>';
-    musicButton.textContent='音乐版 · 3 Strikes ↗';
-  }
-  function tick(stamp){
-    if(!playing||staticMode()||document.hidden){stop();return;}
-    if(mode==='music'){
-      // Never outrun buffered audio: extrapolate at most 100 ms between widget events.
-      const seconds=mediaTime+Math.min(.1,Math.max(0,(stamp-mediaStamp)/1000));
-      draw((seconds-TRACK_START)/FILM_DURATION);
-    }else{const delta=Math.min(.06,(stamp-last)/1000);draw(progress+delta/FILM_DURATION);}
-    last=stamp;const{top,range}=geometry();scrollTo({top:top+range*progress,behavior:'instant'});
-    if(progress>=1)stop();else frame=requestAnimationFrame(tick);
-  }
-  function begin(kind){
-    if(staticMode()||document.hidden)return;
-    playing=true;mode=kind;last=performance.now();
-    play.setAttribute('aria-pressed','true');play.innerHTML='暂停介绍 <span>Ⅱ</span>';
-    cancelAnimationFrame(frame);frame=requestAnimationFrame(tick);
-  }
-  function refresh(){
-    section.classList.toggle('film-static',staticMode());
-    if(staticMode()){
-      stop();world?.dispose();world=undefined;section.dataset.renderer='static';section.classList.remove('film-webgl');
-      scenes.forEach(scene=>{scene.removeAttribute('aria-hidden');scene.inert=false;});return;
+  function draw(value,stamp=performance.now(),force=false) {
+    progress=clamp(value);
+    if(force||stamp-lastUI>40) {
+      lastUI=stamp;const f=frameAt(progress);
+      section.dataset.progress=progress.toFixed(5);
+      section.style.setProperty('--film-progress',progress.toFixed(5));
+      section.style.setProperty('--intro-opacity',(1-ease((progress-.07)/.11)).toFixed(4));
+      section.style.setProperty('--camera-copy-opacity',ease((progress-.13)/.09).toFixed(4));
+      scenes.forEach((scene,i)=>{
+        scene.style.setProperty('--scene-opacity',f.opacity[i].toFixed(4));
+        if(f.chapter!==lastChapter){scene.setAttribute('aria-hidden',String(i!==f.chapter));scene.inert=i!==f.chapter;}
+      });
+      if(f.chapter!==lastChapter){lastChapter=f.chapter;section.dataset.chapter=String(f.chapter);}
     }
+    if(world&&allowed())world.render(progress);
+  }
+  function updateControls() {
+    section.classList.toggle('film-playing',playing);
+    section.dataset.playing=String(playing);
+    play.setAttribute('aria-pressed',String(playing));
+    const label=playing?'暂停介绍':progress>=1?'重新播放介绍':'继续介绍';
+    play.setAttribute('aria-label',label);play.title=label;
+    play.classList.toggle('is-playing',playing);
+  }
+  function suspend() {
+    playing=false;cancelAnimationFrame(frame);frame=0;sync=false;player?.pause();updateControls();
+  }
+  function pause() { requested=false;suspend(); }
+  function tick(stamp) {
+    frame=0;
+    if(!playing||!allowed()){suspend();return;}
+    const delta=Math.min(.5,Math.max(0,(stamp-last)/1000));last=stamp;
+    const musicTime=sync&&soundWanted?player?.time():null;
+    // Native currentTime is sampled every frame; delayed iframe messages no
+    // longer make the camera stop/start. Audio buffering cannot stall visuals.
+    const target=musicTime==null?progress+delta/(player?.config.duration||FILM_DURATION):Math.max(progress,clamp(musicTime));
+    draw(target,stamp);
+    if(delta>.033)slowFrames++;else slowFrames=Math.max(0,slowFrames-1);
+    if(slowFrames>12&&!qualityReduced&&world){world.reduceQuality();qualityReduced=true;}
+    if(progress>=1){draw(1,stamp,true);requested=false;suspend();return;}
+    frame=requestAnimationFrame(tick);
+  }
+  function resume() {
+    if(!requested||!allowed()||!ready||playing)return;
+    playing=true;last=performance.now();updateControls();frame=requestAnimationFrame(tick);
+    if(player&&soundWanted)void startSound();
+  }
+  async function startSound() {
+    if(!player||!soundWanted||!playing||!allowed())return;
+    const result=await player.play(()=>progress);
+    if(!playing||!soundWanted||!allowed()){player.pause();return;}
+    sync=result;
+  }
+  function setupMusic() {
+    if(preparingMusic||staticMode())return;
+    preparingMusic=connectMusic(audio,state=>{
+      if(state==='buffering'){sync=false;buffered=true;}
+      if(state==='playing'){
+        if(!playing||!allowed()||!soundWanted){player?.pause();return;}
+        if(buffered&&(player?.time()??progress)<progress-.04)player?.seek(progress);
+        buffered=false;sync=true;
+      }
+      if(['paused','blocked','unavailable','ended'].includes(state))sync=false;
+      showSound(state);
+    }).then(value=>{player=value;if(player&&playing&&soundWanted)void startSound();})
+      .catch(()=>showSound('configuration-unavailable'));
+  }
+  async function loadWorld() {
+    if(world||worldPromise||worldFailed||staticMode()||!inView)return;
+    worldPromise=import('./film-scene.mjs').then(module=>module.createFilmScene(canvas)).then(value=>{
+      if(staticMode()){value.dispose();return;}
+      world=value;section.classList.add('film-webgl');section.dataset.renderer='webgl';
+    }).catch(()=>{worldFailed=true;section.dataset.renderer='fallback';}).finally(()=>{
+      worldPromise=null;ready=true;draw(progress,performance.now(),true);
+      if(!started){started=true;setupMusic();}resume();
+    });
+  }
+  function refresh() {
+    const rect=section.getBoundingClientRect();
+    inView=rect.bottom>innerHeight*.25&&rect.top<innerHeight*.5;
+    section.classList.toggle('film-static',staticMode());
+    if(staticMode()) {
+      suspend();world?.dispose();world=undefined;ready=false;section.classList.remove('film-webgl');section.dataset.renderer='static';
+      scenes.forEach(scene=>{scene.removeAttribute('aria-hidden');scene.inert=false;});lastChapter=-1;
+      return;
+    }
+    if(!inView||document.hidden){suspend();return;}
     void loadWorld();
-    if(!playing){const{top,range}=geometry();draw((scrollY-top)/range);}
+    if(worldFailed){ready=true;resume();}else if(world){draw(progress,performance.now(),true);resume();}
   }
   let queued=false;
-  addEventListener('scroll',()=>{if(playing||queued)return;queued=true;requestAnimationFrame(()=>{queued=false;refresh();});},{passive:true});
+  addEventListener('scroll',()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;refresh();});},{passive:true});
   addEventListener('resize',refresh,{passive:true});
-  for(const type of ['wheel','touchstart'])addEventListener(type,event=>{if(!audioPanel.contains(event.target))stop();},{passive:true});
-  addEventListener('keydown',event=>{if(['Escape','PageDown','PageUp','ArrowDown','ArrowUp','Home','End'].includes(event.key))stop();});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});
+  document.addEventListener('visibilitychange',refresh);
+  addEventListener('keydown',event=>{if(event.key==='Escape')pause();});
+  // Respect browser autoplay rules. A genuine first tap/key can unlock audio;
+  // never simulate an interaction or trap scrolling to get permission.
+  function unlock(event) {
+    if(!event.isTrusted||controls.contains(event.target)||!allowed()||!playing)return;
+    if(soundWanted&&soundState==='blocked')void startSound();
+  }
+  addEventListener('pointerdown',unlock,{passive:true});addEventListener('keydown',unlock);
+  play.addEventListener('click',()=>{
+    if(playing){pause();return;}
+    if(progress>=1)draw(0,performance.now(),true);
+    requested=true;resume();
+  });
+  sound.addEventListener('click',()=>{
+    if(soundState==='playing'&&soundWanted){soundWanted=false;sync=false;player?.pause();showSound('muted');}
+    else {soundWanted=true;if(!playing){requested=true;if(progress>=1)draw(0,performance.now(),true);resume();}else void startSound();}
+  });
   canvas.addEventListener('webglcontextlost',event=>{
-    event.preventDefault();stop();world?.dispose();world=undefined;worldFailed=true;
-    section.classList.remove('film-webgl');section.dataset.renderer='fallback';
+    event.preventDefault();world?.dispose();world=undefined;worldFailed=true;ready=true;
+    section.classList.remove('film-webgl');section.dataset.renderer='fallback';draw(progress,performance.now(),true);
   });
-  play.addEventListener('click',()=>{if(playing){stop();return;}if(staticMode())return;if(progress>=.98)draw(0);begin('silent');});
-  chapters.forEach((button,i)=>button.addEventListener('click',()=>{stop();const{top,range}=geometry();scrollTo({top:top+range*[.22,.43,.73][i],behavior:'instant'});refresh();}));
-  musicButton.addEventListener('click',async()=>{
-    if(mode==='music'&&playing){stop();return;}
-    stop();if(staticMode())return;
-    musicWanted=true;audioPanel.hidden=false;musicButton.setAttribute('aria-expanded','true');
-    musicButton.textContent='连接音乐…';audioStatus.textContent='原曲约 00:12 起。点击播放器也可开始；画面跟随音乐。';
-    try{
-      if(!musicPromise)musicPromise=connectMusic(section.querySelector('.film-audio-player'),{
-        onPosition(seconds){if(!musicWanted)return;mediaTime=seconds;mediaStamp=performance.now();if(mode==='music'&&seconds>=TRACK_START+FILM_DURATION)stop();},
-        onState(state){
-          if(state==='playing'){
-            if(!musicWanted||staticMode()||document.hidden){music?.pause();return;}
-            musicButton.textContent='暂停音乐版';begin('music');
-          }else if(mode==='music'){playing=false;cancelAnimationFrame(frame);frame=0;play.setAttribute('aria-pressed','false');play.innerHTML='播放介绍 <span>↗</span>';musicButton.textContent='音乐版 · 3 Strikes ↗';}
-        },onError(){stop();audioStatus.textContent='音乐服务暂不可用；可继续观看无声介绍。';}
-      }).then(value=>{music=value;return value;}).catch(error=>{musicPromise=null;throw error;});
-      const player=await musicPromise;
-      if(!musicWanted||staticMode()||document.hidden)return;
-      draw(0);mediaTime=TRACK_START;mediaStamp=performance.now();player.play(0);
-      musicButton.textContent='在播放器中开始 ↗';
-    }catch(error){stop();audioStatus.textContent=error.message;}
-  });
-  section.querySelector('.film-audio-close').addEventListener('click',()=>{stop();audioPanel.hidden=true;musicButton.setAttribute('aria-expanded','false');musicButton.focus();});
-  section.classList.add('film-ready');refresh();
+  status.textContent='介绍会自动播放。可用右下角按钮或 Escape 暂停。';
+  section.classList.add('film-ready');showSound('loading');refresh();
   return{refresh};
 }

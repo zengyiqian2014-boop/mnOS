@@ -68,8 +68,14 @@
             <span class="film-caption">运行方式示意 · 当前支持控制台程序，尚不支持网络或 Linux GUI</span>
           </article>
         </div>
-        <aside class="film-audio" hidden aria-label="3 Strikes 音乐播放器"><div class="film-audio-top"><a href="https://soundcloud.com/terrorjr/3-strikes" target="_blank" rel="noopener">Terror Jr · 3 Strikes</a><button type="button" class="film-audio-close" aria-label="停止音乐并关闭播放器">×</button></div><p class="film-audio-status" role="status">音乐从约 00:12 开始，画面跟随播放进度。</p><div class="film-audio-player"></div></aside>
-        <div class="film-controls shell"><div class="film-chapters" role="group" aria-label="介绍章节"><button type="button" data-chapter="0" aria-label="查看自研内核" aria-pressed="true"><span>01</span><i></i><b>内核</b></button><button type="button" data-chapter="1" aria-label="查看原生桌面" aria-pressed="false"><span>02</span><i></i><b>桌面</b></button><button type="button" data-chapter="2" aria-label="查看 Linux 模拟" aria-pressed="false"><span>03</span><i></i><b>模拟</b></button></div><button class="film-play" type="button" aria-pressed="false">播放介绍 <span>↗</span></button><button class="film-music" type="button" aria-expanded="false">音乐版 · 3 Strikes ↗</button><span class="film-scroll-hint">下滑推进镜头 ↓</span></div>
+        <audio class="film-audio-source" preload="none" hidden></audio>
+        <p class="film-status sr-only" role="status"></p>
+        <a class="film-scroll-hint" href="#editions" aria-label="下滑了解 mnOS"><span>继续探索</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></a>
+        <div class="film-controls" role="group" aria-label="介绍播放控制">
+          <button class="film-sound" type="button" aria-pressed="false" aria-label="开启声音" title="开启声音" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path class="sound-waves" d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/><path class="sound-off" d="m16 9 6 6m0-6-6 6"/></svg></button>
+          <button class="film-play" type="button" aria-pressed="false" aria-label="暂停介绍" title="暂停介绍"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="pause-shape" d="M8 6v12M16 6v12"/><path class="play-shape" d="m9 5 10 7-10 7z"/></svg></button>
+        </div>
+        <div class="film-timeline" aria-hidden="true"><i></i></div>
       </div>
     </section>
 

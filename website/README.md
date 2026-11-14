@@ -2,11 +2,11 @@
 
 Original product site, published from this repository at
 <https://zengyiqian2014-boop.github.io/mnOS/>. Buildless HTML, CSS and ES modules;
-no frontend framework, external fonts or analytics. The optional music button
-loads SoundCloud's visible official player only after a user click.
+no frontend framework, external fonts, analytics or third-party player SDKs.
+The visual introduction starts automatically in place; it never scrolls the page.
 
 ```sh
-node --test website/scripts/catalog.test.mjs
+node --test website/scripts/catalog.test.mjs website/scripts/film-unit.test.mjs
 node website/scripts/serve.mjs
 # Open http://127.0.0.1:4173
 node website/scripts/build.mjs
@@ -29,13 +29,41 @@ device and chip illustrate the software; they are not physical mnOS products.
 The reference for lighting and camera framing was Apple's MacBook Pro product
 presentation. No Apple models, images or animation files are included.
 
-Scroll scrubs the scene in either direction. The play button runs a 24-second
-silent sequence. Music mode streams Terror Jr's artist upload of **3 Strikes**
-through SoundCloud, beginning at approximately **00:12.06**. Eight 3-second bars
-set the 80-BPM shot spacing. The SoundCloud position, rather than a separate
-wall clock, drives playback; buffering cannot run the visuals ahead indefinitely.
-No audio recording is stored or redistributed. Browser playback policies and
-SoundCloud availability still apply; the visible player can be started manually.
+The 24-second introduction uses continuous camera curves, a moving hinge and
+transmissive glass around the floating system screens. It plays once and holds
+its final frame. Scrolling away or hiding the tab pauses it; returning resumes
+unless the user explicitly paused it. Small corner buttons control playback and
+sound. The ordinary page remains scrollable throughout.
+
+Audio uses a hidden native HTML audio element. Its clock synchronizes the camera
+while playing; blocked or unavailable audio cannot stop the visual introduction.
+Audible autoplay still follows browser policy: when blocked, a genuine tap or key
+press can start it. Reduced motion does not request audio or construct WebGL.
+
+**The requested recording is not bundled or configured.** The old SoundCloud
+player has been removed. The checked-in `media/music.json` has an empty `sources`
+array, so the public page is silent and hides its sound control. Do not describe
+it as successfully streaming Three Strikes or as verified reachable in China.
+
+To configure a licensed recording, add a same-origin file or publicly reachable
+HTTPS CDN URLs in `media/music.json`, ordered by preference (up to three):
+
+```json
+{
+  "title": "3 Strikes",
+  "artist": "Terror Jr",
+  "start": 12.06,
+  "duration": 24,
+  "sources": ["./media/intro.m4a", "https://your-cdn.example/intro.m4a"]
+}
+```
+
+Relative paths resolve from the website root. The recording must include the
+whole configured excerpt. Serve a correct audio MIME type and support byte
+ranges for seeking. Each unavailable source has a five-second timeout before
+trying the next mirror. Audio files under `media/` are included by the build;
+the configuration is versioned with the scripts. This setting alone does not
+make a GitHub-hosted file fast in China; verify the chosen CDN from that region.
 
 Downloads are selected from the published resource catalog by edition, image
 profile and CPU architecture. Unpublished combinations have no download link.
@@ -46,11 +74,11 @@ workflow verifies the signed fallback and the operating-system updater verifies
 its own signed catalog. The page links signatures and displays asset SHA-256.
 
 Motion respects `prefers-reduced-motion` and the persistent pause control. The
-3D scene renders only when its progress or size changes, caps the pixel ratio
-at 1.7, and stops playback when the tab is hidden. Wheel, touch and Escape stop
-automatic playback. WebGL/image failure falls back to the readable introduction;
-music failure leaves silent playback available. Reduced motion and no JavaScript
-show all three chapters in document order.
+renderer caps pixel ratio at 1.5 on desktop and 1.25 on phones, reducing it to 1
+when sustained slow frames are detected. Pin geometry uses instancing. No frame
+loop runs while the film is off screen, paused, hidden, or finished. WebGL/image
+failure keeps the readable fallback. Reduced motion and no JavaScript show all
+three chapters in document order.
 
 With Playwright and Chromium available, run these against the preview server:
 
@@ -62,8 +90,11 @@ node website/scripts/download-consent.test.mjs
 
 `PLAYWRIGHT_MODULE`, `CHROMIUM` and `MNOS_SITE_URL` can override local paths.
 The cinema test renders real WebGL at 1440, 390 and 320 pixels and uses a
-deterministic player fixture to test seeking, buffering, pause and service
-failure. Actual SoundCloud streaming is also checked manually before publishing.
+generated WAV to exercise Chromium's real decoder, audio clock and autoplay
+policy. It verifies seeking, pause/resume, failed-source failover and image or
+context-loss fallback. The fixture is not the requested song and does not prove
+that a production audio server works in China. Download tests separately check
+both system families, architectures, delivery modes and consent.
 
 The Pages workflow has separate read-only build and Pages deployment permissions.
 It runs for website changes and successful resource publications. The catalog
