@@ -108,7 +108,7 @@ function renderDownload() {
   if (selectedImage) {
     $('#download-version').textContent = `${selectedImage.version} · ${flavor === 'lite' ? 'Lite' : 'Full'}`;
     $('#result-size').textContent = formatBytes(selectedImage.bytes);
-    downloadButton.href = selectedImage.url;
+    downloadButton.disabled = false;
     downloadButton.setAttribute('aria-disabled', 'false');
     downloadButton.innerHTML = '下载安装镜像 <svg class="icon"><use href="#icon-download"/></svg>';
     $('#download-notes').href = selectedImage.release;
@@ -116,7 +116,7 @@ function renderDownload() {
   } else {
     $('#download-version').textContent = catalog ? '此版本组合暂未发布。请切换配置，或查看资源目录。' : '资源目录暂时无法读取，请从下方完整目录下载。';
     $('#result-size').textContent = '—';
-    downloadButton.removeAttribute('href');
+    downloadButton.disabled = true;
     downloadButton.setAttribute('aria-disabled', 'true');
     downloadButton.textContent = catalog ? '暂未发布' : '目录暂不可用';
     $('#download-notes').href = `${REPOSITORY}/tree/resources`;
@@ -125,7 +125,36 @@ function renderDownload() {
 }
 $('#download-arch').addEventListener('change', renderDownload);
 $('#download-flavor').addEventListener('change', renderDownload);
-downloadButton.addEventListener('click', event => { if (!selectedImage) event.preventDefault(); });
+const consentDialog = $('#download-consent');
+const consentAgree = $('#consent-agree');
+const consentDownload = $('#consent-download');
+let pendingImage = null;
+downloadButton.addEventListener('click', () => {
+  if (!selectedImage) return;
+  // Freeze the exact selection: a live catalog refresh must not change the
+  // image to which the user is agreeing while the dialog is open.
+  pendingImage = { ...selectedImage };
+  consentAgree.checked = false;
+  consentDownload.disabled = true;
+  $('#consent-image').textContent = decodeURIComponent(new URL(pendingImage.url).pathname.split('/').pop());
+  consentDialog.showModal();
+});
+consentAgree.addEventListener('change', () => { consentDownload.disabled = !consentAgree.checked; });
+$('#consent-cancel').addEventListener('click', () => consentDialog.close());
+consentDialog.addEventListener('close', () => {
+  pendingImage = null;
+  consentAgree.checked = false;
+  consentDownload.disabled = true;
+  downloadButton.focus({ preventScroll: true });
+});
+$('#consent-form').addEventListener('submit', event => {
+  event.preventDefault();
+  if (!consentAgree.checked || !pendingImage) return;
+  const url = pendingImage.url;
+  consentDownload.disabled = true;
+  consentDialog.close();
+  window.location.assign(url);
+});
 $('#copy-checksum').addEventListener('click', () => { if (selectedImage) copy(selectedImage.sha256, 'SHA-256 校验值已复制'); });
 
 async function fetchCatalog(url) {
