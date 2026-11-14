@@ -169,7 +169,13 @@ fi
 dpkg-query -W -f='${binary:Package}\t${Version}\t${Architecture}\t${source:Package}\t${source:Version}\n' > /usr/share/doc/mnos/packages.tsv
 uname -m > /usr/share/doc/mnos/build-architecture
 update-initramfs -u -k all
-glib-compile-schemas /usr/share/glib-2.0/schemas
+if command -v glib-compile-schemas >/dev/null; then
+    glib-compile-schemas /usr/share/glib-2.0/schemas
+else
+    # Debian keeps the C executable in the runtime library package; the /usr/bin
+    # symlink belongs to an optional tools package omitted from Lite.
+    /usr/lib/"$(cc -dumpmachine)"/glib-2.0/glib-compile-schemas /usr/share/glib-2.0/schemas
+fi
 update-desktop-database /usr/share/applications || true
 gtk-update-icon-cache -q -f /usr/share/icons/hicolor || true
 fc-cache -f
