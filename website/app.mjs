@@ -1,4 +1,5 @@
 import { RAW_CATALOG, REPOSITORY, readCatalog, findImage, formatBytes } from './catalog.mjs';
+import { mountFilm } from './film.mjs';
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -10,6 +11,7 @@ const edition = document.body.dataset.system === 'linux' ? 'linux' : 'native';
 let userPaused = false;
 try { userPaused = localStorage.getItem('mnos-motion') === 'paused'; } catch { /* Storage is optional. */ }
 const isPaused = () => reducedMotion.matches || userPaused;
+const film = mountFilm({ isPaused });
 let toastTimer;
 function toast(message) {
   $('#toast').textContent = message;
@@ -100,14 +102,21 @@ const guidance = {
 function renderDownload() {
   const architecture = $('#download-arch').value;
   const flavor = $('#download-flavor').value;
-  selectedImage = findImage(catalog, edition, architecture, flavor);
+  const delivery = $('#download-delivery').value;
+  selectedImage = findImage(catalog, edition, architecture, flavor, delivery);
   $('#download-name').textContent = edition === 'native' ? 'mnOS 自研系统' : 'Linux 独立系统';
   $('#result-arch').textContent = architecture.toUpperCase();
-  $('#download-guidance').textContent = guidance[edition];
+  $('#download-guidance').textContent = guidance[edition] + (delivery === 'online'
+    ? ' 在线安装包需要网络，安装时下载并校验系统文件。'
+    : ' 离线安装包内含系统与所选工具，安装时不需要网络。');
   $('#checksum-details').hidden = !selectedImage;
   if (selectedImage) {
-    $('#download-version').textContent = `${selectedImage.version} · ${flavor === 'lite' ? 'Lite' : 'Full'}`;
+    $('#download-version').textContent = `${selectedImage.version} · ${flavor === 'lite' ? 'Lite' : 'Full'} · ${delivery === 'online' ? '在线安装' : '离线安装'}`;
     $('#result-size').textContent = formatBytes(selectedImage.bytes);
+    const decimal = selectedImage.bytes >= 1e9
+      ? `${(selectedImage.bytes / 1e9).toFixed(3)} GB`
+      : `${(selectedImage.bytes / 1e6).toFixed(2)} MB`;
+    $('#result-size-detail').textContent = `${decimal} · ${selectedImage.bytes.toLocaleString('en-US')} 字节。以上为 ISO 下载文件大小，不是安装后的磁盘占用。`;
     downloadButton.disabled = false;
     downloadButton.setAttribute('aria-disabled', 'false');
     downloadButton.innerHTML = '下载安装镜像 <svg class="icon"><use href="#icon-download"/></svg>';
@@ -116,6 +125,7 @@ function renderDownload() {
   } else {
     $('#download-version').textContent = catalog ? '此版本组合暂未发布。请切换配置，或查看资源目录。' : '资源目录暂时无法读取，请从下方完整目录下载。';
     $('#result-size').textContent = '—';
+    $('#result-size-detail').textContent = '';
     downloadButton.disabled = true;
     downloadButton.setAttribute('aria-disabled', 'true');
     downloadButton.textContent = catalog ? '暂未发布' : '目录暂不可用';
@@ -125,6 +135,7 @@ function renderDownload() {
 }
 $('#download-arch').addEventListener('change', renderDownload);
 $('#download-flavor').addEventListener('change', renderDownload);
+$('#download-delivery').addEventListener('change', renderDownload);
 const consentDialog = $('#download-consent');
 const consentAgree = $('#consent-agree');
 const consentDownload = $('#consent-download');
@@ -266,6 +277,7 @@ function setMotion() {
   $('#motion-toggle').disabled = reducedMotion.matches;
   scheduleField();
   updateScroll();
+  film.refresh();
 }
 $('#motion-toggle').addEventListener('click', () => {
   userPaused = !userPaused;

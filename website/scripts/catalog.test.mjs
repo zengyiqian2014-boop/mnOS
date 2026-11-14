@@ -20,6 +20,16 @@ test('numeric preview order selects preview 10 after preview 2', () => {
   const candidates = { resources: [2, 10, 1].map(n => ({ ...template, version: `v0.7-native-preview.${n}` })) };
   assert.equal(findImage(candidates, 'native', 'amd64', 'full').version, 'v0.7-native-preview.10');
 });
+test('online and offline images never substitute for one another', () => {
+  const offline = findImage(catalog, 'linux', 'amd64', 'full');
+  assert.equal(offline.delivery, 'offline');
+  const online = { ...offline, delivery: 'online', name: 'mnOS-linux-online-amd64.iso', version: 'v9.0-full-preview.1' };
+  const candidates = { resources: [offline, online] };
+  assert.equal(findImage(candidates, 'linux', 'amd64', 'full'), offline);
+  assert.equal(findImage(candidates, 'linux', 'amd64', 'full', 'online'), online);
+  assert.equal(findImage({ resources: [offline] }, 'linux', 'amd64', 'full', 'online'), null);
+  assert.throws(() => readCatalog({ ...value, resources: [{ ...offline, delivery: 'online' }] }));
+});
 test('untrusted URLs, invalid checksums and missing metadata are not downloads', () => {
   const template = catalog.resources[0];
   for (const patch of [

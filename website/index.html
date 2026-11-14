@@ -61,17 +61,33 @@
       <div class="hero-bottom shell"><span>SOURCE CODE ON GITHUB</span><a href="#experience">系统介绍 <span class="scroll-line"></span></a><span>自研内核 · 按需模拟</span></div>
     </section>
 
-    <section class="experience" id="experience" aria-labelledby="experience-title">
-      <div class="experience-sticky">
-        <div class="section-heading shell reveal"><p class="eyebrow">原生桌面</p><h2 id="experience-title">窗口、文件、<span class="muted">终端与设置。</span></h2><p>下图来自实际运行的 mnOS，展示桌面与 Linux 模拟窗口。</p></div>
-        <div class="desktop-stage shell">
-          <div class="desktop-frame">
-            <div class="desktop-bar"><span class="window-dots"><i></i><i></i><i></i></span><span id="desktop-caption">mnOS Native · 原生桌面实机画面</span><svg class="icon"><use href="#mark"/></svg></div>
-            <img id="desktop-image" src="./assets/native-desktop.png" width="1280" height="720" alt="mnOS 原生桌面实机截图，正在自研解释器中运行 Linux 控制台程序" loading="lazy" decoding="async">
-          </div>
-          <div class="desktop-glow" aria-hidden="true"></div>
+    <section class="scroll-film" id="experience" aria-label="mnOS 动态介绍">
+      <div class="film-sticky">
+        <div class="film-topline shell"><span>mnOS / INSIDE THE SYSTEM</span><a href="#editions">跳过介绍 ↗</a></div>
+        <div class="film-scenes shell">
+          <article class="film-scene film-kernel" data-scene="0">
+            <div class="film-copy"><p class="eyebrow">01 / 自研内核</p><h2>从内核，<br><span>开始。</span></h2><p>C 与汇编编写。<br>启动后，运行 mnOS 自己的内核。</p></div>
+            <div class="film-visual kernel-visual" aria-hidden="true">
+              <div class="kernel-horizon"></div><div class="kernel-grid"></div>
+              <svg class="kernel-routes" viewBox="0 0 640 640"><g><path d="M0 160h160l100 100h60M0 480h160l100-100h60M640 160H480L380 260h-60M640 480H480L380 380h-60M160 0v160l100 100v60M480 0v160L380 260v60M160 640V480l100-100v-60M480 640V480L380 380v-60"/></g></svg>
+              <div class="kernel-slab slab-bottom"></div><div class="kernel-slab slab-middle"></div>
+              <div class="kernel-slab slab-top"><svg><use href="#mark"/></svg><strong>mnOS</strong><span>ORIGINAL KERNEL</span></div>
+              <div class="kernel-architecture"><span>AMD64</span><i></i><span>ARM64</span></div>
+            </div>
+            <span class="film-caption">内核结构示意 · C / Assembly</span>
+          </article>
+          <article class="film-scene film-desktop" data-scene="1">
+            <div class="film-copy"><p class="eyebrow">02 / 原生图形界面</p><h2>看得见。<br><span>用得上。</span></h2><p>窗口、文件、编辑器与终端。<br>从同一个桌面打开。</p></div>
+            <figure class="film-visual film-screen"><div class="film-screen-edge"><div class="film-screen-top"><span>mnOS Native</span><svg class="icon"><use href="#mark"/></svg></div><img src="./assets/native-desktop.png" width="1280" height="720" alt="真实 mnOS 原生桌面，文件、编辑器、终端、设置及 Linux 模拟窗口" loading="lazy" decoding="async"></div><div class="film-screen-shadow"></div></figure>
+            <span class="film-caption">真实系统画面 · 不是界面效果图</span>
+          </article>
+          <article class="film-scene film-guest" data-scene="2">
+            <div class="film-copy"><p class="eyebrow">03 / LINUX 模拟环境</p><h2>需要时，<br><span>再启动。</span></h2><p>默认关闭。经你确认后运行。<br>在设置中，随时暂停或停止。</p></div>
+            <div class="film-visual guest-visual" aria-hidden="true"><div class="guest-host"><span class="guest-host-label">mnOS / HOST</span><div class="guest-orbit"></div><div class="guest-window"><div class="guest-heading"><svg class="icon"><use href="#terminal"/></svg><span>Linux</span><span class="guest-switch"><i></i></span></div><div class="guest-command"><span>❯</span> linux start</div><div class="guest-lines"><span>RV64 Linux / BusyBox</span><i></i><i></i><i></i></div><span class="guest-mode">按需启动 / 独立客体内存</span></div><span class="guest-host-bottom">HOST → GUEST</span></div></div>
+            <span class="film-caption">运行方式示意 · 当前支持控制台程序，尚不支持网络或 Linux GUI</span>
+          </article>
         </div>
-        <div class="preview-controls"><span class="preview-caption">mnOS 原生桌面 · Linux 在窗口内模拟运行</span><span>真实系统截图 · 模拟环境默认关闭</span></div>
+        <div class="film-controls shell"><div class="film-chapters" role="group" aria-label="介绍章节"><button type="button" data-chapter="0" aria-label="查看自研内核" aria-pressed="true"><span>01</span><i></i><b>内核</b></button><button type="button" data-chapter="1" aria-label="查看原生桌面" aria-pressed="false"><span>02</span><i></i><b>桌面</b></button><button type="button" data-chapter="2" aria-label="查看 Linux 模拟" aria-pressed="false"><span>03</span><i></i><b>模拟</b></button></div><button class="film-play" type="button" aria-pressed="false">播放介绍 <span>↗</span></button><span class="film-scroll-hint">向下滚动，继续观看 ↓</span></div>
       </div>
     </section>
 
@@ -130,8 +146,8 @@ Ctrl + S → 保存</code></pre><div class="code-status"><span class="status-dot
       <div class="shell section">
         <div class="section-heading reveal"><p class="eyebrow">下载</p><h2 id="download-title">mnOS<br><span class="mint">安装镜像。</span></h2><p>这里下载自研 mnOS。安装后可按需开启内置的 Linux 模拟环境。</p></div>
         <div class="download-panel reveal">
-          <div class="download-config"><div class="download-label">01 <span>独立安装镜像</span></div><div class="download-system"><svg class="icon"><use href="#mark"/></svg><div><strong>mnOS 自研系统</strong><span>启动 mnOS 自研内核 · 内置按需开启的模拟环境</span></div></div><div class="download-selects"><label><span class="download-label">02 <span>处理器架构</span></span><select id="download-arch"><option value="amd64">AMD64 · Intel / AMD 64 位</option><option value="arm64">ARM64 · AArch64</option></select></label><label><span class="download-label">03 <span>安装配置</span></span><select id="download-flavor"><option value="full">Full · 含 Linux 模拟环境</option><option value="lite">Lite · 原生精简配置</option></select></label></div><p class="download-guidance" id="download-guidance">此 ISO 安装自研 mnOS。Linux 仅在模拟环境内运行；当前支持部分控制台程序。</p></div>
-          <div class="download-result" aria-live="polite" aria-atomic="true"><div class="download-result-top"><svg><use href="#mark"/></svg><span class="preview-badge">开发预览版</span></div><h3 id="download-name">mnOS 自研系统</h3><p id="download-version">正在读取已发布版本…</p><div class="download-meta"><span><small>架构</small><b id="result-arch">AMD64</b></span><span><small>镜像大小</small><b id="result-size">—</b></span><span><small>格式</small><b>ISO</b></span></div><button class="button button-mint" id="download-button" type="button" disabled aria-disabled="true">选择安装镜像 <svg class="icon"><use href="#icon-download"/></svg></button><a class="download-notes" id="download-notes" href="https://github.com/zengyiqian2014-boop/mnOS/releases">发布说明与测试范围 <svg class="icon"><use href="#external"/></svg></a><details class="checksum-details" id="checksum-details" hidden><summary>SHA-256 校验值</summary><code id="checksum-value"></code><button type="button" class="copy-checksum" id="copy-checksum">复制校验值</button></details></div>
+          <div class="download-config"><div class="download-label">01 <span>独立安装镜像</span></div><div class="download-system"><svg class="icon"><use href="#mark"/></svg><div><strong>mnOS 自研系统</strong><span>启动 mnOS 自研内核 · 内置按需开启的模拟环境</span></div></div><div class="download-selects"><label><span class="download-label">02 <span>处理器架构</span></span><select id="download-arch"><option value="amd64">AMD64 · Intel / AMD 64 位</option><option value="arm64">ARM64 · AArch64</option></select></label><label><span class="download-label">03 <span>安装配置</span></span><select id="download-flavor"><option value="full">Full · 含 Linux 模拟环境</option><option value="lite">Lite · 原生精简配置</option></select></label><label><span class="download-label">04 <span>安装方式</span></span><select id="download-delivery"><option value="offline">离线安装包 · 无需网络</option><option value="online">在线安装包 · 需要网络</option></select></label></div><p class="download-guidance" id="download-guidance">此 ISO 安装自研 mnOS。Linux 仅在模拟环境内运行；当前支持部分控制台程序。</p></div>
+          <div class="download-result" aria-live="polite" aria-atomic="true"><div class="download-result-top"><svg><use href="#mark"/></svg><span class="preview-badge">开发预览版</span></div><h3 id="download-name">mnOS 自研系统</h3><p id="download-version">正在读取已发布版本…</p><div class="download-meta"><span><small>架构</small><b id="result-arch">AMD64</b></span><span><small>镜像大小</small><b id="result-size">—</b></span><span><small>格式</small><b>ISO</b></span></div><p class="download-size-detail" id="result-size-detail"></p><button class="button button-mint" id="download-button" type="button" disabled aria-disabled="true">选择安装镜像 <svg class="icon"><use href="#icon-download"/></svg></button><a class="download-notes" id="download-notes" href="https://github.com/zengyiqian2014-boop/mnOS/releases">发布说明与测试范围 <svg class="icon"><use href="#external"/></svg></a><details class="checksum-details" id="checksum-details" hidden><summary>SHA-256 校验值</summary><code id="checksum-value"></code><button type="button" class="copy-checksum" id="copy-checksum">复制校验值</button></details></div>
         </div>
         <a class="separate-system-link" href="./linux.html#download">独立 Linux 系统 ISO 下载 <svg class="icon"><use href="#arrow"/></svg></a>
         <div class="download-footnote"><p id="catalog-status" role="status">资源目录载入中</p><p>同一架构的镜像用于已支持的虚拟机和硬件。请先阅读测试范围；ARM64 并不代表能直接安装到所有 ARM 设备。</p></div>
@@ -139,9 +155,10 @@ Ctrl + S → 保存</code></pre><div class="code-status"><span class="status-dot
         <noscript><p class="no-script">选择器需要 JavaScript。你仍可直接访问 <a href="https://github.com/zengyiqian2014-boop/mnOS/tree/resources">完整资源目录</a> 下载镜像和补丁。</p></noscript>
       </div>
     </section>
+    <section class="support-strip shell" aria-labelledby="support-title"><div><p class="eyebrow">系统支持</p><h2 id="support-title">有问题，随时反馈。</h2><p>Bug、启动异常或硬件兼容性问题，都可以发给我们。</p></div><div><a class="support-email" href="mailto:report.mnos@proton.me">report.mnos@proton.me</a><a class="text-link" href="./support.html">查看反馈说明 <svg class="icon"><use href="#arrow"/></svg></a></div></section>
   </main>
 
-  <footer class="site-footer shell"><div class="footer-top"><a class="brand" href="#"><svg><use href="#mark"/></svg><span>mnOS</span></a><p>mnOS <span>开源项目</span></p><a class="text-link" href="https://github.com/zengyiqian2014-boop/mnOS">查看源码 <svg class="icon"><use href="#external"/></svg></a></div><div class="footer-bottom"><span>© <span id="year">2026</span> mnOS contributors</span><div><a href="https://github.com/zengyiqian2014-boop/mnOS/blob/main/README.zh.md">文档</a><a href="https://github.com/zengyiqian2014-boop/mnOS/issues">反馈</a><a href="./terms.html">使用说明</a><button id="motion-toggle" type="button" aria-pressed="false">暂停动画</button></div><span>C · C++ · Assembly</span></div></footer>
+  <footer class="site-footer shell"><div class="footer-top"><a class="brand" href="#"><svg><use href="#mark"/></svg><span>mnOS</span></a><p>mnOS <span>开源项目</span></p><a class="text-link" href="https://github.com/zengyiqian2014-boop/mnOS">查看源码 <svg class="icon"><use href="#external"/></svg></a></div><div class="footer-bottom"><span>© <span id="year">2026</span> mnOS contributors</span><div><a href="https://github.com/zengyiqian2014-boop/mnOS/blob/main/README.zh.md">文档</a><a href="./support.html">系统支持</a><a href="./terms.html">使用说明</a><button id="motion-toggle" type="button" aria-pressed="false">暂停动画</button></div><span>C · C++ · Assembly</span></div></footer>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <dialog class="download-consent" id="download-consent" aria-labelledby="consent-title" aria-describedby="consent-image">

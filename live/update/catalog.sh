@@ -28,6 +28,7 @@ jq --slurpfile packages "$work/versions.json" --arg version "$version" --arg upd
      . as $asset | {name:.name, url:.browser_download_url, bytes:.size, sha256:(.digest | sub("^sha256:";"")),
       kind:(if (.name|endswith(".deb")) then "patch" elif (.name|contains("-lite-")) then "lite" else "full" end),
       edition:(if (.name|contains("native")) then "native" else "linux" end),
+      delivery:(if (.name|contains("-online-")) then "online" else "offline" end),
       architecture:(if (.name|test("(amd64|x86_64)")) then "amd64" elif (.name|contains("arm64")) then "arm64" else "all" end),
       version:(if (.name|endswith(".deb")) then ([$packages[0][]|select(.filename==$asset.name)|.version][0]) else $release.tag_name end),
       release:$release.html_url}] | sort_by(.kind,.edition,.architecture,.version,.name)}' \
