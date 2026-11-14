@@ -89,6 +89,13 @@ const char *auth_name(void) { return auth_logged_in()?db.users[session].name:"lo
 bool auth_prompting(void) { return state!=READY; }
 const char *auth_status(void) { return status; }
 bool auth_factor_enabled(void) {return auth_logged_in()&&db.users[session].factor.enabled==1;}
+bool auth_factors_available(void) {
+#if MNOS_LITE
+    return false;
+#else
+    return true;
+#endif
+}
 const char *auth_setup_secret(void) {return state==FACTOR&&action==MFA_ENROLL?setup_secret:"";}
 const char *auth_setup_uri(void) {return state==FACTOR&&action==MFA_ENROLL?setup_uri:"";}
 const char *auth_recovery_code(void) {return state==RECOVERY?recovery_codes[recovery_page]:"";}
@@ -199,6 +206,9 @@ void auth_tick(uint64_t seconds) {
     if(action==LOGIN||action==SU||action==VERIFY_CHANGE||action==MFA_ENROLL||action==MFA_DISABLE) {
         bool ok=same_hash(kdf.result,db.users[target].hash)&&known;auth_wipe(&kdf,sizeof kdf);
         if(!ok) { failed();return; }
+        if(db.users[target].factor.enabled&&!auth_factors_available()) {
+            failed();status="This account requires Full edition authentication. Boot the Full edition.";return;
+        }
         if(db.users[target].factor.enabled||action==MFA_ENROLL)start_factor();else verified();return;
     }
     memcpy(pending.users[target].hash,kdf.result,32);auth_wipe(&kdf,sizeof kdf);
@@ -212,7 +222,7 @@ void auth_tick(uint64_t seconds) {
     db=pending;auth_wipe(&pending,sizeof pending);
     if(action==ENROLL_ROOT) {
         signed_in(1);status="Accounts created. Signed in as the ordinary user.";
-        if(io.persistent)next(SETUP_FACTOR,status);
+        if(io.persistent&&auth_factors_available())next(SETUP_FACTOR,status);
     }
     else next(READY,"Account password saved.");
 }
@@ -268,6 +278,7 @@ bool auth_command(const char *command,void (*print)(const char *)) {
     }
     if(equal(command,"2fa status")) {print(auth_factor_enabled()?"Password + TOTP enabled.":"TOTP is not enabled for this account.");return true;}
     if(equal(command,"2fa enable")||equal(command,"2fa disable")) {
+        if(!auth_factors_available()) {print("Lite edition uses passwords only. Boot the Full edition to manage authenticators.");return true;}
         if(!auth_logged_in()||state!=READY) {print("Sign in first.");return true;}
         if(now<retry_after) {print("Wait before retrying authentication.");return true;}
         if(!io.persistent) {print("2FA requires persistent account storage.");return true;}

@@ -3,14 +3,23 @@ CXX ?= c++
 OUT ?= build
 CXXFLAGS += -std=c++17 -O2 -Wall -Wextra -Werror -fstack-protector-strong -D_FORTIFY_SOURCE=3 -fPIE
 LDFLAGS += -pie -Wl,-z,relro,-z,now
+FLAVOR ?= full
 SECURITY_SRC ?= $(if $(wildcard ../../native/include/auth.h),../../native,../mnos-native)
 SECURITY_INCLUDES = -I$(SECURITY_SRC)/include -I$(SECURITY_SRC)/vendor/qrcodegen -I$(SECURITY_SRC)/vendor/monocypher
 SECURITY_CFLAGS = -std=c11 -O2 -Wall -Wextra -Werror -Wno-misleading-indentation -fstack-protector-strong -D_FORTIFY_SOURCE=3 -fPIC $(SECURITY_INCLUDES)
 SECURITY_OBJECTS = $(OUT)/security/password.o $(OUT)/security/factor.o $(OUT)/security/monocypher.o $(OUT)/security/login-protocol.o
 SECURITY_UI_OBJECTS = $(SECURITY_OBJECTS) $(OUT)/security/qrcodegen.o
 PAM_LIBDIR ?= /usr/lib/$(shell $(CC) -dumpmachine)/security
-all: $(OUT)/mnos-center $(OUT)/first-boot $(OUT)/mnos-network-policy $(OUT)/wallpaper $(OUT)/installer $(OUT)/mnos-help $(OUT)/mnos-pkg $(OUT)/mnos-admin $(OUT)/login-process $(OUT)/login-helper $(OUT)/pam_mnos_2fa.so $(OUT)/mnos-security
-all: $(OUT)/mnos-face-preview
+all: $(OUT)/mnos-center $(OUT)/first-boot $(OUT)/mnos-network-policy $(OUT)/wallpaper $(OUT)/installer $(OUT)/mnos-help $(OUT)/mnos-pkg $(OUT)/mnos-admin $(OUT)/mnos-security
+all: $(OUT)/mnos-session
+all: $(OUT)/mnos
+$(OUT)/mnos: mnos.cpp | $(OUT)
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
+$(OUT)/mnos-session: session.cpp | $(OUT)
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
+ifeq ($(FLAVOR),full)
+all: $(OUT)/login-process $(OUT)/login-helper $(OUT)/pam_mnos_2fa.so $(OUT)/mnos-face-preview
+endif
 $(OUT)/mnos-face-preview: face-preview.cpp face-challenge.hpp security-ui.hpp $(SECURITY_UI_OBJECTS)
 	$(CXX) $(CXXFLAGS) -Wno-misleading-indentation $(CPPFLAGS) $(SECURITY_INCLUDES) face-preview.cpp $(SECURITY_UI_OBJECTS) -o $@ $(LDFLAGS) -pthread $$(pkg-config --cflags --libs gtk+-3.0 opencv4)
 $(OUT)/security:
@@ -54,10 +63,14 @@ $(OUT)/mnos-network-policy: network-policy.cpp process.hpp | $(OUT)
 $(OUT)/wallpaper: wallpaper.cpp | $(OUT)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS) $$(pkg-config --cflags --libs glib-2.0)
 install: all
+	install -Dm755 $(OUT)/mnos $(DESTDIR)/usr/bin/mnos
+	install -Dm755 $(OUT)/mnos-session $(DESTDIR)/usr/bin/mnos-session
+ifeq ($(FLAVOR),full)
 	install -Dm755 $(OUT)/mnos-face-preview $(DESTDIR)/usr/bin/mnos-face-preview
 	install -Dm755 $(OUT)/login-process $(DESTDIR)/usr/lib/mnos/login-process
 	install -Dm4755 $(OUT)/login-helper $(DESTDIR)/usr/lib/mnos/login-helper
 	install -Dm644 $(OUT)/pam_mnos_2fa.so $(DESTDIR)$(PAM_LIBDIR)/pam_mnos_2fa.so
+endif
 	install -Dm755 $(OUT)/mnos-security $(DESTDIR)/usr/bin/mnos-security
 	install -Dm755 $(OUT)/mnos-admin $(DESTDIR)/usr/bin/mnos-admin
 	install -Dm755 $(OUT)/mnos-help $(DESTDIR)/usr/bin/mnos-help

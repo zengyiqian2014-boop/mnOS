@@ -1,0 +1,59 @@
+name: Lite installer and native desktop
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Python-free Lite installer with real APT
+        run: FLAVOR=lite ./live/build.sh installer '${{ matrix.arch }}'
+      - name: Boot installer, install, remove ISO, test password login, desktop and C++
+        run: |
+          c++ -std=c++17 -O2 -Wall -Wextra -Werror live/tests/install_vm.cpp -o live/out/install-vm
+          mkdir -p live/out/validation
+          devices=()
+          if [ -c /dev/kvm ]; then devices+=(--device /dev/kvm); fi
+          docker run --rm --network none --memory=7g --cpus=4 "${devices[@]}" \
+            -e MNOS_TEST_LITE=1 -v "$PWD/live/out:/out" mnos-live-builder \
+            /out/install-vm '${{ matrix.arch }}' '/out/mnOS-2.0-preview-installer-lite-${{ matrix.arch }}.iso' /out/validation
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-lite-${{ matrix.arch }}
+          path: live/out/
+          compression-level: 0
+          retention-days: 14
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t mnos-native-builder -f native/Builder.Dockerfile .
+      - name: Install and boot both password-only native desktops
+        run: |
+          docker run --rm --network none -e MNOS_TEST_LITE=1 -e FLAVOR=lite \
+            -v "$PWD/native:/native" -w /native mnos-native-builder bash -ec '
+            make host-tests
+            sh installer/build.sh
+            c++ -std=c++17 -O2 -Wall -Wextra -Werror tests/desktop_vm.cpp -o build/desktop-vm
+            build/desktop-vm build/desktop amd64
+            build/desktop-vm build/desktop arm64'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-lite
+          path: native/build/desktop/
+          compression-level: 0
+          retention-days: 14

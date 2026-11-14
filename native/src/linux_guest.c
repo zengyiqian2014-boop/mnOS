@@ -9,6 +9,7 @@ static uint8_t *ram;
 static bool running, paused, confirming, shell_ready;
 static uint32_t owner=UINT32_MAX;
 static unsigned requested_app, prompt_match;
+static uint64_t host_tick;
 static const char *queued_command;
 static const struct { const char *id, *name, *command; } apps[] = {
     {"terminal", "Linux 终端", NULL},
@@ -112,7 +113,8 @@ static bool start(void (*out)(const char *)) {
        !guest_copy(&vm,GUEST_BASE+GUEST_DTB,linux_dtb_start,dtb_size)) {
         linux_guest_clear();out("Unable to load Linux guest; memory cleared.");return false;
     }
-    owner=auth_uid();running=true;state="Running / Linux in original RV64 interpreter";
+    owner=auth_uid();running=true;vm.yield_on_idle=1;host_tick=ticks;
+    state="Running / Linux in original RV64 interpreter";
     out("Starting Linux guest: 64 MiB private RAM, one software CPU.");
     out("Guest files are temporary. No host disks, network or GPU are exposed.");
     log_write("LINUX GUEST: start / original mnOS host / " MNOS_ARCH "\n");return true;
@@ -151,6 +153,7 @@ bool linux_guest_command(const char *cmd,void (*out)(const char *)) {
     if(!session()){out("Sign in to manage your Linux guest.");return true;}
     const char *p=cmd[5]?cmd+6:"status";
     if(!strcmp(p,"status")){out(state);out("RV64IMAC / Sv39 / Linux SBI / 64 MiB / volatile files");
+        out("Idle CPU yields to mnOS; input and scheduled timers resume it automatically.");
         out("No Linux desktop apps, floating point, network or host sharing yet.");}
     else if(!strcmp(p,"apps")){for(unsigned i=0;i<ARRAY_SIZE(apps);i++){out(apps[i].id);out(apps[i].name);}}
     else if(!strncmp(p,"open ",5)){linux_guest_open(p+5,out);}
@@ -168,7 +171,21 @@ bool linux_guest_command(const char *cmd,void (*out)(const char *)) {
     return true;
 }
 void linux_guest_tick(void) {
-    if(!session()||!running||paused)return;
+    if(!session()||!running)return;
+    uint64_t now=ticks,elapsed=now-host_tick;host_tick=now;
+    if(paused)return;
+    if(vm.waiting) {
+        /* Device-tree timebase is 10 MHz. Keep sleeping/background timers
+         * alive; an idle shell is not proof that every user job has exited. */
+        if(elapsed>60*PIT_HZ)elapsed=60*PIT_HZ;
+        uint64_t advance=elapsed*(UINT64_C(10000000)/PIT_HZ);
+        if(UINT64_MAX-vm.time<advance)vm.time=UINT64_MAX;else vm.time+=advance;
+        if(key_read!=key_write&&vm.deadline!=UINT64_MAX&&vm.time<vm.deadline)vm.time=vm.deadline;
+        if(vm.time<vm.deadline&&!(vm.ie&vm.ip)) {
+            state="Idle / CPU frozen until input or the next guest timer";return;
+        }
+    }
+    state="Running / Linux in original RV64 interpreter";
     guest_run(&vm,100000);
     if(vm.stopped){
         bool fault=vm.stopped!=1;

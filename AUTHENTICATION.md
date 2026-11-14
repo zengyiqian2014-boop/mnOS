@@ -12,7 +12,8 @@
 | Native 安装后的首次账号设置 | 创建普通用户和独立 root 密码后，选择 Y 绑定验证器，或 N 跳过。 |
 | Linux 系统设置 | 打开“登录安全”或 `mnos-security`，开启、关闭验证器。关闭需要当前密码和第二步验证。 |
 | Native 系统设置 | F7 → Enable/Disable 2FA，或 `2fa enable` / `2fa disable` / `2fa status`。`help 2fa` 为英文，`help -cn 2fa` 为中文。 |
-| ISO 安装环境 | 不配置人脸或 TOTP 登录凭据。安装时绑定的验证器属于目标系统，ISO 会话不因此启用第二步验证。 |
+| 精简版 Lite | 初始镜像仅密码验证，不安装 Linux Login Process、PAM 2FA 或摄像头组件。安装完整版功能包后可在设置中启用。 |
+| 完整版 Full 安装环境 | 安装时绑定的验证器属于目标系统；不把账号秘密写回 ISO。 |
 
 二维码和手动密钥是同一个本机生成的 TOTP 秘密。二维码不会上传到第三方网站。
 手动添加时选择 **基于时间、SHA-1、6 位、30 秒**。密钥只在绑定页面显示。
@@ -24,6 +25,7 @@
 有时钟故障时可使用未用过的恢复码；绑定新验证器需要正确 UTC 时间。
 
 Native 更改密码时会重新加密已绑定的密钥。
+已有 Full 账号若启用了验证器，不能通过改用 Native Lite 绕过第二步，必须启动 Full。
 Linux 目前会通过 PAM 阻止在绑定期间修改密码，避免密码与加密密钥不同步：
 **先在“登录安全”关闭验证器，再更换密码，最后重新绑定**。这是当前实现限制。
 本机 PAM 的密码登录、sudo/su 和使用同一 PAM 配置的锁屏会执行第二步；
@@ -98,9 +100,10 @@ GTK 测试用 ZBar 识别真实窗口里的二维码，并核对手动密钥一�
 
 ## English summary
 
-Native and Linux now support optional password-first RFC 6238 TOTP enrollment,
+Native and Linux Full now support optional password-first RFC 6238 TOTP enrollment,
 local QR/manual pairing, encrypted secrets, one-use recovery codes and durable
-replay rejection. ISO sessions do not enroll their own additional login factors.
+replay rejection. Lite provides password-only setup; the Linux full feature
+package restores the optional authentication components without reinstalling.
 Linux changes require password reauthentication through a small privileged C
 broker; the dedicated unprivileged Login Process owns the encrypted records.
 Native provides the corresponding original C kernel service and GUI commands.

@@ -83,6 +83,10 @@ sudo mnos-pkg update，随后 sudo mnos-pkg install code。
 扩展问题。保留图形应用沙箱，不应把编辑器作为 root 运行。
 
 @@packages
+Linux 完整版和精简版都包含真正的 APT。示例见 help -cn apt。
+精简版初始镜像不含 Python；你主动用 APT 安装的软件可能引入它的依赖，
+APT 会先列出需要安装的软件包，确认后再执行。
+
 安装和更新其他软件
 
 mnos-pkg list                 已安装软件及版本
@@ -378,3 +382,72 @@ Linux 的 Login Process 系统账号保护加密的验证器文件，普通用�
 软件权限和静态加密不能防止恶意 root 或被攻破的内核获取运行时秘密。
 Native 认证目前仍在内核中运行，不是独立受保护进程。详细测试范围见：
 /usr/share/doc/mnos/authentication.md
+
+@@apt
+APT — 安装 Linux 软件
+
+apt search 名称                  搜索软件，普通用户可用
+apt show 软件包                  查看描述、版本、依赖，普通用户可用
+apt list --installed             列出已安装的软件包
+sudo apt update                  刷新经过签名校验的软件源索引
+sudo apt install 软件包          安装软件及依赖
+sudo apt upgrade                 更新已安装的系统组件和应用
+sudo apt remove 软件包           卸载软件，保留软件包配置
+sudo apt install ./文件.deb       安装可信的本地 Debian 软件包
+
+示例：
+  sudo apt update
+  sudo apt install nmap nano build-essential
+  apt show nmap
+  nmap --version
+
+Linux 完整版和精简版均直接使用真实 APT，安装位置是该 Linux 系统。
+使用配置好的、带签名的 Debian 软件源；完整版的 VS Code 使用独立签名源。
+软件架构须与 dpkg --print-architecture 一致。APT 本身不依赖 Python，
+不要为了使用 APT 安装 pip。安装前会列出新增依赖和磁盘用量，确认后执行。
+安装完成后用普通账号启动桌面软件，不要给 Firefox、VS Code 加 sudo。
+
+在支持 APT 的 Linux 客体中，软件装进该客体，不会变成自研内核的原生程序。
+当前 Native Edition 内置的 RV64 BusyBox 客体尚无 APT、虚拟网卡和 Debian
+用户环境，暂时不能在其中用 apt 安装 Firefox/VS Code。这仍是待完成的兼容
+功能，不能用同名空命令冒充；独立的 Linux 完整版、精简版已有真实 APT。
+
+下载失败先检查网络、DNS 和时间：ip route、nmcli general、timedatectl。
+不要关闭软件源签名或 HTTPS 校验。离线 ISO 包含所选软件，不包含整个
+Debian 软件仓库；安装额外软件通常需要网络或完整的本地依赖包。
+
+@@updates
+mnOS 更新、完整版与精简版功能包
+
+mnos status                       查看功能版本和受管理的软件包版本
+mnos source                       查看配置的签名更新源
+sudo mnos full                    给精简版补装完整版功能包
+sudo mnos update                  更新已安装的 mnOS runtime/auth/full 组件
+apt-cache policy mnos-runtime     查看更新源保留的版本号
+sudo mnos rollback 版本号          回退到指定、仍保留在源中的 mnOS 版本
+mnos apt search 名称              调用真正的 APT，也可以直接用 apt
+
+完整版功能包补装验证器设置、人脸采集预览，以及更广的 Linux 桌面、开发和
+CTF 软件。人脸预览目前还不是登录方式。APT 会下载依赖；如果所选完整版工具
+需要 Python，会一并安装。精简 ISO 初始环境不带 Python，只提供 C/C++ 开发
+环境及精选网络、CTF 工具。账号和个人文件保留，不自动打开 2FA；安装功能包
+后到“登录安全”自行选择扫码或手动密钥绑定。
+
+固定更新地址：
+https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/
+
+使用 HTTPS 和 /usr/share/keyrings/mnos-archive.gpg 中的公钥。APT 校验
+InRelease 签名和下载包摘要；旧版本软件包保留，供明确指定版本时回退。
+更新源刷新失败就停止，不关闭签名校验，不下载后直接执行远程脚本。
+
+回滚只覆盖 mnOS runtime/auth/full 软件包，不回滚个人文件、Debian Linux
+内核或其他第三方软件。整机恢复需要文件系统快照或备份。认证记录须与目标
+版本兼容；有账号启用验证器时，不允许直接卸载认证支持。
+
+日期命令 date 保持原功能；更新用 mnos update。查询不需要 root；安装、更新
+和回退需要 sudo。APT 会在实际修改前列出变更并请求确认。
+
+这些 .deb 功能包属于 Linux 版。Native 版当前的 Linux 模拟环境缺少 APT
+所需的用户环境及虚拟网卡，还不能使用这些软件包。现有解释器始终隔离客体
+地址，尚无“关闭隔离就能本机执行任意 Linux 软件”的开关。需要 Linux 直接
+管理硬件时，启动 Linux Edition；不能把启动方式的区别藏在一个假开关后面。

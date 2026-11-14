@@ -355,6 +355,7 @@ int main(int argc,char **argv) {
         check(argc==4 || (argc==5 && std::string(argv[4])=="--live-apps"),
               "Usage: install-vm amd64|arm64 ISO OUTPUT [--live-apps]");
         std::string arch=argv[1]; check(arch=="amd64"||arch=="arm64","architecture");
+        bool lite=std::getenv("MNOS_TEST_LITE")!=nullptr;
         fs::path iso=fs::absolute(argv[2]), out=fs::absolute(argv[3]); fs::create_directories(out);
         char temp[]="/tmp/mnos-install-test.XXXXXX"; check(mkdtemp(temp),"mkdtemp"); fs::path work=temp;
         fs::path disk=work/"installed.qcow2"; run({"qemu-img","create","-f","qcow2",disk.string(),"40G"});
@@ -435,13 +436,20 @@ int main(int argc,char **argv) {
             // Use real credentials on the graphical greeter, then validate its desktop.
             vm.click(640,349); vm.type(password); vm.key("ret"); vm.pause(25);
             size_t start=vm.output.size();
-            send_all(vm.serial,"test $(id -u) -ge 1000 && ! grep -qw boot=live /proc/cmdline && findmnt -n -o FSTYPE / | grep -qx ext4 && test -e /var/lib/mnos/installed-architecture && command -v code firefox-esr nano nmap mnos-pkg && /usr/sbin/getcap /usr/lib/mnos/net-admin | grep -q cap_net_admin,cap_net_raw=ep && timeout 120 sh -c 'until pgrep -u $(id -u) xfce4-session && pgrep -u $(id -u) xfce4-panel && pgrep -u $(id -u) xfwm4; do sleep 1; done' && echo MNOS_DISK_DESKTOP_PASS\n");
+            std::string tools=lite?"apt g++ nano nmap mnos":"code firefox-esr nano nmap mnos-pkg";
+            std::string session=lite?"mnos-session":"xfce4-session";
+            send_all(vm.serial,"test $(id -u) -ge 1000 && ! grep -qw boot=live /proc/cmdline && findmnt -n -o FSTYPE / | grep -qx ext4 && test -e /var/lib/mnos/installed-architecture && command -v "+tools+" && /usr/sbin/getcap /usr/lib/mnos/net-admin | grep -q cap_net_admin,cap_net_raw=ep && timeout 120 sh -c 'until pgrep -u $(id -u) "+session+" && pgrep -u $(id -u) xfce4-panel && pgrep -u $(id -u) xfwm4; do sleep 1; done' && echo MNOS_DISK_DESKTOP_PASS\n");
             vm.wait("\r\nMNOS_DISK_DESKTOP_PASS\r\n",180,start);
             vm.desktop_screen(out/(phase+"-desktop.ppm"));
             start=vm.output.size();
             send_all(vm.serial,"test \"$(cat /etc/mnos/edition)\" = linux && test ! -e /etc/grub.d/41_mnos_native && test ! -e /boot/mnos.elf && test ! -e /boot/mnos-arm64.efi && mnos-admin info && mnos-help -cn editions && printf '\\nMNOS_LINUX_EDITION_PASS\\n'\n");
             vm.wait("\r\nMNOS_LINUX_EDITION_PASS\r\n",60,start);
-            if(!nvme) {
+            if(!nvme&&lite) {
+                start=vm.output.size();
+                send_all(vm.serial,"test ! -e /usr/lib/mnos/login-helper && test ! -e /usr/bin/mnos-face-preview && ! command -v python3 && apt --version && mnos-help -cn apt && printf '#include <iostream>\\nint main(){std::cout << \"CPP_OK\";}' > /tmp/mnos-app.cpp && g++ -Wall -Werror /tmp/mnos-app.cpp -o /tmp/mnos-app && /tmp/mnos-app && printf '\\nMNOS_LITE_APT_CPP_PASS\\n'\n");
+                vm.wait("\r\nMNOS_LITE_APT_CPP_PASS\r\n",180,start);
+            }
+            if(!nvme&&!lite) {
                 start=vm.output.size();
                 send_all(vm.serial,"code --version && firefox-esr --version && mnos-help -cn code && ! mnos-pkg install nano && timeout 90 firefox-esr --headless --screenshot /tmp/mnos-browser.png 'data:text/html,<h1>mnOS offline browser check</h1>' && test -s /tmp/mnos-browser.png && printf '#include <stdio.h>\\nint main(void){puts(\"BUILD_OK\");}\\n' > /tmp/mnos-app.c && cc -Wall -Werror /tmp/mnos-app.c -o /tmp/mnos-app && /tmp/mnos-app && echo MNOS_APPLICATIONS_PASS\n");
                 vm.wait("\r\nMNOS_APPLICATIONS_PASS\r\n",180,start);

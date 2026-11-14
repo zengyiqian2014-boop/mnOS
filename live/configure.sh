@@ -4,6 +4,7 @@
 set -eu
 case "${MNOS_PROFILE:?}" in installer|hardware|qemu) ;; *) exit 2 ;; esac
 test "${MNOS_BUILD_ROOT:-}" = 1 || { echo 'Run this script through live/build.sh.' >&2; exit 1; }
+MNOS_FLAVOR=${MNOS_FLAVOR:-full}
 
 mkdir -p /etc/mnos /usr/share/doc/mnos /etc/xdg/xfce4/xfconf/xfce-perchannel-xml
 printf '%s\n' "$MNOS_PROFILE" > /etc/mnos/profile
@@ -24,6 +25,8 @@ printf 'en_US.UTF-8 UTF-8\nzh_CN.UTF-8 UTF-8\n' > /etc/locale.gen
 locale-gen
 ln -snf /usr/share/zoneinfo/Etc/UTC /etc/localtime
 passwd --lock root
+sh /usr/lib/mnos/apply-flavor "$MNOS_FLAVOR"
+if [ "$MNOS_FLAVOR" = full ]; then
 systemd-sysusers /usr/lib/sysusers.d/mnos-login.conf
 install -d -o login-process -g login-process -m 700 /var/lib/mnos-login-process
 chown root:root /usr/lib/mnos/login-helper
@@ -32,6 +35,7 @@ pam-auth-update --package
 systemctl enable mnos-login-process.socket
 (cd /usr/share/mnos/face && sha256sum --check SOURCES.sha256)
 update-cracklib
+fi
 chmod 440 /etc/sudoers.d/50-mnos
 chmod 755 /usr/lib/mnos/first-boot /usr/lib/mnos/wallpaper /usr/bin/mnos-center /usr/bin/mnos-security-check
 chmod 755 /usr/lib/mnos/installer /usr/lib/mnos/start-installer /usr/lib/mnos/install-system /usr/lib/mnos/installer-session
@@ -47,14 +51,36 @@ chmod 750 /usr/lib/mnos/net-admin
 chmod 755 /usr/bin/mnos-net /usr/sbin/mnos-network-policy
 /usr/sbin/mnos-network-policy root
 
+if [ "$MNOS_FLAVOR" = full ]; then
 sed -i 's/^ENABLED=.*/ENABLED=yes/' /etc/ufw/ufw.conf
 sed -i 's/^DEFAULT_INPUT_POLICY=.*/DEFAULT_INPUT_POLICY="DROP"/' /etc/default/ufw
 sed -i 's/^DEFAULT_FORWARD_POLICY=.*/DEFAULT_FORWARD_POLICY="DROP"/' /etc/default/ufw
+else
+cat > /etc/nftables.conf <<'NFT'
+#!/usr/sbin/nft -f
+flush ruleset
+table inet mnos {
+ chain input { type filter hook input priority 0; policy drop;
+  iifname "lo" accept
+  ct state established,related accept
+  ip protocol icmp accept
+  ip6 nexthdr ipv6-icmp accept
+  udp sport 67 udp dport 68 accept
+  udp sport 547 udp dport 546 accept
+ }
+ chain forward { type filter hook forward priority 0; policy drop; }
+ chain output { type filter hook output priority 0; policy accept; }
+}
+NFT
+systemctl enable nftables
+fi
 sed -i 's/^max_log_file =.*/max_log_file = 20/' /etc/audit/auditd.conf
 sed -i 's/^num_logs =.*/num_logs = 3/' /etc/audit/auditd.conf
 # Service starts are suppressed by policy-rc.d during package installation.
-systemctl enable NetworkManager lightdm apparmor auditd ufw chrony mnos-first-boot mnos-installer
-systemctl enable apt-daily.timer apt-daily-upgrade.timer fstrim.timer
+systemctl enable NetworkManager lightdm apparmor auditd chrony mnos-first-boot mnos-installer
+systemctl enable apt-daily.timer fstrim.timer
+if [ "$MNOS_FLAVOR" = full ]; then
+systemctl enable ufw apt-daily-upgrade.timer
 systemctl enable tuned
 if [ "$MNOS_PROFILE" = qemu ]; then
     printf 'mnos-virtual\n' > /etc/tuned/active_profile
@@ -63,6 +89,7 @@ else
 fi
 printf 'manual\n' > /etc/tuned/profile_mode
 systemctl mask cockpit.socket
+fi
 systemctl disable getty@tty1.service || true
 mkdir -p /etc/systemd/system/getty@tty1.service.d
 printf '[Unit]\nAfter=mnos-first-boot.service\n' > /etc/systemd/system/getty@tty1.service.d/10-enrollment.conf
@@ -104,6 +131,7 @@ cat > /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfwm4.xml <<EOF
 EOF
 
 # Keep the tested Debian installer modules, change only branding and constraints.
+if [ "$MNOS_FLAVOR" = full ]; then
 sed -i 's/^branding: debian/branding: mnos/; s/^prompt-install: false/prompt-install: true/' /etc/calamares/settings.conf
 # The rootfs already has signed HTTPS repositories. No temporary CD apt source.
 sed -i '/  - sources-media$/d; /  - sources-media-unmount$/d; /  - sources-final$/d' /etc/calamares/settings.conf
@@ -136,6 +164,7 @@ Icon=drive-harddisk
 Categories=System;
 EOF
 printf '\nNoDisplay=true\n' >> /usr/share/applications/calamares-install-debian.desktop
+fi
 
 dpkg-query -W -f='${binary:Package}\t${Version}\t${Architecture}\t${source:Package}\t${source:Version}\n' > /usr/share/doc/mnos/packages.tsv
 uname -m > /usr/share/doc/mnos/build-architecture

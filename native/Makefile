@@ -1,9 +1,20 @@
 .DEFAULT_GOAL := all
 CC ?= gcc
 LD ?= ld
+FLAVOR ?= full
+ifneq ($(filter $(FLAVOR),full lite),$(FLAVOR))
+$(error FLAVOR must be full or lite)
+endif
 # A freestanding kernel has no glibc __*_chk runtime. Hosted tests retain the
 # compiler's fortification and sanitizers; only native objects undefine it.
 CFLAGS = -std=c11 -O2 -g -ffreestanding -U_FORTIFY_SOURCE -fno-builtin -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-unwind-tables -m64 -mno-red-zone -mgeneral-regs-only -Wall -Wextra -Werror -Wno-misleading-indentation -Iinclude
+CFLAGS += -DMNOS_LITE=$(if $(filter lite,$(FLAVOR)),1,0)
+.PHONY: FORCE_FLAVOR
+FORCE_FLAVOR:
+build/flavor-config: FORCE_FLAVOR
+	@mkdir -p build
+	@printf '%s\n' '$(FLAVOR)' > $@.tmp
+	@cmp -s $@.tmp $@ || cp $@.tmp $@
 SOURCES = src/core.c src/string.c src/phys.c src/memory.c src/smp.c src/interrupts.c src/devices.c src/rng.c src/block.c src/mnfs.c src/files.c src/password.c src/auth.c src/ui.c src/exec.c assets/font.c
 SOURCES += src/process.c src/usercopy.c src/file_api.c src/disk_layout.c src/text.c src/commands.c assets/icons.c src/guest.c src/linux_guest.c
 SOURCES += src/factor.c src/clock.c src/rtc.c vendor/monocypher/monocypher.c
@@ -40,7 +51,7 @@ host-tests:
 	mkdir -p build
 	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude tests/guest.c src/guest.c -o build/guest-test
 	./build/guest-test
-	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude tests/linux_guest.c tests/linux_guest_image.S src/linux_guest.c -o build/linux-guest-test
+	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -DMNOS_HOST_PROCESS_TEST -Iinclude tests/linux_guest.c tests/linux_guest_image.S src/linux_guest.c -o build/linux-guest-test
 	./build/linux-guest-test
 	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -Iinclude tests/commands.c src/commands.c -o build/commands-test
 	./build/commands-test
@@ -62,11 +73,13 @@ host-tests:
 	./build/auth-test
 	$(CC) -std=c11 -O2 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude tests/factor.c src/auth.c src/password.c src/factor.c src/clock.c vendor/monocypher/monocypher.c -lcrypto -o build/factor-test
 	./build/factor-test
+	$(CC) -std=c11 -O2 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -DMNOS_LITE=1 -Iinclude tests/lite_auth.c src/auth.c src/password.c src/factor.c src/clock.c vendor/monocypher/monocypher.c -lcrypto -o build/lite-auth-test
+	./build/lite-auth-test
 
 build/mnos.elf: $(OBJECTS) linker.ld
 	$(LD) -nostdlib -z max-page-size=0x1000 -T linker.ld -o $@ $(OBJECTS)
 
-build/%.o: %.c include/kernel.h include/boot_layout.h include/phys.h include/mnfs.h include/block.h include/auth.h include/factor.h include/clock.h include/exec.h include/process.h include/file_api.h include/usercopy.h include/font.h include/icons.h include/commands.h include/guest.h include/linux_guest.h
+build/%.o: %.c build/flavor-config include/kernel.h include/boot_layout.h include/phys.h include/mnfs.h include/block.h include/auth.h include/factor.h include/clock.h include/exec.h include/process.h include/file_api.h include/usercopy.h include/font.h include/icons.h include/commands.h include/guest.h include/linux_guest.h
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 

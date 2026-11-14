@@ -15,6 +15,11 @@ static int status(uid_t uid) {
 struct Security {
     GtkWidget *window{},*summary{},*action{};uid_t uid=getuid();std::string name;int state=LOGIN_ERROR;
     void refresh() {
+        if(access("/usr/lib/mnos/login-helper",X_OK)!=0) {
+            gtk_label_set_text(GTK_LABEL(summary),"精简版使用密码登录。安装完整版功能包后可开启验证器。\n命令：sudo mnos full\n说明：help -cn editions");
+            gtk_button_set_label(GTK_BUTTON(action),"完整版功能尚未安装");
+            gtk_widget_set_sensitive(action,false);return;
+        }
         state=status(uid);
         gtk_label_set_text(GTK_LABEL(summary),state==LOGIN_OK?"已开启：密码 + 验证器验证码。\n更换密码前，请先关闭验证器；改好密码后重新绑定。":state==LOGIN_ABSENT?"尚未开启验证器。目前使用密码登录。":"无法读取认证设置。请检查 Login Process 服务。");
         gtk_button_set_label(GTK_BUTTON(action),state==LOGIN_OK?"关闭验证器":"开启验证器");
@@ -27,12 +32,13 @@ struct Security {
         auto *title=security::label("登录安全 / Login Security");gtk_box_pack_start(GTK_BOX(box),title,false,false,0);
         summary=security::label("");gtk_box_pack_start(GTK_BOX(box),summary,false,false,0);
         action=gtk_button_new();gtk_box_pack_start(GTK_BOX(box),action,false,false,0);
-        gtk_box_pack_start(GTK_BOX(box),security::label("验证器密钥在本机加密保存；扫码或手动输入都可以绑定。\nISO 安装环境只使用密码，额外验证用于安装后的系统。"),false,false,0);
+        gtk_box_pack_start(GTK_BOX(box),security::label("验证器密钥在本机加密保存；扫码或手动输入都可以绑定。\n精简版仅提供密码验证，完整版支持额外验证。"),false,false,0);
         gtk_box_pack_start(GTK_BOX(box),security::label("人脸辅助：实验性录入与动作检测，尚未接入系统登录。"),false,false,0);
         auto *face_buttons=gtk_box_new(GTK_ORIENTATION_HORIZONTAL,8);gtk_box_pack_start(GTK_BOX(box),face_buttons,false,false,0);
         const char *titles[]={"录入人脸","测试人脸","删除模板"};const char *modes[]={"--enroll","--test","--delete"};
         for(unsigned i=0;i<3;++i) {
             auto *button=gtk_button_new_with_label(titles[i]);gtk_box_pack_start(GTK_BOX(face_buttons),button,true,true,0);
+            gtk_widget_set_sensitive(button,access("/usr/bin/mnos-face-preview",X_OK)==0);
             g_signal_connect(button,"clicked",G_CALLBACK((+[](GtkButton *,gpointer mode) {
                 GError *error=nullptr;auto *child=g_subprocess_new(G_SUBPROCESS_FLAGS_NONE,&error,"/usr/bin/mnos-face-preview",static_cast<const char *>(mode),nullptr);
                 if(child)g_object_unref(child);if(error) {security::notice(nullptr,error->message);g_error_free(error);}

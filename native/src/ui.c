@@ -927,7 +927,7 @@ static void window_content(unsigned app) {
         button(x, y + 220, 235, "Save settings / S", true);
         button(x, y + 291, 145, "Lock session", false);
         button(x + 160, y + 291, 145, "Power", false);
-        button(x + 320,y + 291,235,auth_factor_enabled()?"Disable 2FA / A":"Enable 2FA / A",auth_factor_enabled());
+        button(x + 320,y + 291,235,!auth_factors_available()?"2FA: Full edition":auth_factor_enabled()?"Disable 2FA / A":"Enable 2FA / A",auth_factor_enabled());
         text_fit(x, y + 258, setting_status, 16, MUTED,w);
         button(x,y+342,235,"Linux 模拟 / L",linux_guest_enabled());
         text(x+264,y+342,linux_guest_enabled()?"已开启 / 本次登录":"已关闭 / 默认状态",18,ACCENT);

@@ -7,6 +7,14 @@ QR/manual pairing and settings controls. See [implemented behavior and tests](AU
 The ordinary-camera feature is an enrollment/test preview, not a login factor.
 Existing release ISOs below do not yet contain these source changes.
 
+Full/Lite build profiles are being validated. Linux Lite has real APT and a
+C/C++ toolchain, without a Python runtime or extra login factors. The C++ `mnos`
+command manages signed feature packages, updates and component-version rollback;
+see [resource details](live/update/RELEASE.md) and `help apt` / `help updates`.
+Native's BusyBox guest still lacks APT/network devices; Full/Lite packaging does
+not remove that compatibility gap. Native idle execution now yields until input
+or a scheduled guest timer, retaining guest RAM.
+
 **Current development: two distinct editions.** [Native Edition and Linux Edition](EDITIONS.md)
 have separate installers and honest runtime labels. The native GUI now has an
 original C software machine for a real Linux/BusyBox guest; Linux Edition keeps

@@ -107,7 +107,7 @@ struct VM {
         }
         if (phase == 0) {
             a.push_back("-cdrom");
-            a.push_back((build / ("mnOS-0.4-desktop-installer-" + arch + ".iso")).string());
+            a.push_back((build / (std::string("mnOS-0.4-desktop-installer") + (std::getenv("MNOS_TEST_LITE")?"-lite-":"-") + arch + ".iso")).string());
             a.push_back("-boot");
             a.push_back("order=d");
         }
@@ -247,8 +247,10 @@ struct VM {
             command("ordinarytest491", "Set a separate password for root");
             command("rootadmintest785", "Confirm new password");
             command("rootadmintest785", "Accounts created. Signed in as the ordinary user.");
-            if(configure_factor) {command("y","Enter your password to bind an authenticator");return;}
-            command("n", "Password-only setup complete.");
+            if(!std::getenv("MNOS_TEST_LITE")) {
+                if(configure_factor) {command("y","Enter your password to bind an authenticator");return;}
+                command("n", "Password-only setup complete.");
+            }
         } else
             command("ordinarytest491", "Signed in as an ordinary user.");
         wait("DESKTOP READY: original native GUI");

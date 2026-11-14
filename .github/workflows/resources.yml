@@ -1,0 +1,103 @@
+name: Publish tested update resources
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mnos-update-resources
+  cancel-in-progress: false
+jobs:
+  packages:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t mnos-auth-test -f live/tests/Authentication.Dockerfile .
+      - run: bash live/fetch-face-models.sh
+      - name: Verify real authentication and package update transactions
+        run: |
+          docker run --rm --network none -e MNOS_AUTH_TEST_CONTAINER=1 \
+            -v "$PWD:/source" -w /source/live mnos-auth-test bash tests/authentication.sh
+          docker run --rm --network none -e MNOS_UPDATE_TEST_CONTAINER=1 \
+            -v "$PWD:/source" -w /source/live mnos-auth-test bash tests/updates.sh
+      - name: Build compiled runtime and full feature packages
+        run: |
+          mkdir -p resources
+          docker run --rm --network none -v "$PWD:/source:ro" -v "$PWD/resources:/out" \
+            -w /source/live mnos-auth-test bash -ec '
+            make -C src -j4 OUT=/tmp/build
+            make -C src OUT=/tmp/build DESTDIR=/tmp/compiled install
+            bash update/build-packages.sh "$(cat VERSION)" /tmp/compiled /out'
+          sudo chown -R "$(id -u):$(id -g)" resources
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.arch }}
+          path: resources/*.deb
+          retention-days: 30
+  publish:
+    needs: packages
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: packages-*
+          merge-multiple: true
+          path: resources
+      - name: Sign tested resources and retain previous package versions
+        env:
+          MNOS_APT_SIGNING_KEY: ${{ secrets.MNOS_APT_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$MNOS_APT_SIGNING_KEY"
+          sudo apt-get update
+          sudo apt-get install -y apt-utils
+          export GNUPGHOME="$RUNNER_TEMP/mnos-signing"
+          install -d -m700 "$GNUPGHOME"
+          printf '%s' "$MNOS_APT_SIGNING_KEY" | gpg --batch --import
+          unset MNOS_APT_SIGNING_KEY
+          key=$(gpg --show-keys --with-colons live/keys/mnos-archive.gpg | awk -F: '$1=="fpr" {print $10;exit}')
+          if gh release view updates-stable >/dev/null 2>&1; then
+            mkdir retained
+            gh release download updates-stable --pattern '*.deb' --dir retained
+            for file in retained/*.deb; do
+              if [ -f "resources/${file##*/}" ]; then
+                cmp "$file" "resources/${file##*/}" || { echo 'Refusing to replace an existing version. Bump live/VERSION.' >&2; exit 1; }
+              else cp "$file" resources/; fi
+            done
+          fi
+          bash live/update/repository.sh resources "$key"
+          gpgv --keyring "$PWD/live/keys/mnos-archive.gpg" resources/InRelease
+          version=$(cat live/VERSION)
+          git archive --format=tar.gz -o "resources/mnos-source-$version.tar.gz" HEAD
+          printf '%s\n' "$GITHUB_SHA" > resources/SOURCE_COMMIT.txt
+      - name: Publish packages before signed repository metadata
+        run: |
+          set -euo pipefail
+          if ! gh release view updates-stable >/dev/null 2>&1; then
+            gh release create updates-stable --target "$GITHUB_SHA" --prerelease --latest=false \
+              --title 'mnOS signed update resources' --notes-file live/update/RELEASE.md
+          fi
+          # Packages are immutable; the signed index is replaced last. A client
+          # crossing this transition fails hash verification and retries later.
+          gh release view updates-stable --json assets --jq '.assets[].name' > /tmp/existing-assets
+          for file in resources/*.deb; do
+            if ! grep -Fxq "${file##*/}" /tmp/existing-assets; then gh release upload updates-stable "$file"; fi
+          done
+          for file in resources/*.tar.gz resources/SOURCE_COMMIT.txt resources/SHA256SUMS resources/Packages resources/Packages.gz resources/Release resources/Release.gpg resources/InRelease; do
+            gh release upload updates-stable "$file" --clobber
+          done

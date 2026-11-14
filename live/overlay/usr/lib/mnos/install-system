@@ -32,6 +32,9 @@ IFS= read -r factor_policy || factor_policy=password
 case "$factor_policy" in password|authenticator) ;; *) fail 'Invalid authentication policy.' ;; esac
 IFS= read -r face_policy || face_policy=off
 case "$face_policy" in off|face-preview) ;; *) fail 'Invalid face preview choice.' ;; esac
+if [ ! -x /usr/lib/mnos/login-helper ]; then
+    [ "$factor_policy" = password ] && [ "$face_policy" = off ] || fail 'Lite edition supports password authentication only; install the full feature package first.'
+fi
 if [ "$factor_policy" = authenticator ]; then
     [ -S /proc/self/fd/3 ] || fail 'Missing private authentication channel.'
 fi

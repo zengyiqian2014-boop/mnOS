@@ -1,0 +1,4 @@
+Types: deb
+URIs: https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/
+Suites: ./
+Signed-By: /usr/share/keyrings/mnos-archive.gpg

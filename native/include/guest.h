@@ -16,7 +16,7 @@ struct guest {
     uint64_t status, ie, ip, vector, scratch, epc, cause, tval, satp, counteren;
     uint8_t *ram;
     size_t ram_size;
-    unsigned privilege, stopped, waiting;
+    unsigned privilege, stopped, waiting, yield_on_idle;
     struct guest_tlb tlb[256];
     int (*input)(void *);
     void (*output)(void *, unsigned char);

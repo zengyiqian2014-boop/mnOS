@@ -102,4 +102,5 @@ int main(void) {
     command("lock");login("Changed-password-459");assert(auth_logged_in()&&!auth_prompting());
     command("2fa enable");input("Changed-password-459");finish();assert(*auth_setup_secret());auth_key(27);assert(!*auth_setup_secret()&&!*auth_setup_uri()&&!auth_factor_enabled());
     puts("PASS: password-first enrollment, independent OTP oracle, persistent replay defense, one-use recovery, password rewrap, timeout, cancellation, disable and fail-closed writes");
+    return 0;
 }

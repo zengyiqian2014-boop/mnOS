@@ -196,7 +196,7 @@ struct Installer {
         GError *error = nullptr;
         auto *launcher=g_subprocess_launcher_new(static_cast<GSubprocessFlags>(G_SUBPROCESS_FLAGS_STDIN_PIPE |
             G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_MERGE));
-        factor_requested=gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(factor));
+        factor_requested=access("/usr/lib/mnos/login-helper",X_OK)==0 && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(factor));
         account_name=account;
         if(factor_requested) {
             int pair[2];
@@ -285,11 +285,14 @@ struct Installer {
         gtk_grid_attach(GTK_GRID(form), network, 1, 4, 2, 1);
         gtk_grid_attach(GTK_GRID(form), label("默认关闭：特权网络操作需 sudo；日常应用无需 root。", "muted"), 1, 5, 2, 1);
         factor=gtk_check_button_new_with_label("为安装后的系统开启验证器（2FA）：扫码或手动填写");
-        gtk_grid_attach(GTK_GRID(form),factor,1,6,2,1);
-        gtk_grid_attach(GTK_GRID(form),label("可跳过，之后在系统设置中开启。ISO 安装环境只使用密码。","muted"),1,7,2,1);
+        bool full=access("/usr/lib/mnos/login-helper",X_OK)==0;
+        if(full)gtk_grid_attach(GTK_GRID(form),factor,1,6,2,1);
+        gtk_grid_attach(GTK_GRID(form),label(full ? "可跳过，之后在系统设置中开启。" : "精简版：仅密码验证。安装完整版功能包后可开启其他验证。","muted"),1,7,2,1);
         face=gtk_check_button_new_with_label("首次登录时录入人脸辅助模板（实验性）");
-        gtk_grid_attach(GTK_GRID(form),face,1,8,2,1);
-        gtk_grid_attach(GTK_GRID(form),label("普通摄像头：支持动作与颜色响应测试，暂不作为系统登录凭据。","muted"),1,9,2,1);
+        if(full) {
+            gtk_grid_attach(GTK_GRID(form),face,1,8,2,1);
+            gtk_grid_attach(GTK_GRID(form),label("普通摄像头：支持动作与颜色响应测试，暂不作为系统登录凭据。","muted"),1,9,2,1);
+        }
         install = gtk_button_new_with_mnemonic("开始安装 (_I)");
         gtk_style_context_add_class(gtk_widget_get_style_context(install), "suggested-action");
         gtk_grid_attach(GTK_GRID(form), install, 1, 10, 1, 1);

@@ -1,0 +1,15 @@
+#!/bin/sh
+# Applied to the image root by build/pack only; never erase enrolled factors.
+set -eu
+case "${1:-}" in
+  full) printf 'full\n' > /usr/share/mnos/flavor ;;
+  lite)
+    test ! -e /var/lib/mnos-login-process || exit 1
+    printf 'lite\n' > /usr/share/mnos/flavor
+    sed -i 's/^user-session=.*/user-session=mnos-lite/' /etc/lightdm/lightdm.conf.d/*.conf
+    rm -f /usr/share/pam-configs/mnos-2fa /etc/pam.d/mnos-security-setup \
+      /etc/systemd/system/mnos-login-process.service /etc/systemd/system/mnos-login-process.socket \
+      /usr/lib/sysusers.d/mnos-login.conf /etc/xdg/autostart/mnos-face-preview.desktop
+    ;;
+  *) exit 2 ;;
+esac

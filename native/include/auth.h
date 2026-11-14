@@ -33,6 +33,7 @@ const char *auth_setup_secret(void);
 const char *auth_setup_uri(void);
 const char *auth_recovery_code(void);
 bool auth_factor_enabled(void);
+bool auth_factors_available(void);
 bool auth_decode_database(const void *,size_t,struct auth_database *);
 bool auth_command(const char *, void (*)(const char *));
 bool auth_path(const char *, bool write);

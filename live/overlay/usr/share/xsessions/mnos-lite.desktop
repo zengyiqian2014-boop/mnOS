@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=mnOS Lite
+Comment=Password-only C/C++ tools desktop
+Exec=dbus-run-session -- /usr/bin/mnos-session
+Type=Application
+DesktopNames=XFCE

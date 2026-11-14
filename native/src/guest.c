@@ -211,6 +211,10 @@ static uint32_t compressed(uint16_t c) {
 }
 void guest_run(struct guest *g, unsigned budget) {
     while (budget-- && !g->stopped) {
+        /* Native hosts schedule the next timer/input event instead of burning
+         * a full interpreter budget while the guest CPU executes WFI. Hosted
+         * deterministic harnesses may retain accelerated virtual time. */
+        if(g->yield_on_idle&&g->waiting&&!(g->ie&g->ip)&&g->time<g->deadline)break;
         g->time++; g->retired++;
         if(g->time>=g->deadline)g->ip|=BIT(5);
         if((g->ie&g->ip&BIT(5)) && (!g->privilege || (g->status&SIE))) {trap(g,BIT(63)|5,0);continue;}
@@ -219,7 +223,8 @@ void guest_run(struct guest *g, unsigned budget) {
              * is clear. Linux reenables SIE AFTER WFI; gating wake on SIE
              * deadlocks its idle loop and the HVC input polling worker. */
             if(g->ie&g->ip)g->waiting=0;
-            else {if(g->deadline!=UINT64_MAX && g->time<g->deadline)g->time=g->deadline;continue;}
+            else {if(g->yield_on_idle)break;
+                if(g->deadline!=UINT64_MAX && g->time<g->deadline)g->time=g->deadline;continue;}
         }
         uint64_t raw=0;
         if(!memory(g,g->pc,2,0,&raw))continue;

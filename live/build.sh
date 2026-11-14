@@ -3,6 +3,8 @@
 set -euo pipefail
 ROOT=$(cd -- "$(dirname -- "$0")" && pwd)
 PROFILE=${1:-installer}
+FLAVOR=${FLAVOR:-full}
+case "$FLAVOR" in full|lite) ;; *) echo 'FLAVOR must be full or lite.' >&2; exit 2 ;; esac
 EDITION=${EDITION:-linux}
 case "$EDITION" in linux|combined) ;; *) echo 'EDITION must be linux or combined.' >&2; exit 2 ;; esac
 ARCH=${2:-$(uname -m)}
@@ -24,13 +26,16 @@ mkdir -p "$ROOT/build/security-src/include" "$ROOT/build/security-src/src" "$ROO
 cp "$ROOT/../native/include/auth.h" "$ROOT/../native/include/factor.h" "$ROOT/build/security-src/include/"
 cp "$ROOT/../native/src/password.c" "$ROOT/../native/src/factor.c" "$ROOT/build/security-src/src/"
 cp -a "$ROOT/../native/vendor/monocypher" "$ROOT/../native/vendor/qrcodegen" "$ROOT/build/security-src/vendor/"
-bash "$ROOT/fetch-face-models.sh"
+cp "$ROOT/../native/vendor/README.md" "$ROOT/build/security-src/vendor/README.md"
+if [ "$FLAVOR" = full ]; then bash "$ROOT/fetch-face-models.sh"; fi
 OUT=${OUT:-$ROOT/out}
 mkdir -p "$OUT"
 OUT=$(cd "$OUT" && pwd)
 SOURCE_COMMIT=$(git -C "$ROOT" rev-parse HEAD)
 if [ -n "$(git -C "$ROOT" status --porcelain)" ]; then SOURCE_COMMIT=$SOURCE_COMMIT-dirty; fi
 IMAGE="mnos-live:$PROFILE-$ARCH"
+recipe=Rootfs.Dockerfile
+if [ "$FLAVOR" = lite ]; then IMAGE="mnos-live:$PROFILE-lite-$ARCH"; recipe=Lite.Dockerfile; fi
 ca_args=()
 if [ -n "${MNOS_BUILD_CA_BUNDLE:-}" ]; then
     test -r "$MNOS_BUILD_CA_BUNDLE" || { echo 'CA bundle is not readable.' >&2; exit 2; }
@@ -39,7 +44,7 @@ fi
 docker build --build-arg HTTP_PROXY --build-arg HTTPS_PROXY --build-arg NO_PROXY \
     "${ca_args[@]}" \
     --build-arg "PROFILE=$PROFILE" \
-    -t "$IMAGE" -f "$ROOT/Rootfs.Dockerfile" "$ROOT"
+    -t "$IMAGE" -f "$ROOT/$recipe" "$ROOT"
 docker build --build-arg HTTP_PROXY --build-arg HTTPS_PROXY --build-arg NO_PROXY \
     -t mnos-live-builder -f "$ROOT/Builder.Dockerfile" "$ROOT"
 CONTAINER=$(docker create "$IMAGE")
@@ -47,7 +52,7 @@ trap 'docker rm -f "$CONTAINER" >/dev/null 2>&1 || true' EXIT
 # Stream the rootfs. No host chroot, host service changes or rootfs tar copy.
 docker export "$CONTAINER" | docker run --rm -i --network none \
     --memory=3g --cpus="${JOBS:-4}" \
-    -e "PROFILE=$PROFILE" -e "EDITION=$EDITION" -e "ARCH=$ARCH" -e "SOURCE_COMMIT=$SOURCE_COMMIT" -e "BUILD_UID=$(id -u)" -e "BUILD_GID=$(id -g)" \
+    -e "PROFILE=$PROFILE" -e "EDITION=$EDITION" -e "FLAVOR=$FLAVOR" -e "ARCH=$ARCH" -e "SOURCE_COMMIT=$SOURCE_COMMIT" -e "BUILD_UID=$(id -u)" -e "BUILD_GID=$(id -g)" \
     -v "$OUT:/out" -v "$ROOT:/source:ro" -v "$ROOT/../native:/native:ro" mnos-live-builder \
     bash /source/pack.sh
-echo "Built $OUT/mnOS-2.0-preview-$PROFILE-$ARCH.iso"
+echo "Built $FLAVOR $ARCH installation media in $OUT"

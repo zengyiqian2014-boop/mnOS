@@ -28,6 +28,7 @@ chmod 755 "$ROOT/usr/lib/mnos/first-boot" "$ROOT/usr/lib/mnos/wallpaper" \
     "$ROOT/usr/bin/mnos-net" "$ROOT/usr/sbin/mnos-network-policy" "$ROOT/usr/bin/mnos-tools"
 chmod 755 "$ROOT/usr/lib/mnos/installer" "$ROOT/usr/lib/mnos/start-installer" "$ROOT/usr/lib/mnos/install-system" "$ROOT/usr/lib/mnos/installer-session"
 chmod 755 "$ROOT/usr/lib/mnos/account-preflight"
+chroot "$ROOT" /bin/sh /usr/lib/mnos/apply-flavor "${FLAVOR:-full}"
 if [ -f "$ROOT/usr/share/applications/com.microsoft.VSCode.desktop" ]; then
     sed -i 's/value="code.desktop"/value="com.microsoft.VSCode.desktop"/' "$ROOT/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml"
 fi
@@ -51,7 +52,9 @@ if [ "$EDITION" = combined ]; then
 else
     rm -f "$ROOT/etc/grub.d/41_mnos_native"
 fi
-sed -i -E '/^userAutoLogin:/d; s/^doAutologin:.*/doAutologin: false/; s/^setRootPassword:.*/setRootPassword: false/; s/^allowWeakPasswords:.*/allowWeakPasswords: false/' "$ROOT/etc/calamares/modules/users.conf"
+if [ "${FLAVOR:-full}" = full ]; then
+    sed -i -E '/^userAutoLogin:/d; s/^doAutologin:.*/doAutologin: false/; s/^setRootPassword:.*/setRootPassword: false/; s/^allowWeakPasswords:.*/allowWeakPasswords: false/' "$ROOT/etc/calamares/modules/users.conf"
+fi
 cp /source/overlay/usr/share/doc/mnos/guide.zh.txt "$ROOT/usr/share/doc/mnos/guide.zh.txt"
 cp /source/build/AUTHENTICATION.md "$ROOT/usr/share/doc/mnos/authentication.md"
 # Include the original kernel source and font license with the bootable binary.
@@ -167,6 +170,7 @@ cp /work/early.cfg "$ISO/EFI/BOOT/grub.cfg"
 cp /work/early.cfg "$ISO/EFI/debian/grub.cfg"
 
 name="mnOS-2.0-preview-$PROFILE-$ARCH"
+if [ "${FLAVOR:-full}" = lite ]; then name="mnOS-2.0-preview-$PROFILE-lite-$ARCH"; fi
 bios_args=()
 if [ "$ARCH" = amd64 ]; then
 bios_args=( \

@@ -18,6 +18,9 @@ static uint8_t *memory;
 static char received[4096];
 static size_t received_len;
 static bool prompt_due;
+static struct cpu host_cpu;
+struct cpu *cpu_this(void){return &host_cpu;}
+static bool idle_next;
 
 bool auth_logged_in(void){return signed_in;}
 uint32_t auth_uid(void){return uid;}
@@ -42,6 +45,7 @@ bool guest_copy(struct guest *g,uint64_t p,const void *s,size_t n){
 }
 void guest_run(struct guest *g,unsigned budget){
     assert(budget&&g->ram==memory);runs++;g->retired+=budget;
+    g->waiting=0;
     if(stop_reason){g->stopped=stop_reason;stop_reason=0;return;}
     int c;
     while((c=g->input(g->opaque))>=0){
@@ -54,8 +58,9 @@ void guest_run(struct guest *g,unsigned budget){
         while(*p)g->output(g->opaque,(unsigned char)*p++);
         prompt_due=false;
     }
+    if(idle_next) {g->waiting=1;g->deadline=g->time+10000000;idle_next=false;}
 }
-static void pump_guest(void){for(unsigned i=0;i<4;i++)linux_guest_tick();}
+static void pump_guest(void){for(unsigned i=0;i<4;i++){host_cpu.clock_ticks++;linux_guest_tick();}}
 static void off(void){
     unsigned before=runs;pump_guest();
     assert(!linux_guest_enabled()&&!linux_guest_prompting()&&runs==before);
@@ -105,6 +110,12 @@ int main(void){
     assert(runs==before&&linux_guest_enabled());
     linux_guest_command("linux resume",out);pump_guest();assert(runs>before&&!linux_guest_prompting());
     linux_guest_command("linux send echo hello",out);pump_guest();assert(strstr(received,"echo hello\n"));
+    idle_next=true;linux_guest_tick();before=runs;
+    uint64_t retired=linux_guest_instructions();pump_guest();
+    assert(runs==before&&linux_guest_instructions()==retired&&strstr(linux_guest_status(),"Idle"));
+    linux_guest_key('x');pump_guest();assert(runs>before&&strchr(received,'x'));
+    idle_next=true;linux_guest_tick();before=runs;
+    host_cpu.clock_ticks+=PIT_HZ+1;linux_guest_tick();assert(runs>before);
 
     memset(memory,0x5a,GUEST_RAM);
     linux_guest_command("linux pause",out);uid++;off();wiped();

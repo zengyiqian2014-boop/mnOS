@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 set -eu
 cd "$(dirname "$0")/.."
+FLAVOR=${FLAVOR:-full}
+export FLAVOR
+case "$FLAVOR" in full) suffix='' ;; lite) suffix='-lite' ;; *) exit 2 ;; esac
 make -j4 GUEST="${GUEST:-0}" all
 make -f arch/arm64/Makefile -j4 GUEST="${GUEST:-0}" all
 mkdir -p build/desktop/amd64 build/desktop/arm64
@@ -38,7 +41,8 @@ for arch in amd64 arm64; do
     mkfs.vfat "$work/esp.img" >/dev/null
     mmd -i "$work/esp.img" ::EFI ::EFI/BOOT
     mcopy -i "$work/esp.img" "build/desktop/$arch/INSTALL.EFI" "::EFI/BOOT/$efi"
-    xorriso -as mkisofs -quiet -R -J -V MNOS_DESKTOP -append_partition 2 0xef "$work/esp.img" -appended_part_as_gpt -e '--interval:appended_partition_2:all::' -no-emul-boot -o "build/desktop/mnOS-0.4-desktop-installer-$arch.iso" "$work/iso"
+    printf '%s\n' "$FLAVOR" > "$work/iso/FLAVOR.txt"
+    xorriso -as mkisofs -quiet -R -J -V MNOS_DESKTOP -append_partition 2 0xef "$work/esp.img" -appended_part_as_gpt -e '--interval:appended_partition_2:all::' -no-emul-boot -o "build/desktop/mnOS-0.4-desktop-installer$suffix-$arch.iso" "$work/iso"
     rm -r "$work"
 done
 (cd build/desktop && sha256sum mnOS-*.iso > SHA256SUMS)

@@ -12,15 +12,20 @@ check() {
 }
 check 'root account locked' sh -c 'passwd -S root | grep -q "root L "'
 check 'AppArmor loaded' sh -c 'test "$(cat /sys/module/apparmor/parameters/enabled)" = Y'
-check 'firewall active' sh -c 'LC_ALL=C ufw status | grep -q "Status: active"'
-check 'deny incoming connections' sh -c 'LC_ALL=C ufw status verbose | grep -q "deny (incoming)"'
+if command -v nft >/dev/null && systemctl is-active --quiet nftables; then
+    check 'firewall active' nft list table inet mnos
+    check 'deny incoming connections' sh -c 'nft list chain inet mnos input | grep -q "policy drop"'
+else
+    check 'firewall active' sh -c 'LC_ALL=C ufw status | grep -q "Status: active"'
+    check 'deny incoming connections' sh -c 'LC_ALL=C ufw status verbose | grep -q "deny (incoming)"'
+fi
 check 'audit service running' systemctl is-active --quiet auditd
 check 'kernel pointers restricted' sh -c 'test "$(sysctl -n kernel.kptr_restrict)" = 2'
 check 'address space randomization enabled' sh -c 'test "$(sysctl -n kernel.randomize_va_space)" = 2'
 check 'unprivileged BPF disabled' sh -c 'test "$(sysctl -n kernel.unprivileged_bpf_disabled)" -ne 0'
 check 'no empty-password accounts' sh -c 'test -z "$(awk -F: '\''$2 == "" {print $1}'\'' /etc/shadow)"'
 check 'remote Cockpit socket disabled' sh -c '! systemctl is-active --quiet cockpit.socket'
-check 'automatic update timer enabled' systemctl is-enabled --quiet apt-daily-upgrade.timer
+check 'package metadata refresh timer enabled' systemctl is-enabled --quiet apt-daily.timer
 check 'administrative audit rules loaded' sh -c 'auditctl -l | grep -q "key=privilege\|k privilege"'
 check 'no passwordless sudo rule' sh -c '! grep -rE "^[^#].*NOPASSWD" /etc/sudoers /etc/sudoers.d'
 printf '\n%s failed check(s). These checks are a baseline, not a compliance certification.\n' "$failed"

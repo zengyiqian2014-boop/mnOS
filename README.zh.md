@@ -4,6 +4,12 @@
 详见[实际行为、测试与限制](AUTHENTICATION.md)。普通摄像头功能目前仅为录入与测试预览，
 尚未接入登录；下面的既有发布 ISO 不会自动包含这些源码改动。
 
+正在验证完整版 Full / 精简版 Lite 构建。Linux 精简版包含真实 APT、C/C++
+工具链，不带 Python 运行时或额外登录验证。C++ 命令 `mnos` 用于签名功能包、
+更新和组件版本回退；见[资源说明](live/update/RELEASE.md)、`help -cn apt`
+和 `help -cn updates`。自研版的 BusyBox 客体仍缺 APT 和虚拟网卡，不能把
+打包工作当作已经完成兼容；其空闲 CPU 会暂停解释执行，由输入或定时器唤醒。
+
 **当前开发分成两版：[自研版与 Linux 版](EDITIONS.zh.md)。** 自研版运行原生 C/汇编内核和 GUI，
 新增自研 C 模拟器中的真实 Linux/BusyBox 客体；Linux 版提供 Firefox、VS Code、完整 CTF 工具
 以及统一系统管理入口。初期客体支持 RV64IMAC/LP64 控制台程序，尚不支持 Linux 图形软件。

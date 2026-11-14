@@ -14,7 +14,7 @@ RUN sed -i '\|^path-exclude /usr/share/man/\*$|d; \|^path-exclude /usr/share/inf
     && sed -i 's/Components: main/Components: main contrib non-free non-free-firmware/' /etc/apt/sources.list.d/debian.sources \
     && sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources
 COPY packages /tmp/packages
-RUN --mount=type=secret,id=build_ca \
+RUN --mount=type=secret,id=build_ca,mode=0444 \
     if [ -r /run/secrets/build_ca ]; then printf 'Acquire::https::CaInfo "/run/secrets/build_ca";\n' > /etc/apt/apt.conf.d/99-mnos-build-ca; fi \
     && printf 'wireshark-common wireshark-common/install-setuid boolean false\niperf3 iperf3/start_daemon boolean false\n' | debconf-set-selections \
     && apt-get update && cat /tmp/packages/common.txt "/tmp/packages/$(dpkg --print-architecture).txt" | xargs -r apt-get install -y --no-install-recommends \
@@ -23,19 +23,21 @@ RUN --mount=type=secret,id=build_ca \
 
 # Compile our runtime components separately: development headers stay out of the ISO.
 FROM common AS components
-RUN --mount=type=secret,id=build_ca \
+RUN --mount=type=secret,id=build_ca,mode=0444 \
     if [ -r /run/secrets/build_ca ]; then printf 'Acquire::https::CaInfo "/run/secrets/build_ca";\n' > /etc/apt/apt.conf.d/99-mnos-build-ca; fi \
     && apt-get update && apt-get install -y --no-install-recommends g++ make pkg-config libgtk-3-dev libjson-glib-dev libpam0g-dev libopencv-dev
-COPY src /src
-COPY build/security-src /security-src
-RUN make -C /src -j4 OUT=/build SECURITY_SRC=/security-src && make -C /src OUT=/build SECURITY_SRC=/security-src DESTDIR=/compiled install
+COPY . /source
+RUN make -C /source/src -j4 OUT=/build SECURITY_SRC=/source/build/security-src \
+    && make -C /source/src OUT=/build SECURITY_SRC=/source/build/security-src DESTDIR=/compiled install \
+    && bash /source/update/build-packages.sh "$(cat /source/VERSION)" /compiled /debs
 
 FROM common AS final
-COPY --from=components /compiled/ /
-COPY build/face-models /usr/share/mnos/face
-COPY face/SOURCES.sha256 /usr/share/mnos/face/SOURCES.sha256
 ARG PROFILE
-RUN --mount=type=secret,id=build_ca \
+RUN --mount=type=secret,id=build_ca,mode=0444 \
+    --mount=from=components,source=/compiled,target=/tmp/compiled \
+    --mount=type=bind,source=build/face-models,target=/tmp/face-models \
+    --mount=type=bind,source=face,target=/tmp/face-sources \
+    --mount=from=components,source=/debs,target=/tmp/mnos-packages \
     --mount=type=bind,source=packages,target=/tmp/packages \
     --mount=type=bind,source=overlay,target=/tmp/overlay \
     --mount=type=bind,source=configure.sh,target=/tmp/mnos-configure \
@@ -43,9 +45,13 @@ RUN --mount=type=secret,id=build_ca \
     --mount=type=bind,source=keys,target=/tmp/mnos-keys \
     --mount=type=bind,source=build/native-src,target=/tmp/mnfs-src \
     case "$PROFILE" in installer|hardware|qemu) ;; *) exit 2 ;; esac \
+    && cp -a /tmp/compiled/. / \
+    && install -d /usr/share/mnos/face \
+    && install -m644 /tmp/face-models/* /tmp/face-sources/SOURCES.sha256 /usr/share/mnos/face/ \
     && if [ -r /run/secrets/build_ca ]; then printf 'Acquire::https::CaInfo "/run/secrets/build_ca";\n' > /etc/apt/apt.conf.d/99-mnos-build-ca; fi \
     && test "$(gpg --show-keys --with-colons /tmp/mnos-keys/microsoft-code.asc 2>/dev/null | awk -F: '$1=="fpr" {print $10; exit}')" = BC528686B50D79E339D3721CEB3E94ADBE1229CF \
     && install -m 644 /tmp/mnos-keys/microsoft-code.asc /usr/share/keyrings/microsoft-code.asc \
+    && install -m 644 /tmp/mnos-keys/mnos-archive.gpg /usr/share/keyrings/mnos-archive.gpg \
     && printf 'deb [arch=%s signed-by=/usr/share/keyrings/microsoft-code.asc] https://packages.microsoft.com/repos/code stable main\n' "$(dpkg --print-architecture)" > /etc/apt/sources.list.d/microsoft-code.list \
     && printf 'code code/add-microsoft-repo boolean false\n' | debconf-set-selections \
     && apt-get update && apt-get install -y --no-install-recommends \
@@ -87,6 +93,7 @@ RUN --mount=type=secret,id=build_ca \
     && (cd /tmp/overlay && find . -type d -print0 | xargs -0 -I{} chmod 755 /{}) \
     && (cd /tmp/overlay && find . -type f -print0 | xargs -0 -I{} chmod 644 /{}) \
     && MNOS_BUILD_ROOT=1 MNOS_PROFILE="$PROFILE" sh /tmp/mnos-configure \
+    && dpkg --force-confold -i /tmp/mnos-packages/*.deb \
     && rm /usr/sbin/policy-rc.d && rm -rf /var/lib/apt/lists/* \
     && rm -f /etc/apt/apt.conf.d/99-mnos-build-ca \
     && rm -f /etc/apt/apt.conf.d/80-mnos-build-retries \

@@ -38,6 +38,17 @@ guest RAM allocation or execution. Settings (F7, Linux 模拟 / L) can disable i
 immediately; this stops the interpreter and wipes private RAM and queued input.
 Closing the window only hides it. No enable flag is persisted.
 
+When Linux executes WFI, the native host yields the interpreter instead of
+executing its full instruction budget. Input and the next guest timer wake it;
+sleeping jobs still progress. `linux pause` remains an explicit indefinite pause.
+RAM is retained while idle; `linux stop` wipes it. This is CPU idle scheduling,
+not removal of every Linux process: Linux always retains init/kernel workers.
+
+APT, a Debian userspace, virtual networking and general desktop applications are
+still missing from this RV64 guest. APT is a required compatibility milestone,
+not something the BusyBox command inventory currently implements. The Linux
+Full/Lite editions already ship real APT; see `help apt` / `help -cn apt` there.
+
 `make host-tests` exercises consent, cancellation, failed starts, queued apps,
 pause/resume, disable, logout and account changes under ASan/UBSan. Set
 `MNOS_TEST_LINUX_GUEST=1` when running `build/desktop-vm` to test actual Linux

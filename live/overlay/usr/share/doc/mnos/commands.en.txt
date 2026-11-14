@@ -88,6 +88,10 @@ code --disable-extensions helps isolate a faulty extension. The graphical
 sandbox remains enabled; do not run the editor as root.
 
 @@packages
+APT is available in BOTH Full and Lite Linux editions. See help apt for examples.
+Lite's initial image contains no Python; packages you explicitly install with
+APT can add their own dependencies. Review APT's proposed changes before accepting.
+
 Installing and updating additional software
 
 mnos-pkg list                 List installed package versions
@@ -408,3 +412,78 @@ users. Software permissions and encryption at rest do not protect live secrets
 from a malicious root or compromised kernel. Native authentication is still a
 kernel service, not a separate protected process. Full details and test scope:
 /usr/share/doc/mnos/authentication.md
+
+@@apt
+APT — install Linux applications
+
+apt search NAME                  Search; no root required
+apt show PACKAGE                 Read description/dependencies; no root required
+apt list --installed             List installed packages
+sudo apt update                  Refresh signed repository metadata
+sudo apt install PACKAGE         Install application and its dependencies
+sudo apt upgrade                 Update installed applications and system packages
+sudo apt remove PACKAGE          Remove an application; keep package configuration
+sudo apt install ./FILE.deb      Install a trusted local Debian package
+
+Examples:
+  sudo apt update
+  sudo apt install nmap nano build-essential
+  apt show nmap
+  nmap --version
+
+The Linux edition runs APT on its installed Linux system. It uses the configured
+signed Debian repositories; Microsoft VS Code uses its separate signed source in
+Full. The package architecture must match dpkg --print-architecture. APT is not
+pip; there is no need to install Python to use APT itself. APT shows dependency
+and disk-space changes before installation. Run desktop applications as your
+ordinary account, without sudo.
+
+Inside a supported Linux guest, APT installs INTO THAT GUEST, not into the mnOS
+native kernel. Current Native Edition's RV64 BusyBox guest does NOT yet provide
+APT, virtual networking, or a Debian userspace. It cannot install Firefox/VS Code
+by typing apt. This is an outstanding compatibility feature, not an alias to a
+working package manager. The separate Linux Full/Lite editions provide APT now.
+
+If update fails, check network/DNS and UTC time first: ip route; nmcli general;
+timedatectl. Do not bypass repository signature or TLS verification. An offline
+ISO contains its selected packages, not the entire Debian repository.
+
+@@updates
+mnOS updates and Full/Lite feature packages
+
+mnos status                       Show edition features and managed package versions
+mnos source                       Show the configured signed resource source
+sudo mnos full                    Add the Full feature package to a Lite installation
+sudo mnos update                  Update installed mnOS runtime/auth/full packages
+apt-cache policy mnos-runtime     List retained versions in the resource source
+sudo mnos rollback VERSION        Reinstall the specified retained mnOS version
+mnos apt search NAME              Invoke the real APT client (or use apt directly)
+
+The Full feature pack restores optional authenticator setup, camera preview and
+the broader Linux desktop/development/CTF package selection. Camera preview is
+not yet face login. APT downloads dependencies, including Python if a selected
+Full tool requires it; the Lite ISO itself has no Python runtime. Your account
+and files stay in place. There is no automatic activation of 2FA: open Login
+Security and explicitly pair your authenticator using QR or the manual key.
+
+Updates use a flat APT repository with a pinned signing key and HTTPS:
+https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/
+The key is /usr/share/keyrings/mnos-archive.gpg. APT verifies signed InRelease
+metadata and payload hashes. Older package assets are retained for explicit
+rollback. Failed source refresh stops the command; it does not disable checks.
+
+Rollback covers ONLY the mnOS runtime/auth/full packages. It does not restore
+personal files, Debian's Linux kernel or other third-party packages. For those,
+use your filesystem backup/snapshot and normal APT version management. Existing
+authenticator records must remain compatible with the selected version; do not
+remove authentication support while accounts still have a factor enrolled.
+
+The command date still displays/sets time; mnOS does not replace it with an
+updater. Package queries need no root. Installing, updating or rolling back
+requires explicit sudo, and APT asks before applying its transaction.
+
+These .deb resources are for the Linux edition. The Native Edition cannot use
+APT or these packages until its Linux guest gains the required userspace and
+network devices. Its current software interpreter keeps guest addresses private;
+there is no implemented switch that makes arbitrary Linux binaries native or
+removes that memory boundary. Choosing a Linux host means booting Linux Edition.
