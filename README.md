@@ -154,7 +154,8 @@ applications and read help:
 ```sh
 firefox-esr
 code .
-help                       # English by default
+help                       # Follows the selected Linux system language
+help -en                   # Explicit English mnOS help
 help -cn code              # Chinese VS Code instructions
 help -cn all | less        # All mnOS chapters; q exits the pager
 help nmap                  # Installed upstream manual or built-in tool help

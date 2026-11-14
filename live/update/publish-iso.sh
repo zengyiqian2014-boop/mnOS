@@ -84,7 +84,7 @@ mnOS Linux ${FLAVOR^} 安装预览版，AMD64 / ARM64 各一份完整 ISO。
 - Full：桌面、Firefox、VS Code、C/C++ 与 CTF 工具，可选密码 + 验证器。支持本机二维码和手动密钥绑定。
 - Lite：C++ 会话管理器、桌面组件、C/C++、APT、常用网络工具；不含 Python 运行时，初始登录仅密码。
 - 精简版可用 \`sudo mnos full\` 补装完整功能；\`sudo mnos update\` 更新 mnOS 组件，\`sudo mnos rollback 版本\` 回退源中仍保留的组件版本。
-- Linux 软件用 \`sudo apt update\`、\`sudo apt install 软件名\`；\`help apt\` 为英文，\`help -cn apt\` 为中文。
+- Linux 软件用 \`sudo apt update\`、\`sudo apt install 软件名\`；\`help apt\` 跟随系统语言，\`help -en apt\` 和 \`help -cn apt\` 可指定英文或中文。
 
 Full 可选择附加人脸验证：密码和已开启的 TOTP 之后，通过本地 X11 摄像头窗口或单独的一次性人脸恢复码验证。模板加密保存在 Login Process 目录，识别进程没有 root 权限。普通 RGB 摄像头不是可信 3D 硬件；自动化测试覆盖真实 PAM 和代理，成功识别使用测试进程模拟，尚无实体摄像头防伪测量。
 安装时可选择 English / 简体中文；安装后在语言与地区设置修改语言、格式、时区和时间服务器。

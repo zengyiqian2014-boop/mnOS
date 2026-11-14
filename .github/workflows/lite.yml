@@ -18,9 +18,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build Python-free Lite installer with real APT
-        run: FLAVOR=lite ./live/build.sh installer '${{ matrix.arch }}'
+        run: |
+          source .github/ci-diagnostics.sh
+          mnos_ci_diagnostics "$RUNNER_TEMP/lite-build.log"
+          FLAVOR=lite ./live/build.sh installer '${{ matrix.arch }}'
       - name: Boot installer, install, remove ISO, test password login, desktop and C++
         run: |
+          source .github/ci-diagnostics.sh
+          mnos_ci_diagnostics "$RUNNER_TEMP/lite-installation.log"
           c++ -std=c++17 -O2 -Wall -Wextra -Werror live/tests/install_vm.cpp -o live/out/install-vm
           mkdir -p live/out/validation
           devices=()

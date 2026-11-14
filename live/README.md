@@ -31,8 +31,9 @@ The installer erases the whole disk explicitly selected and confirmed by the use
 
 ## Help and administration
 
-**`help` is English by default; `help -cn` selects Chinese.** This applies to the
-native console and the Linux terminal. In Bash, `help cd` and other built-in
+**Linux `help` follows the selected system language; `help -en` and `help -cn`
+select English and Chinese explicitly.** The native console still defaults to
+English and accepts `help -cn`. In Bash, `help cd` and other built-in
 command references remain available. The command guide is also available as
 `mnos-help`, including in non-interactive scripts.
 
