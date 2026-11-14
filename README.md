@@ -33,12 +33,14 @@ help -cn updates
 | native | amd64 | v0.5-native-preview.1 | [mnOS-native-0.5-preview.1-amd64.iso](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.5-native-preview.1/mnOS-native-0.5-preview.1-amd64.iso) |
 | native | amd64 | v0.5-native-preview.2 | [mnOS-native-0.5-preview.2-amd64.iso](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.5-native-preview.2/mnOS-native-0.5-preview.2-amd64.iso) |
 | native | amd64 | v0.6-native-preview.1 | [mnOS-native-0.6-preview.1-amd64.iso](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.6-native-preview.1/mnOS-native-0.6-preview.1-amd64.iso) |
+| native | amd64 | v0.7-native-preview.1 | [mnOS-native-0.7-preview.1-amd64.iso](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.7-native-preview.1/mnOS-native-0.7-preview.1-amd64.iso) |
 | native | arm64 | v0.2-native-preview.1 | [mnOS-native-arm64.iso](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.2-native-preview.1/mnOS-native-arm64.iso) |
 | native | arm64 | v0.3-native-preview.1 | [mnOS-native-arm64.iso](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.3-native-preview.1/mnOS-native-arm64.iso) |
 | native | arm64 | v0.3-native-preview.2 | [mnOS-native-arm64.iso](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.3-native-preview.2/mnOS-native-arm64.iso) |
 | native | arm64 | v0.5-native-preview.1 | [mnOS-native-0.5-preview.1-arm64.iso](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.5-native-preview.1/mnOS-native-0.5-preview.1-arm64.iso) |
 | native | arm64 | v0.5-native-preview.2 | [mnOS-native-0.5-preview.2-arm64.iso](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.5-native-preview.2/mnOS-native-0.5-preview.2-arm64.iso) |
 | native | arm64 | v0.6-native-preview.1 | [mnOS-native-0.6-preview.1-arm64.iso](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.6-native-preview.1/mnOS-native-0.6-preview.1-arm64.iso) |
+| native | arm64 | v0.7-native-preview.1 | [mnOS-native-0.7-preview.1-arm64.iso](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.7-native-preview.1/mnOS-native-0.7-preview.1-arm64.iso) |
 
 ## 精简版 / Lite
 
