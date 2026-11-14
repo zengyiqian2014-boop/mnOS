@@ -419,3 +419,11 @@ glibc (LGPL-2.1-or-later), GRUB, nano and GNU make (GPL-3.0-or-later), Vim
 (BSD-3-Clause), regex and the MiniMind2 model (Apache-2.0). See
 [NOTICE](NOTICE) for the full list, upstream sources and how to obtain the
 Corresponding Source. The image is not relicensed as a whole.
+
+## System support
+
+Report bugs and hardware compatibility issues to **report.mnos@proton.me**.
+Include the system version, edition, architecture, device/VM model and reproduction steps.
+Linux Edition: System Settings → System Support, or `mnos-support`; native mnOS:
+Settings → Support / H, or `support`. Read `help support` (`help -cn support` for Chinese).
+[Support and reporting guide](https://zengyiqian2014-boop.github.io/mnOS/support.html).

@@ -400,10 +400,13 @@ int main(int argc,char **argv) {
             VM vm(arch,iso,disk,out,work,"install");
             vm.wait("MNOS INSTALLER GUI READY"); vm.screen(out/"installer.ppm");
             std::cout << "Installer visible; entering account through USB keyboard and pointer" << std::endl;
-            vm.click(640,310);
-            vm.key("alt-u"); vm.type(account); vm.key("tab"); vm.type(password);
+            // The language/region selector moves the form vertically. A fixed
+            // click here can open the disk dropdown and capture every later
+            // keystroke. Use the real field mnemonic instead of coordinates.
+            vm.key("esc"); vm.key("alt-u"); vm.type(account); vm.key("tab"); vm.type(password);
             vm.key("tab"); vm.type(password); vm.key("tab"); vm.key("spc");
-            vm.key("alt-i"); vm.pause(3); vm.type("/dev/vda"); vm.key("ret");
+            vm.key("alt-i"); vm.wait("MNOS INSTALL CONFIRMATION READY",90);
+            vm.pause(1); vm.type("/dev/vda"); vm.key("ret");
             vm.wait("STAGE 5 ",120,0,true);
             // A software-only ARM64 VM spent 19 minutes unpacking this full
             // offline image, then reached initramfs generation before the old

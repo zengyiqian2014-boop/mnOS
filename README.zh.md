@@ -380,3 +380,12 @@ GRUB、nano 与 GNU make（GPL-3.0-or-later）、Vim（Vim License）、
 Python（PSF License）、tcc（LGPL-2.1）、Git（GPL-2.0）、NumPy（BSD-3-Clause）、
 regex 与 MiniMind2 模型（Apache-2.0）。完整清单、上游
 源码及"对应源码"获取方式见 [NOTICE](NOTICE)。整个镜像不作为一个整体重新授权。
+
+## 系统支持
+
+遇到 Bug 或硬件兼容性问题，可随时反馈至 **report.mnos@proton.me**。
+请说明系统版本、发行版、架构、设备或虚拟机型号与复现步骤。
+Linux Edition：系统设置 → 系统支持，或运行 `mnos-support`。
+原生 mnOS：系统设置 → Support / H，或运行 `support -cn`。
+`help -cn support` 查看中文说明。
+[反馈说明](https://zengyiqian2014-boop.github.io/mnOS/support.html)。

@@ -13,7 +13,9 @@ PAM_LIBDIR ?= /usr/lib/$(shell $(CC) -dumpmachine)/security
 all: $(OUT)/mnos-center $(OUT)/first-boot $(OUT)/mnos-network-policy $(OUT)/wallpaper $(OUT)/installer $(OUT)/mnos-help $(OUT)/mnos-pkg $(OUT)/mnos-admin $(OUT)/mnos-security
 all: $(OUT)/mnos-session
 all: $(OUT)/mnos
-all: $(OUT)/mnos-region $(OUT)/configure-region $(OUT)/kernel
+all: $(OUT)/mnos-region $(OUT)/configure-region $(OUT)/kernel $(OUT)/mnos-support
+$(OUT)/mnos-support: support.cpp mnos-locale.h | $(OUT)
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS) $$(pkg-config --cflags --libs gtk+-3.0)
 $(OUT)/kernel: kernel.c mnos-locale.h | $(OUT)
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -fstack-protector-strong -D_FORTIFY_SOURCE=3 $< -o $@ $(LDFLAGS)
 $(OUT)/mnos-region: region.cpp region.hpp region-ui.hpp mnos-locale.h | $(OUT)
@@ -80,6 +82,7 @@ $(OUT)/wallpaper: wallpaper.cpp | $(OUT)
 install: all
 	install -Dm755 $(OUT)/kernel $(DESTDIR)/usr/bin/kernel
 	install -Dm755 $(OUT)/mnos-region $(DESTDIR)/usr/bin/mnos-region
+	install -Dm755 $(OUT)/mnos-support $(DESTDIR)/usr/bin/mnos-support
 	install -Dm755 $(OUT)/configure-region $(DESTDIR)/usr/lib/mnos/configure-region
 	install -Dm755 $(OUT)/mnos $(DESTDIR)/usr/bin/mnos
 	install -Dm755 $(OUT)/mnos-session $(DESTDIR)/usr/bin/mnos-session

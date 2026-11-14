@@ -35,9 +35,10 @@ install -Dm644 "$ROOT/overlay/etc/apt/sources.list.d/mnos.sources" "$work/mnos-r
 install -Dm644 "$ROOT/keys/microsoft-code.asc" "$work/mnos-runtime/usr/share/keyrings/microsoft-code.asc"
 printf 'deb [arch=%s signed-by=/usr/share/keyrings/microsoft-code.asc] https://packages.microsoft.com/repos/code stable main\n' "$arch" > "$work/mnos-runtime/etc/apt/sources.list.d/microsoft-code.list"
 printf '/etc/apt/sources.list.d/mnos.sources\n/etc/apt/sources.list.d/microsoft-code.list\n' > "$work/mnos-runtime/DEBIAN/conffiles"
-for file in mnos mnos-center mnos-help mnos-pkg mnos-admin mnos-security mnos-session mnos-region kernel; do copy "usr/bin/$file" mnos-runtime 755; done
+for file in mnos mnos-center mnos-help mnos-pkg mnos-admin mnos-security mnos-session mnos-region mnos-support kernel; do copy "usr/bin/$file" mnos-runtime 755; done
 for file in installer first-boot wallpaper configure-region; do copy "usr/lib/mnos/$file" mnos-runtime 755; done
 install -Dm644 "$ROOT/overlay/usr/share/applications/mnos-region.desktop" "$work/mnos-runtime/usr/share/applications/mnos-region.desktop"
+install -Dm644 "$ROOT/overlay/usr/share/applications/mnos-support.desktop" "$work/mnos-runtime/usr/share/applications/mnos-support.desktop"
 copy usr/sbin/mnos-network-policy mnos-runtime 755
 for file in commands.en.txt commands.zh.txt guide.en.txt guide.zh.txt; do
     install -Dm644 "$ROOT/overlay/usr/share/doc/mnos/$file" "$work/mnos-runtime/usr/share/doc/mnos/$file"

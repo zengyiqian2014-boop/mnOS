@@ -11,7 +11,7 @@
 #ifndef MNOS_MANUAL_DIR
 #define MNOS_MANUAL_DIR "/usr/share/doc/mnos"
 #endif
-static const char *topics[]={"help","tools","commands","ctf","firefox","code","packages","apt","build","network","kernel","system","files","native","editions","management","2fa","updates","region"};
+static const char *topics[]={"help","tools","commands","ctf","firefox","code","packages","apt","build","network","kernel","system","files","native","editions","management","2fa","updates","region","support"};
 static int known(const char *s){for(size_t i=0;i<sizeof topics/sizeof *topics;i++)if(!strcmp(s,topics[i]))return 1;return !strcmp(s,"all");}
 static int has_manual(const char *topic) {
     pid_t child=fork();
@@ -39,6 +39,7 @@ int main(int argc,char **argv){
     if(!strcmp(topic,"firefox-esr"))topic="firefox";
     if(!strcmp(topic,"mnos-help"))topic="help";
     if(!strcmp(topic,"mnos-admin"))topic="management";
+    if(!strcmp(topic,"mnos-support"))topic="support";
     if(!strcmp(topic,"mnos"))topic="updates";
     if(!strcmp(topic,"mnos-security")||!strcmp(topic,"mnos-face-preview"))topic="2fa";
     if(!known(topic)){

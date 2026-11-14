@@ -1,5 +1,14 @@
 [
   {
+    "name": "系统支持",
+    "name_en": "System Support",
+    "description": "反馈 Bug 与硬件兼容性问题：report.mnos@proton.me",
+    "description_en": "Report bugs and hardware compatibility issues: report.mnos@proton.me",
+    "category": "系统设置",
+    "icon": "help-browser",
+    "command": ["mnos-support"]
+  },
+  {
     "name": "语言、地区与时间",
     "name_en": "Language, Region & Time",
     "description": "选择显示语言、地区格式、时区和时间服务器",

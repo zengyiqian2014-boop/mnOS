@@ -229,6 +229,7 @@ struct Installer {
         gtk_entry_set_activates_default(GTK_ENTRY(confirmation), true);
         gtk_widget_show_all(dialog);
         gtk_widget_grab_focus(confirmation);
+        marker("MNOS INSTALL CONFIRMATION READY");
         int response = gtk_dialog_run(GTK_DIALOG(dialog));
         bool confirmed = response == GTK_RESPONSE_ACCEPT && device == gtk_entry_get_text(GTK_ENTRY(confirmation));
         gtk_widget_destroy(dialog);

@@ -335,6 +335,11 @@ int main(int argc, char **argv) {
             vm.send("w");
             m = vm.send("s");
             vm.wait("SETTINGS: saved", m);
+            m = vm.send("h");
+            vm.wait("UI: page 4", m);
+            vm.wait("report.mnos@proton.me", m);
+            vm.command("support -cn", "如遇 Bug 或硬件兼容性问题");
+            vm.screenshot(build / (arch + "-support.ppm"));
             m = vm.send(std::string(1, (char)0x85));
             vm.wait("UI: page 4", m);
             vm.command("cat /disk/home/demo/hello.txt", "Saved by the native editor.");

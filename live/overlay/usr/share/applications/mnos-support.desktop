@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=mnOS System Support
+Name[zh_CN]=mnOS 系统支持
+Comment=Report bugs and hardware compatibility issues
+Comment[zh_CN]=反馈 Bug 与硬件兼容性问题
+Exec=mnos-support
+Icon=help-browser
+Categories=System;Settings;
+StartupNotify=true

@@ -19,7 +19,7 @@ VERSION_CODENAME=trixie
 ID=mnos
 ID_LIKE=debian
 HOME_URL="https://github.com/zengyiqian2014-boop/mnOS"
-SUPPORT_URL="https://github.com/zengyiqian2014-boop/mnOS/issues"
+SUPPORT_URL="https://zengyiqian2014-boop.github.io/mnOS/support.html"
 EOF
 printf 'en_US.UTF-8 UTF-8\nzh_CN.UTF-8 UTF-8\n' > /etc/locale.gen
 locale-gen

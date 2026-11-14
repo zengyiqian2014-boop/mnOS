@@ -492,3 +492,19 @@ mnos settings（或 mnos-region）打开地区设置。可选择英文或简体�
 默认时间源为 pool.ntp.org。预设包括 ntp.aliyun.com、ntp.tencent.com、time.cloudflare.com、time.google.com；也支持自定义域名和 IP。Google 平滑闰秒源需单独使用。chronyc tracking 和 chronyc sources 可查看实际同步状态。保存地址不代表已完成同步。
 
 保存系统设置需要管理员认证。首次修改会把原 chrony 配置保存到 /etc/chrony/chrony.conf.before-mnos。第三方软件的翻译取决于软件自身。
+
+@@support
+系统支持
+
+如果遇到 Bug 或硬件兼容性问题，可随时反馈：
+report.mnos@proton.me
+
+mnos-support          打开系统支持（普通用户可用，Full 与 Lite 均提供）
+mnos-support --text   在终端显示联系方式
+help -cn support      查看此章节
+
+请说明 mnOS 版本与发行版、架构、设备或虚拟机型号、预期结果和复现步骤，
+可附截图及相关日志片段。发送前检查附件，不要发送密码、令牌、验证器密钥
+或恢复码。系统不会自动收集日志或提交报告。
+可复制邮箱地址，或选择“撰写邮件”打开自己的邮件应用。
+官网：https://zengyiqian2014-boop.github.io/mnOS/support.html

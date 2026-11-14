@@ -283,6 +283,8 @@ static void tools_help(const char *cmd) {
 static void kernel_command(const char *cmd) {
     if (!*cmd || streq(cmd,"help")) command_help("",add_line);
     else if (!strncmp(cmd,"help ",5)) command_help(cmd+5,add_line);
+    else if (streq(cmd,"support")) command_help("support",add_line);
+    else if (streq(cmd,"support -cn")) command_help("-cn support",add_line);
     else if (auth_command(cmd, add_line)) {}
     else if (linux_guest_command(cmd,add_line)) {
         if(streq(cmd,"linux start") || streq(cmd,"linux enable") || streq(cmd,"linux resume") ||
@@ -925,6 +927,7 @@ static void window_content(unsigned app) {
         button(x, y + 168, 235, "Wallpaper / W", false);
         text(x + 264, y + 168, wallpapers[wallpaper], 18, FG);
         button(x, y + 220, 235, "Save settings / S", true);
+        button(x + 264, y + 220, 235, "Support / H", false);
         button(x, y + 291, 145, "Lock session", false);
         button(x + 160, y + 291, 145, "Power", false);
         button(x + 320,y + 291,235,!auth_factors_available()?"2FA: Full edition":auth_factor_enabled()?"Disable 2FA / A":"Enable 2FA / A",auth_factor_enabled());
@@ -1317,6 +1320,9 @@ void ui_key(char key) {
             change_wallpaper((wallpaper + 1) % ARRAY_SIZE(wallpapers));
         else if (key == 's')
             save_settings();
+        else if (key == 'h' || key == 'H') {
+            focus_app(4); command_help("support",add_line);
+        }
         else if (key == 'l' || key == 'L') {
             toggle_linux();return;
         }
@@ -1514,6 +1520,9 @@ void ui_pointer(int x, int y, bool pressed) {
                         change_wallpaper((wallpaper + 1) % 3);
                     else if (yy >= 220 && yy < 252 && xx < 235)
                         save_settings();
+                    else if (yy >= 220 && yy < 252 && xx >= 264 && xx < 499) {
+                        focus_app(4); command_help("support",add_line);
+                    }
                     else if (yy >= 291 && yy < 323) {
                         if (xx < 145)
                             auth_lock();

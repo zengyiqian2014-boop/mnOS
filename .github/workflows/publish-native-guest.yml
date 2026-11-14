@@ -81,7 +81,11 @@ jobs:
           cat > /tmp/native-notes.md <<EOF
           自研 C / 汇编内核和原生 GUI，AMD64 / ARM64 图形安装 ISO。
 
-          本次加入可选的密码 + 验证器登录，本机二维码 / 手动密钥、一次性恢复码、加密保存和重放拒绝。首次配置可跳过，之后在设置或 2fa 命令中管理。help 为英文，help -cn 为中文。
+          Linux 客体内存改为按需分配：自动模式依据宿主空闲内存设定上限（至多 1 GiB），停止时可用 linux memory MIB 调整。实际启动检查可用内存，始终为宿主保留空间；停止或退出会擦除并回收客体页。
+
+          系统设置加入 Support / H，终端提供 support 与 support -cn。Bug 与硬件兼容性问题可反馈至 report.mnos@proton.me。help 为英文，help -cn 为中文。
+
+          保留可选的密码 + 验证器登录、本机二维码 / 手动密钥、一次性恢复码、加密保存和重放拒绝。首次配置可跳过，之后在设置或 2fa 命令中管理。
 
           默认关闭的 Linux 模拟环境继续运行真实 Linux / BusyBox。客体等待输入时暂停解释执行，输入和定时器唤醒；显式 pause / resume 保留内存，stop 清空临时状态。
 

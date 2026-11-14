@@ -531,3 +531,20 @@ mnos settings (or mnos-region) opens regional settings. Choose English or Simpli
 Default time source: pool.ntp.org. Presets: ntp.aliyun.com, ntp.tencent.com, time.cloudflare.com, time.google.com. Custom hostnames and IP addresses are accepted. Google leap-smear sources must be used separately. chronyc tracking and chronyc sources report actual synchronization.
 
 Saving system settings requires administrator authentication. The previous chrony configuration is kept as /etc/chrony/chrony.conf.before-mnos on the first change. Third-party translations depend on the application.
+
+@@support
+System Support
+
+Report bugs and hardware compatibility issues at any time:
+report.mnos@proton.me
+
+mnos-support          Open System Support (ordinary user; Full and Lite)
+mnos-support --text   Show contact details in the terminal
+help support          Read this chapter
+
+Include the mnOS version and edition, architecture, hardware or virtual machine
+model, expected result and reproduction steps. Screenshots and relevant log
+excerpts help. Review attachments: do not send passwords, tokens, authenticator
+secrets or recovery codes. No automatic log collection or report transmission.
+Copy the address or choose Write email to open your own mail application.
+Website: https://zengyiqian2014-boop.github.io/mnOS/support.html

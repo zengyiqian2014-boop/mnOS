@@ -4,6 +4,10 @@
 set -euo pipefail
 [ "${MNOS_AUTH_TEST_CONTAINER:-}" = 1 ] && [ "$(id -u)" = 0 ] || exit 2
 cd /source/live/src
+for group in sudo netdev plugdev; do
+    getent group "$group" >/dev/null || groupadd --system "$group"
+done
+bash ../tests/account-preflight.sh ../overlay/usr/lib/mnos/account-preflight
 make -j4 OUT=/tmp/auth-build
 make OUT=/tmp/auth-build install
 install -Dm644 ../overlay/etc/pam.d/mnos-security-setup /etc/pam.d/mnos-security-setup
