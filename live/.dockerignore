@@ -1,5 +1,6 @@
 out
 build/**
+!build/AUTHENTICATION.md
 !build/native-src
 !build/native-src/**
 !build/security-src
