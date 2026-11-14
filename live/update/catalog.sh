@@ -7,23 +7,36 @@ repo=${GH_REPO:?}; key=${1:?signing key fingerprint}; version=${2:?latest runtim
 test "$repo" = zengyiqian2014-boop/mnOS
 work=$(mktemp -d)
 gh api "repos/$repo/releases?per_page=100" > "$work/releases.json"
-jq --arg version "$version" --arg updated "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '
+# Package versions come from the authenticated APT index, never from a filename
+# that GitHub may normalize (for example 2.2.0~preview2 becomes .preview2).
+gh release download updates-stable --repo "$repo" --pattern Packages --pattern InRelease --dir "$work"
+gpgv --keyring "$PWD/live/keys/mnos-archive.gpg" --output "$work/Release" "$work/InRelease"
+digest=$(awk '/^SHA256:$/ {sha=1;next} /^[A-Za-z]/ {sha=0} sha && $3=="Packages" {print $1}' "$work/Release")
+[[ "$digest" =~ ^[0-9a-f]{64}$ ]]
+(cd "$work" && printf '%s  Packages\n' "$digest" | sha256sum --check --strict)
+awk '
+  function emit() { if (name!="") printf "%s\t%s\t%s\t%s\n",name,version,arch,file; name="";version="";arch="";file="" }
+  /^Package: / {name=$2} /^Version: / {version=$2} /^Architecture: / {arch=$2}
+  /^Filename: / {file=$2;sub(/^\.\//,"",file)} /^$/ {emit()} END {emit()}
+' "$work/Packages" | jq -Rn '[inputs|split("\t")|{package:.[0],version:.[1],architecture:.[2],filename:.[3]}]' > "$work/versions.json"
+jq --slurpfile packages "$work/versions.json" --arg version "$version" --arg updated "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '
   {schema:1, latest_linux_runtime:$version, updated:$updated,
    resources:[.[] | select(.draft == false) | . as $release |
      select(.tag_name == "updates-stable" or (.tag_name | test("-(full|lite|linux|native)-preview\\."))) |
      .assets[] | select(.name | test("\\.(iso|deb)$")) |
      select((.digest // "") | test("^sha256:[0-9a-f]{64}$")) |
-     {name:.name, url:.browser_download_url, bytes:.size, sha256:(.digest | sub("^sha256:";"")),
+     . as $asset | {name:.name, url:.browser_download_url, bytes:.size, sha256:(.digest | sub("^sha256:";"")),
       kind:(if (.name|endswith(".deb")) then "patch" elif (.name|contains("-lite-")) then "lite" else "full" end),
       edition:(if (.name|contains("native")) then "native" else "linux" end),
       architecture:(if (.name|test("(amd64|x86_64)")) then "amd64" elif (.name|contains("arm64")) then "arm64" else "all" end),
-      version:(if (.name|endswith(".deb")) then (.name|split("_")[1]) else $release.tag_name end),
+      version:(if (.name|endswith(".deb")) then ([$packages[0][]|select(.filename==$asset.name)|.version][0]) else $release.tag_name end),
       release:$release.html_url}] | sort_by(.kind,.edition,.architecture,.version,.name)}' \
   "$work/releases.json" > "$work/catalog.json"
 for arch in amd64 arm64; do
   jq -e --arg arch "$arch" --arg version "$version" 'any(.resources[];
-    .name == ("mnos-runtime_"+$version+"_"+$arch+".deb"))' "$work/catalog.json" >/dev/null
+    (.name|startswith("mnos-runtime_")) and .version==$version and .architecture==$arch)' "$work/catalog.json" >/dev/null
 done
+jq -e 'all(.resources[]; .version != null)' "$work/catalog.json" >/dev/null
 gpg --batch --yes --local-user "$key" --clearsign --digest-algo SHA256 \
     -o "$work/catalog.json.asc" "$work/catalog.json"
 gpgv --keyring "$PWD/live/keys/mnos-archive.gpg" "$work/catalog.json.asc"

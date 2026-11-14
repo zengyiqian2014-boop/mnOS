@@ -71,6 +71,12 @@ jobs:
           printf '%s' "$MNOS_APT_SIGNING_KEY" | gpg --batch --import
           unset MNOS_APT_SIGNING_KEY
           key=$(gpg --show-keys --with-colons live/keys/mnos-archive.gpg | awk -F: '$1=="fpr" {print $10;exit}')
+          # GitHub rewrites '~' in uploaded asset names to '.'. Normalize BEFORE
+          # building Packages so APT's signed Filename points at the actual URL.
+          for file in resources/*.deb; do
+            safe=${file//\~/.}
+            if [ "$safe" != "$file" ]; then mv "$file" "$safe"; fi
+          done
           if gh release view updates-stable >/dev/null 2>&1; then
             mkdir retained
             gh release download updates-stable --pattern '*.deb' --dir retained
@@ -83,7 +89,7 @@ jobs:
           bash live/update/repository.sh resources "$key"
           gpgv --keyring "$PWD/live/keys/mnos-archive.gpg" resources/InRelease
           version=$(cat live/VERSION)
-          git archive --format=tar.gz -o "resources/mnos-source-$version.tar.gz" HEAD
+          git archive --format=tar.gz -o "resources/mnos-source-${version//\~/.}.tar.gz" HEAD
           printf '%s\n' "$GITHUB_SHA" > resources/SOURCE_COMMIT.txt
       - name: Publish packages before signed repository metadata
         run: |
