@@ -86,8 +86,10 @@ mnOS Linux ${FLAVOR^} 安装预览版，AMD64 / ARM64 各一份完整 ISO。
 - 精简版可用 \`sudo mnos full\` 补装完整功能；\`sudo mnos update\` 更新 mnOS 组件，\`sudo mnos rollback 版本\` 回退源中仍保留的组件版本。
 - Linux 软件用 \`sudo apt update\`、\`sudo apt install 软件名\`；\`help apt\` 为英文，\`help -cn apt\` 为中文。
 
-人脸功能仍为录入和测试预览，不能用于解锁。Native 的初期 Linux 客体仍不支持 APT、网络或 Linux GUI 应用；不要把本 Linux 版当成自研内核。
-回退命令不回退 Debian 内核、其他软件包或个人数据。已有验证器的 Linux 账号需先关闭 2FA，再更换密码并重新绑定。
+Full 可选择附加人脸验证：密码和已开启的 TOTP 之后，通过本地 X11 摄像头窗口或单独的一次性人脸恢复码验证。模板加密保存在 Login Process 目录，识别进程没有 root 权限。普通 RGB 摄像头不是可信 3D 硬件；自动化测试覆盖真实 PAM 和代理，成功识别使用测试进程模拟，尚无实体摄像头防伪测量。
+安装时可选择 English / 简体中文；安装后在语言与地区设置修改语言、格式、时区和时间服务器。
+Native 的初期 Linux 客体仍不支持 APT、网络或 Linux GUI 应用；本 Linux 版与自研内核版分开发行。
+回退命令不回退 Debian 内核、其他软件包或个人数据。Linux 账号需先关闭已启用的 TOTP 和人脸验证，再更换密码并重新绑定。
 
 两种架构均完成真实安装、移除 ISO 后启动、普通用户密码登录、VirtIO/NVMe 磁盘和桌面检查；AMD64 还检查 BIOS 磁盘启动。测试记录、源码、校验和与来源随附件发布。
 

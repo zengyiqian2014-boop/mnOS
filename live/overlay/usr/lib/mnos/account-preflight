@@ -6,7 +6,21 @@ set -euo pipefail
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin LC_ALL=C.UTF-8
 umask 077
 ulimit -c 0
-fail() { printf '%s\n' "$*" >&2; exit 1; }
+fail() {
+    local message=$*
+    if [[ "${LANG:-}" != zh* ]]; then
+        case "$message" in
+            '请输入用户名。') message='Enter a username.' ;;
+            '请输入密码。') message='Enter a password.' ;;
+            '此用户名已被系统占用，请填写一个其他的') message='This username is reserved by the system. Please enter another one.' ;;
+            '用户名须以小写字母开头，使用字母、数字、下划线或连字符。') message='Start the username with a lowercase letter; use letters, digits, underscores or hyphens.' ;;
+            '当前系统账号组件无法创建此用户名；未截断、改名或修改磁盘。请更换用户名。') message='The account backend cannot create this username. No truncation, renaming or disk changes occurred. Choose another username.' ;;
+            '账号和密码不能包含换行符；未修改磁盘。') message='The username and password cannot contain newlines. No disk changes were made.' ;;
+            '当前系统密码哈希组件无法接受此密码；未截断或修改磁盘。当前版本支持至多 511 字节的非空密码。') message='The password hashing backend cannot accept this password. It was not truncated and no disk changes were made. This backend supports nonempty passwords up to 511 bytes.' ;;
+        esac
+    fi
+    printf '%s\n' "$message" >&2; exit 1;
+}
 mode=${1:---check}
 case "$mode" in --name|--check|--hash) ;; *) exit 2 ;; esac
 [ "$(id -u)" = 0 ] || fail 'Administrator authentication required.'

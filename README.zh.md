@@ -3,8 +3,8 @@
 [**mnOS 官网 / Explore mnOS**](https://zengyiqian2014-boop.github.io/mnOS/) · [统一资源 / Downloads](https://github.com/zengyiqian2014-boop/mnOS/tree/resources)
 
 **认证功能预览：** 密码 + 验证器、安装绑定、扫码/手动填写和设置开关已接入源码。
-详见[实际行为、测试与限制](AUTHENTICATION.md)。普通摄像头功能目前仅为录入与测试预览，
-尚未接入登录。自研版 0.6 Preview 1 已包含通过测试的认证改动；Linux 2.1 ISO
+详见[实际行为、测试与限制](AUTHENTICATION.md)。Linux Full 源码已接入 PAM 附加人脸验证，
+使用受保护的加密模板和一次性人脸恢复码。普通摄像头没有可信深度，实体摄像头和防伪测试仍待完成。自研版 0.6 Preview 1 已包含通过测试的认证改动；Linux 2.1 ISO
 早于这些功能，签名的 2.2 组件已发布，新 Full / Lite 安装镜像仍在验证。
 
 正在验证完整版 Full / 精简版 Lite 构建。Linux 精简版包含真实 APT、C/C++

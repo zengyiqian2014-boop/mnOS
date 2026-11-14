@@ -6,7 +6,9 @@
 
 **Authentication preview:** optional password + authenticator enrollment,
 QR/manual pairing and settings controls. See [implemented behavior and tests](AUTHENTICATION.md).
-The ordinary-camera feature is an enrollment/test preview, not a login factor.
+Linux Full source now includes additional PAM face verification with protected
+encrypted profiles and one-use face recovery codes. Ordinary RGB cameras are
+not trusted-depth hardware; physical-camera/spoof validation is still outstanding.
 Native 0.6 Preview 1 includes the tested authentication changes. Linux 2.1 ISOs
 predate them; signed 2.2 components are published separately while newer Full/Lite
 installation images complete validation.

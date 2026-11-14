@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Language, Region & Time
+Name[zh_CN]=语言、地区与时间
+Comment=Set the system language, regional formats, time zone and time servers
+Comment[zh_CN]=设置系统语言、地区格式、时区和时间服务器
+Exec=mnos-region
+Icon=preferences-system-time
+Terminal=false
+Categories=Settings;DesktopSettings;

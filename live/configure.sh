@@ -31,6 +31,8 @@ systemd-sysusers /usr/lib/sysusers.d/mnos-login.conf
 install -d -o login-process -g login-process -m 700 /var/lib/mnos-login-process
 chown root:root /usr/lib/mnos/login-helper
 chmod 4755 /usr/lib/mnos/login-helper
+chown root:root /usr/lib/mnos/face-helper
+chmod 4755 /usr/lib/mnos/face-helper
 pam-auth-update --package
 systemctl enable mnos-login-process.socket
 (cd /usr/share/mnos/face && sha256sum --check SOURCES.sha256)

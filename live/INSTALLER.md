@@ -1,5 +1,25 @@
 # Unified offline installer
 
+The Linux Edition installer offers English and Simplified Chinese before account
+creation. The selected language is written to the installed system; mnOS help
+uses that locale by default (`help -en` / `help -cn` override it). Application
+menus, the tool catalog and authentication dialogs have both translations.
+Third-party software uses its own available translations.
+
+Expand **Region and time** to choose regional formats independently, an IANA time
+zone and time servers. After installation, **Language, Region & Time** in settings
+or `mnos settings` opens the same controls. Language changes take effect at the
+next login. Saving installed-system settings uses Polkit authentication.
+
+The default time source is `pool.ntp.org`. Presets include `ntp.aliyun.com`,
+`ntp.tencent.com`, `time.cloudflare.com` and `time.google.com`; custom hostnames,
+IPv4 and IPv6 addresses are accepted. Google leap-smear sources are kept separate
+from ordinary NTP sources. The helper validates all settings before writing,
+saves the initial chrony configuration as `chrony.conf.before-mnos`, and restarts
+chrony when applying settings to a running installation. `chronyc tracking` and
+`chronyc sources` report synchronization; saving addresses alone is not a sync
+result. No clock or language changes are made to the build host during tests.
+
 Build one installation ISO per CPU architecture:
 
 ```sh

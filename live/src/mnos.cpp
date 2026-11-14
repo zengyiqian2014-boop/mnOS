@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include "mnos-locale.h"
 static int run(std::vector<std::string> words) {
     std::vector<char *> args;for(auto &w:words)args.push_back(w.data());args.push_back(nullptr);
     pid_t child=fork();if(child<0)return 1;
@@ -189,7 +190,14 @@ static int install_without(std::vector<std::string> packages,const std::vector<s
     } catch(const std::exception &error) {std::cerr<<error.what()<<'\n';return 1;}
 }
 int main(int argc,char **argv) {
+    if(argc==2&&!strcmp(argv[1],"settings")) {
+        execl("/usr/bin/mnos-region","mnos-region",(char *)nullptr);return 1;
+    }
     if(argc==1||!strcmp(argv[1],"help")||!strcmp(argv[1],"--help")) {
+        if(mnos_chinese()) {
+            execl("/usr/bin/mnos-help", "mnos-help", "-cn", "updates", (char *)nullptr);
+            perror("mnos-help");return 1;
+        }
         std::cout << "mnos status | source | list [full|lite|patch|all] | packages [installed|full]\n"
           "mnos full | update | rollback VERSION | apt ...\n"
           "mnos --uninstall PACKAGE...: remove selected packages with APT confirmation.\n"

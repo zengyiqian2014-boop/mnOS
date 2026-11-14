@@ -13,15 +13,30 @@ PAM_LIBDIR ?= /usr/lib/$(shell $(CC) -dumpmachine)/security
 all: $(OUT)/mnos-center $(OUT)/first-boot $(OUT)/mnos-network-policy $(OUT)/wallpaper $(OUT)/installer $(OUT)/mnos-help $(OUT)/mnos-pkg $(OUT)/mnos-admin $(OUT)/mnos-security
 all: $(OUT)/mnos-session
 all: $(OUT)/mnos
-$(OUT)/mnos: mnos.cpp catalog.hpp | $(OUT)
+all: $(OUT)/mnos-region $(OUT)/configure-region $(OUT)/kernel
+$(OUT)/kernel: kernel.c mnos-locale.h | $(OUT)
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -fstack-protector-strong -D_FORTIFY_SOURCE=3 $< -o $@ $(LDFLAGS)
+$(OUT)/mnos-region: region.cpp region.hpp region-ui.hpp mnos-locale.h | $(OUT)
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS) $$(pkg-config --cflags --libs gtk+-3.0)
+$(OUT)/configure-region: configure-region.cpp region.hpp process.hpp | $(OUT)
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
+$(OUT)/mnos: mnos.cpp catalog.hpp mnos-locale.h | $(OUT)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS) $$(pkg-config --cflags --libs json-glib-1.0)
 $(OUT)/mnos-session: session.cpp | $(OUT)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 ifeq ($(FLAVOR),full)
-all: $(OUT)/login-process $(OUT)/login-helper $(OUT)/pam_mnos_2fa.so $(OUT)/mnos-face-preview
+all: $(OUT)/login-process $(OUT)/login-helper $(OUT)/pam_mnos_2fa.so $(OUT)/mnos-face-preview $(OUT)/face-helper $(OUT)/face-camera $(OUT)/pam_mnos_face.so
 endif
-$(OUT)/mnos-face-preview: face-preview.cpp face-challenge.hpp security-ui.hpp $(SECURITY_UI_OBJECTS)
-	$(CXX) $(CXXFLAGS) -Wno-misleading-indentation $(CPPFLAGS) $(SECURITY_INCLUDES) face-preview.cpp $(SECURITY_UI_OBJECTS) -o $@ $(LDFLAGS) -pthread $$(pkg-config --cflags --libs gtk+-3.0 opencv4)
+$(OUT)/security/face-protocol.o: face-protocol.c face-protocol.h | $(OUT)/security
+	$(CC) $(SECURITY_CFLAGS) $(CPPFLAGS) -c $< -o $@
+$(OUT)/mnos-face-preview: face-preview.cpp security-ui.hpp i18n.hpp mnos-locale.h $(SECURITY_UI_OBJECTS) $(OUT)/security/face-protocol.o
+	$(CXX) $(CXXFLAGS) -Wno-misleading-indentation $(CPPFLAGS) $(SECURITY_INCLUDES) $< $(SECURITY_UI_OBJECTS) $(OUT)/security/face-protocol.o -o $@ $(LDFLAGS) $$(pkg-config --cflags --libs gtk+-3.0)
+$(OUT)/face-helper: face-helper.cpp face-record.hpp face-protocol.h $(SECURITY_OBJECTS)
+	$(CXX) $(CXXFLAGS) -Wno-misleading-indentation $(CPPFLAGS) $(SECURITY_INCLUDES) $< $(SECURITY_OBJECTS) -o $@ $(LDFLAGS) -lpam
+$(OUT)/face-camera: face-camera.cpp face-capture.hpp face-challenge.hpp face-protocol.h security-ui.hpp i18n.hpp mnos-locale.h $(SECURITY_UI_OBJECTS)
+	$(CXX) $(CXXFLAGS) -Wno-misleading-indentation $(CPPFLAGS) $(SECURITY_INCLUDES) $< $(SECURITY_UI_OBJECTS) -o $@ $(LDFLAGS) -pthread $$(pkg-config --cflags --libs gtk+-3.0 opencv4)
+$(OUT)/pam_mnos_face.so: pam-mnos-face.c mnos-locale.h $(OUT)/security/login-protocol.o $(OUT)/security/face-protocol.o
+	$(CC) $(SECURITY_CFLAGS) $(CPPFLAGS) -shared $< $(OUT)/security/login-protocol.o $(OUT)/security/face-protocol.o -o $@ -Wl,-z,relro,-z,now -lpam
 $(OUT)/security:
 	mkdir -p $@
 $(OUT)/security/password.o: $(SECURITY_SRC)/src/password.c | $(OUT)/security
@@ -42,30 +57,36 @@ $(OUT)/login-helper: login-helper.c $(OUT)/security/login-library.o $(SECURITY_O
 	$(CC) $(SECURITY_CFLAGS) $(CPPFLAGS) $^ -o $@ $(LDFLAGS) -lpam
 $(OUT)/pam_mnos_2fa.so: pam-mnos-2fa.c $(OUT)/security/login-protocol.o
 	$(CC) $(SECURITY_CFLAGS) $(CPPFLAGS) -shared $^ -o $@ -Wl,-z,relro,-z,now -lpam
-$(OUT)/mnos-security: security.cpp security-ui.hpp $(SECURITY_UI_OBJECTS)
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(SECURITY_INCLUDES) security.cpp $(SECURITY_UI_OBJECTS) -o $@ $(LDFLAGS) $$(pkg-config --cflags --libs gtk+-3.0)
-$(OUT)/mnos-admin: admin.c | $(OUT)
+$(OUT)/mnos-security: security.cpp security-ui.hpp i18n.hpp mnos-locale.h $(SECURITY_UI_OBJECTS) $(OUT)/security/face-protocol.o
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(SECURITY_INCLUDES) security.cpp $(SECURITY_UI_OBJECTS) $(OUT)/security/face-protocol.o -o $@ $(LDFLAGS) $$(pkg-config --cflags --libs gtk+-3.0)
+$(OUT)/mnos-admin: admin.c mnos-locale.h | $(OUT)
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -fstack-protector-strong -D_FORTIFY_SOURCE=3 $< -o $@ $(LDFLAGS)
 $(OUT):
 	mkdir -p $@
-$(OUT)/mnos-help: help.c | $(OUT)
+$(OUT)/mnos-help: help.c mnos-locale.h | $(OUT)
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -fstack-protector-strong -D_FORTIFY_SOURCE=3 $< -o $@ $(LDFLAGS)
 $(OUT)/mnos-pkg: package.c | $(OUT)
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -fstack-protector-strong -D_FORTIFY_SOURCE=3 $< -o $@ $(LDFLAGS)
-$(OUT)/mnos-center: desktop.cpp command-index.hpp | $(OUT)
+$(OUT)/mnos-center: desktop.cpp command-index.hpp i18n.hpp mnos-locale.h | $(OUT)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS) $$(pkg-config --cflags --libs gtk+-3.0 gio-unix-2.0 json-glib-1.0)
 $(OUT)/first-boot: first-boot.cpp process.hpp | $(OUT)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
-$(OUT)/installer: installer.cpp process.hpp security-ui.hpp $(SECURITY_UI_OBJECTS) | $(OUT)
+$(OUT)/installer: installer.cpp process.hpp security-ui.hpp region-ui.hpp region.hpp i18n.hpp mnos-locale.h $(SECURITY_UI_OBJECTS) | $(OUT)
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(SECURITY_INCLUDES) installer.cpp $(SECURITY_UI_OBJECTS) -o $@ $(LDFLAGS) $$(pkg-config --cflags --libs gtk+-3.0 json-glib-1.0)
 $(OUT)/mnos-network-policy: network-policy.cpp process.hpp | $(OUT)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 $(OUT)/wallpaper: wallpaper.cpp | $(OUT)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS) $$(pkg-config --cflags --libs glib-2.0)
 install: all
+	install -Dm755 $(OUT)/kernel $(DESTDIR)/usr/bin/kernel
+	install -Dm755 $(OUT)/mnos-region $(DESTDIR)/usr/bin/mnos-region
+	install -Dm755 $(OUT)/configure-region $(DESTDIR)/usr/lib/mnos/configure-region
 	install -Dm755 $(OUT)/mnos $(DESTDIR)/usr/bin/mnos
 	install -Dm755 $(OUT)/mnos-session $(DESTDIR)/usr/bin/mnos-session
 ifeq ($(FLAVOR),full)
+	install -Dm4755 $(OUT)/face-helper $(DESTDIR)/usr/lib/mnos/face-helper
+	install -Dm755 $(OUT)/face-camera $(DESTDIR)/usr/lib/mnos/face-camera
+	install -Dm644 $(OUT)/pam_mnos_face.so $(DESTDIR)$(PAM_LIBDIR)/pam_mnos_face.so
 	install -Dm755 $(OUT)/mnos-face-preview $(DESTDIR)/usr/bin/mnos-face-preview
 	install -Dm755 $(OUT)/login-process $(DESTDIR)/usr/lib/mnos/login-process
 	install -Dm4755 $(OUT)/login-helper $(DESTDIR)/usr/lib/mnos/login-helper

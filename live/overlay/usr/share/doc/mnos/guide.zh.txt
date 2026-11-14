@@ -12,7 +12,8 @@ AMD64 面向 Intel/AMD 64 位，ARM64 面向 AArch64 UEFI；每种架构同一�
 初期支持 RV64IMAC/LP64 控制台程序和临时文件，没有虚拟网卡、GPU 或宿主文件共享。
 Firefox、VS Code 和完整 CTF 桌面应用运行在本 Linux 版里，尚不能在原生客体运行。
 
-完整英文命令手册：help
+按所选系统语言显示命令手册：help
+完整英文命令手册：help -en
 完整中文命令手册：help -cn
 具体章节：help -cn code / firefox / packages / build / network / kernel
 版本区别与管理：help -cn editions / management
@@ -23,7 +24,11 @@ Firefox、VS Code 和完整 CTF 桌面应用运行在本 Linux 版里，尚不�
 网络、日志、更新、进程、显示和内核设置。mnos-admin help -cn 查看 CLI。
 查询按当前账号权限执行；修改系统时使用 sudo 或图形管理器的正常认证。
 
-图形安装器先选磁盘、创建普通账号和网络权限模式，再确认整盘清空。
+图形安装器可以选择中文或英文，分别设置地区格式、时区和时间服务器，再选磁盘、
+创建普通账号和网络权限模式，最后确认整盘清空。安装后运行 mnos settings 或
+在设置中打开“语言、地区与时间”；语言在重新登录后生效，第三方翻译取决于软件。
+默认时间源为 pool.ntp.org；预设另含阿里云、腾讯云、Cloudflare、Google，支持自定义
+域名/IP。Google 平滑闰秒源单独使用。chronyc tracking / sources 查看实际同步状态。
 当前是自动整盘分区安装，不支持保留旧系统、手动分区或安装时加密。
 安装完成关机、移除 ISO、从硬盘启动。没有默认密码，直接 root 登录锁定。
 日常应用、个人文件和桌面设置使用普通用户，系统修改使用 sudo/Polkit。

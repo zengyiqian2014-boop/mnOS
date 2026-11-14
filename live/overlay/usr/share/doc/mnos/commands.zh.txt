@@ -1,7 +1,8 @@
 @@help
 mnOS Linux 工具环境 — 详细命令手册
 
-help                         默认英文手册
+help                         按所选系统语言显示手册
+help -en                     英文手册
 help -cn                     中文手册
 help [-cn] 主题               查看某一章
 help --list                  列出章节
@@ -277,7 +278,7 @@ mnos-center --ctf             打开图形 CTF 工作台
 wireshark                    图形化分析已保存的数据包文件
 ghex                         图形十六进制编辑器
 sqlitebrowser                图形化查看和编辑 SQLite 数据库
-help ctf                     英文版 CTF 说明
+help -en ctf                 英文版 CTF 说明
 help 工具名                   查看安装版本的参数、格式与用法
 
 Web：Firefox ESR、curl、ffuf、gobuster、dirb、sqlmap、mitmproxy/mitmweb。
@@ -328,7 +329,7 @@ VS Code、开发环境、GNU/Linux 命令和 CTF 图形应用。日常使用无�
 两版均提供 AMD64 与 ARM64 镜像；设备范围以实测及支持文档为准，不宣称全硬件兼容或安全认证。
 
 @@management
-mnos-admin help                  英文命令手册
+mnos-admin help                  按所选系统语言显示手册
 mnos-admin help -cn              中文命令手册
 mnos-admin gui                   打开统一系统管理中心
 mnos-admin info                  版本、架构、实际运行的宿主内核
@@ -354,7 +355,7 @@ mnos-admin commands|tools|ctf     实际安装的命令与工具目录
 登录安全：密码 + 验证器
   mnos-security                  打开本账号的图形化登录安全设置。
   mnos-security --help           查看概要，不打开图形界面。
-  help 2fa / help -cn 2fa        英文 / 中文帮助。
+  help -en 2fa / help -cn 2fa    英文 / 中文帮助。
 
 安装时可以选择绑定，也可安装后从设置中开启。扫描本机生成的二维码，
 或手动填写相同的 Base32 密钥；选择基于时间、SHA-1、六位、30 秒。
@@ -368,15 +369,18 @@ mnos-admin commands|tools|ctf     实际安装的命令与工具目录
 Linux 更换密码：先在设置中关闭验证器，更换密码后重新绑定。绑定期间
 PAM 会阻止修改密码，避免密钥无法解密。Native 版的 passwd 会重新加密密钥。
 
-普通摄像头预览（仅 Linux）
-  mnos-face-preview --enroll     认证后进行动作采集，保存加密模板。
+附加人脸验证（仅 Linux Full）
+  mnos-face-preview --enroll     认证后完成相机检测，保存恢复码并启用。
   mnos-face-preview --test       认证后测试已保存的模板。
   mnos-face-preview --delete     认证后删除模板。
   mnos-face-preview --help       查看用法，不启动摄像头。
 
-摄像头预览包含随机眨眼、转头和圆环变色响应。普通摄像头只能估计姿态，
-不能测得可信深度。本版尚未用人脸结果解锁系统，也不替代密码或验证器。
-不保存或上传照片、录像。账号密码更换后需要重新录入。
+PAM 在密码和已开启的 TOTP 之后额外验证人脸。人脸提示处直接回车会打开
+本地 X11 相机窗口；也可输入八个人脸恢复码中的一个。每个只能使用一次，
+请离线保存。SSH、TTY、Wayland 或相机不可用时需要人脸恢复码。
+普通 RGB 摄像头的动作和颜色响应仍可能被精心制作的重放欺骗，不是可信 3D
+深度识别。不保存或上传照片、录像。更改密码前先关闭人脸验证，改好后重录。
+Native 尚无摄像头登录驱动。
 
 Linux 的 Login Process 系统账号保护加密的验证器文件，普通用户无法读取。
 软件权限和静态加密不能防止恶意 root 或被攻破的内核获取运行时秘密。
@@ -455,8 +459,8 @@ Raw：https://raw.githubusercontent.com/zengyiqian2014-boop/mnOS/resources/catal
 这不是永久 APT 锁定；带此参数时只接受软件包名称，不接受其他选项、版本或通配符。
 选择性补装 Full 不会请求强制依赖所有组件的 mnos-full 元包。
 
-完整版功能包补装验证器设置、人脸采集预览，以及更广的 Linux 桌面、开发和
-CTF 软件。人脸预览目前还不是登录方式。APT 会下载依赖；如果所选完整版工具
+完整版功能包补装验证器设置、附加人脸验证，以及更广的 Linux 桌面、开发和
+CTF 软件。人脸通过 PAM 验证，并提供单独的恢复码。APT 会下载依赖；如果所选完整版工具
 需要 Python，会一并安装。精简 ISO 初始环境不带 Python，只提供 C/C++ 开发
 环境及精选网络、CTF 工具。账号和个人文件保留，不自动打开 2FA；安装功能包
 后到“登录安全”自行选择扫码或手动密钥绑定。
@@ -479,3 +483,12 @@ InRelease 签名和下载包摘要；旧版本软件包保留，供明确指定�
 所需的用户环境及虚拟网卡，还不能使用这些软件包。现有解释器始终隔离客体
 地址，尚无“关闭隔离就能本机执行任意 Linux 软件”的开关。需要 Linux 直接
 管理硬件时，启动 Linux Edition；不能把启动方式的区别藏在一个假开关后面。
+
+@@region
+语言、地区与时间
+
+mnos settings（或 mnos-region）打开地区设置。可选择英文或简体中文、地区格式与 IANA 时区。语言在重新登录后生效。help 默认使用所选语言，help -en 强制英文，help -cn 强制中文。
+
+默认时间源为 pool.ntp.org。预设包括 ntp.aliyun.com、ntp.tencent.com、time.cloudflare.com、time.google.com；也支持自定义域名和 IP。Google 平滑闰秒源需单独使用。chronyc tracking 和 chronyc sources 可查看实际同步状态。保存地址不代表已完成同步。
+
+保存系统设置需要管理员认证。首次修改会把原 chrony 配置保存到 /etc/chrony/chrony.conf.before-mnos。第三方软件的翻译取决于软件自身。

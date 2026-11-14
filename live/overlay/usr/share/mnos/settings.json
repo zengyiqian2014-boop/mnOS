@@ -1,10 +1,25 @@
 [
   {
+    "name": "语言、地区与时间",
+    "name_en": "Language, Region & Time",
+    "description": "选择显示语言、地区格式、时区和时间服务器",
+    "description_en": "Choose display language, regional formats, time zone and time servers",
+    "category": "系统设置",
+    "icon": "preferences-system-time",
+    "command": [
+      "mnos-region"
+    ]
+  },
+  {
     "name": "登录安全",
     "description": "开启或关闭验证器，支持扫码和手动填写",
     "category": "系统设置",
     "icon": "preferences-system-privacy",
-    "command": ["mnos-security"]
+    "command": [
+      "mnos-security"
+    ],
+    "name_en": "Login security",
+    "description_en": "Enable or disable an authenticator using a QR code or manual entry"
   },
   {
     "name": "内核管理",
@@ -15,7 +30,9 @@
       "@terminal",
       "kernel",
       "help"
-    ]
+    ],
+    "name_en": "Kernel management",
+    "description_en": "Query kernel, CPU, memory and drivers; system changes require authentication"
   },
   {
     "name": "GPU 驱动",
@@ -26,7 +43,9 @@
       "@terminal",
       "kernel",
       "gpu"
-    ]
+    ],
+    "name_en": "GPU drivers",
+    "description_en": "View the graphics device and its active driver"
   },
   {
     "name": "性能配置",
@@ -37,7 +56,9 @@
       "@terminal",
       "tuned-adm",
       "active"
-    ]
+    ],
+    "name_en": "Performance settings",
+    "description_en": "View the active TuneD profile"
   },
   {
     "name": "系统管理",
@@ -47,7 +68,9 @@
     "command": [
       "/usr/lib/cockpit/cockpit-desktop",
       "/"
-    ]
+    ],
+    "name_en": "System management",
+    "description_en": "Services, accounts, logs and updates"
   },
   {
     "name": "系统日志",
@@ -57,7 +80,9 @@
     "command": [
       "/usr/lib/cockpit/cockpit-desktop",
       "system/logs"
-    ]
+    ],
+    "name_en": "System journal",
+    "description_en": "Read records by time and service"
   },
   {
     "name": "用户账户",
@@ -67,7 +92,9 @@
     "command": [
       "/usr/lib/cockpit/cockpit-desktop",
       "users"
-    ]
+    ],
+    "name_en": "User accounts",
+    "description_en": "Accounts, passwords and groups"
   },
   {
     "name": "软件更新",
@@ -77,7 +104,9 @@
     "command": [
       "/usr/lib/cockpit/cockpit-desktop",
       "updates"
-    ]
+    ],
+    "name_en": "Software updates",
+    "description_en": "Check and install system updates"
   },
   {
     "name": "系统服务",
@@ -87,18 +116,21 @@
     "command": [
       "/usr/lib/cockpit/cockpit-desktop",
       "system/services"
-    ]
+    ],
+    "name_en": "System services",
+    "description_en": "Service status, start, stop and boot configuration"
   },
   {
-    "name": "中文命令帮助",
-    "description": "help -cn；普通用户可直接查看",
+    "name": "命令帮助",
+    "description": "按系统语言显示 help；普通用户可直接查看",
     "category": "系统设置",
     "icon": "help-browser",
     "command": [
       "@terminal",
-      "mnos-help",
-      "-cn"
-    ]
+      "mnos-help"
+    ],
+    "name_en": "Command help",
+    "description_en": "Help in your selected language; no administrator rights needed"
   },
   {
     "name": "本地使用手册",
@@ -108,6 +140,12 @@
     "command": [
       "mousepad",
       "/usr/share/doc/mnos/guide.zh.txt"
+    ],
+    "name_en": "Local guide",
+    "description_en": "Startup, installation, security and troubleshooting",
+    "command_en": [
+      "mousepad",
+      "/usr/share/doc/mnos/guide.en.txt"
     ]
   },
   {
@@ -119,7 +157,9 @@
       "@terminal",
       "mnos-net",
       "help"
-    ]
+    ],
+    "name_en": "Network permissions",
+    "description_en": "View the network tool permission policy"
   },
   {
     "name": "抓包接口",
@@ -130,7 +170,9 @@
       "@network",
       "tcpdump",
       "-D"
-    ]
+    ],
+    "name_en": "Capture interfaces",
+    "description_en": "List capture interfaces under the selected permission policy"
   },
   {
     "name": "安全基线检查",
@@ -141,7 +183,9 @@
       "@terminal",
       "sudo",
       "mnos-security-check"
-    ]
+    ],
+    "name_en": "Security configuration check",
+    "description_en": "Check the current security configuration"
   },
   {
     "name": "系统概况",
@@ -152,7 +196,9 @@
       "@terminal",
       "mnos-admin",
       "info"
-    ]
+    ],
+    "name_en": "System information",
+    "description_en": "Version, architecture and the actual running host kernel"
   },
   {
     "name": "磁盘与文件系统",
@@ -161,7 +207,9 @@
     "icon": "drive-harddisk",
     "command": [
       "gnome-disks"
-    ]
+    ],
+    "name_en": "Disks and filesystems",
+    "description_en": "Partitions, filesystems, mounts and device health"
   },
   {
     "name": "网络连接",
@@ -170,7 +218,9 @@
     "icon": "network-workgroup",
     "command": [
       "nm-connection-editor"
-    ]
+    ],
+    "name_en": "Network connections",
+    "description_en": "Ethernet, Wi-Fi, DNS and connection settings"
   },
   {
     "name": "进程管理",
@@ -179,7 +229,9 @@
     "icon": "utilities-system-monitor",
     "command": [
       "xfce4-taskmanager"
-    ]
+    ],
+    "name_en": "Process management",
+    "description_en": "CPU, memory and processes; changes follow account permissions"
   },
   {
     "name": "系统管理命令",
@@ -189,9 +241,10 @@
     "command": [
       "@terminal",
       "mnos-admin",
-      "help",
-      "-cn"
-    ]
+      "help"
+    ],
+    "name_en": "Management commands",
+    "description_en": "Services, accounts, storage, journal, startup and tools"
   },
   {
     "name": "两版系统说明",
@@ -201,8 +254,9 @@
     "command": [
       "@terminal",
       "mnos-help",
-      "-cn",
       "editions"
-    ]
+    ],
+    "name_en": "System editions",
+    "description_en": "Native host, software Linux guest and independent Linux Edition"
   }
 ]

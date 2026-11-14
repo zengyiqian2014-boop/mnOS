@@ -1,8 +1,8 @@
-# 登录与验证器 / Authentication preview
+# 登录、验证器与人脸验证 / Authentication
 
 这是源码中的新认证功能，**旧发布页上的 ISO 不会因此自动更新**。
-密码和验证器功能已有自动化验证；普通摄像头功能目前是录入与测试预览，
-尚未接入系统登录，不能宣传为已完成的人脸解锁或可信 3D 深度识别。
+密码和验证器功能已有自动化验证。Linux Full 的普通摄像头验证已接入 PAM，
+作为密码及已开启 TOTP 之后的附加验证；它不具备可信 3D 深度或经认证的防伪能力。
 
 ## 安装与设置
 
@@ -27,7 +27,7 @@
 Native 更改密码时会重新加密已绑定的密钥。
 已有 Full 账号若启用了验证器，不能通过改用 Native Lite 绕过第二步，必须启动 Full。
 Linux 目前会通过 PAM 阻止在绑定期间修改密码，避免密码与加密密钥不同步：
-**先在“登录安全”关闭验证器，再更换密码，最后重新绑定**。这是当前实现限制。
+**先在“登录安全”关闭验证器和人脸验证，再更换密码，最后重新绑定**。这是当前实现限制。
 本机 PAM 的密码登录、sudo/su 和使用同一 PAM 配置的锁屏会执行第二步；
 SSH 公钥、其他绕过 common-auth 的服务或用户自行替换的认证栈不在此保证范围内。
 
@@ -57,23 +57,44 @@ Linux 使用内核 `getrandom()`，Native 使用现有的安全随机设备/CPU 
 没有合格随机源时不生成密钥。认证状态迁移支持原 Native v1 账号记录；
 保存后升级为 v2，不要求用户重新创建已有账号。
 
-## 普通摄像头预览的实际范围
+## 普通摄像头登录的实际范围
 
-Linux 安装器可选择首次登录时打开采集；之后也可在“登录安全”录入、测试或删除。
-`mnos-face-preview --enroll|--test|--delete` 使用 C++、OpenCV YuNet/SFace 和
-本地 V4L2 摄像头。没有 Python/Java 实现。模型是有明确来源与许可证的第三方组件。
+Linux Full 的“登录安全”可录入、测试或关闭人脸验证。安装器中的选项会在
+目标系统首次登录后邀请录入，取消不会启用验证。Lite 不安装这些组件；
+安装完整版功能包后可开启。旧预览的用户目录模板不会自动升级为登录凭据，
+需要重新录入并确认保存恢复码。
 
-预览包括随机动作顺序、缓慢眨眼、双向转头和缓慢变色的圆环，检查面部区域的
-颜色响应。用单目关键点估计头部姿态，不声称测得真实深度。
-不同人脸、超时、停帧、动作或颜色响应不足会结束本次测试。
-只有完成采集并点击完成，才保存加密的人脸特征；不保存照片或录像。
-模板以独立随机盐和密码派生密钥加密，位于用户私有目录
-`~/.local/share/mnos/security/face-v1`。更改密码后需要重新录入模板。
+命令为 `mnos-face-preview --enroll|--test|--delete`，保留原命令名以兼容菜单。
+它是普通用户运行的 C++ 设置界面。`face-helper` 是小型 C++ 权限代理，
+不链接 GTK/OpenCV；它验证真实调用者、密码和已绑定的 TOTP，锁定账号记录，
+启动专用 `login-camera` 无登录账号运行的摄像头进程。摄像头进程无 root 权限、
+无新特权，不接收密码或 TOTP 秘密，仅在私有 IPC 中接收待匹配特征。
+PAM 只信任代理启动的进程结果，不接受设置界面提供的“识别成功”标记。
 
-**该预览不会解锁系统，也不会替代密码/TOTP。** 当前只有合成观测的状态机测试，
-尚无实体摄像头、不同光照/肤色、照片、屏幕重放或深伪攻击的测量结果。
-接入真正的人脸登录前仍需完成这些验证和可信摄像头到认证服务的数据通路。
-Native 尚无 USB/UVC 摄像头驱动，因此不提供该摄像头页面。
+识别使用本地 V4L2 摄像头及 OpenCV YuNet/SFace，检查人脸相似度、随机动作
+顺序、眨眼、双向转头和圆环变色后的脸部颜色响应。没有 Python/Java 实现。
+模型来源、校验值和许可证见 `live/face/`。不保存或上传照片、录像。
+加密模板由 Login Process 账号保管，路径为
+`/var/lib/mnos-login-process/faces/UID.face`，目录 0700、文件 0600。
+使用独立随机盐、密码派生密钥及 XChaCha20-Poly1305，绑定 UID 和版本。
+
+录入完成后显示八个独立的人脸恢复码。确认保存后才启用；每个恢复码只替代
+一次人脸检查，仍需密码以及已开启的 TOTP。相机未转发、没有图形显示或检测
+失败时可使用恢复码。TOTP 恢复码和人脸恢复码是两组不同的码。改变密码前必须
+关闭两种验证。关闭人脸验证需要密码、已开启的 TOTP，以及人脸或人脸恢复码。
+
+启用后，使用 common-auth 的密码登录、锁屏与提权会额外验证人脸。
+PAM 相机页面只连接本地 X11 显示；当前集成针对 LightDM/Xfce，读取固定的
+LightDM 授权文件或账号 .Xauthority，并将只读副本传给低权限进程。
+Wayland、无显示的 SSH/TTY 会话需要人脸恢复码。SSH 公钥等绕过 common-auth
+的认证流程不在此保证范围内。其他用户无法查询、改写或删除此账号的凭据。
+
+**普通 RGB 摄像头不是硬件 3D 人脸传感器。** 动作和颜色检查不能保证抵御
+精心制作的视频或深伪。自动化测试覆盖真正的代理、PAM、模板加密与恢复流程，
+成功相机结果用明确标记的测试进程模拟；模型推理、空画面和缺失相机另行执行。
+尚无实体摄像头在不同光线、肤色及攻击样本下的测量结果，不宣称防伪认证达标。
+Native 尚无 USB/UVC 摄像头驱动，因此不提供该摄像头登录方式；Native TOTP
+仍使用其自身内核服务。
 
 ## 复现测试
 
@@ -84,11 +105,11 @@ Native 主机测试含 RFC 标准向量、独立 OpenSSL 验证、密文篡改�
 
 ```sh
 docker build -t mnos-native-builder -f native/Builder.Dockerfile .
-docker run --rm --network none -v "$PWD/native:/native" -w /native \
+docker run --rm --init --network none -v "$PWD/native:/native" -w /native \
   mnos-native-builder bash tests/desktop_ci.sh
 
 docker build -t mnos-auth-test -f live/tests/Authentication.Dockerfile .
-docker run --rm --network none -e MNOS_AUTH_TEST_CONTAINER=1 \
+docker run --rm --init --network none -e MNOS_AUTH_TEST_CONTAINER=1 \
   -v "$PWD:/source" -w /source/live mnos-auth-test bash tests/authentication.sh
 ```
 
@@ -108,7 +129,10 @@ Linux changes require password reauthentication through a small privileged C
 broker; the dedicated unprivileged Login Process owns the encrypted records.
 Native provides the corresponding original C kernel service and GUI commands.
 
-The ordinary-camera feature is explicitly an enrollment/testing preview, not a
-system login factor. Software-only isolation does not protect runtime secrets
-against a malicious root or kernel. This source change does not update existing
-release ISOs. See the sections above for tested scope and remaining work.
+Linux Full adds password-first face verification through PAM, in addition to
+any enabled TOTP. A dedicated unprivileged camera worker, protected encrypted
+records and separate one-use face recovery codes are used. Ordinary RGB cameras
+do not provide trusted depth or certified spoof resistance; physical-camera
+validation remains outstanding. Native has no UVC camera support. Software-only
+isolation does not protect live secrets against a malicious root/kernel.
+Source changes do not automatically update previously published ISOs.

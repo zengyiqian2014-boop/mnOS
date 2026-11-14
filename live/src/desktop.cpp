@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <vector>
 #include "command-index.hpp"
+#include "i18n.hpp"
 namespace fs = std::filesystem;
 struct Entry {
     std::string name, description, category, icon, id, search;
@@ -94,14 +95,14 @@ static void catalog(const char *path, bool optional = false) {
         if (!o)
             throw std::runtime_error("Invalid catalog entry");
         Entry e;
-        e.name = string_member(o, "name");
-        e.description = string_member(o, "description");
+        e.name = string_member(o, !mnos_chinese() && json_object_has_member(o,"name_en") ? "name_en" : "name");
+        e.description = string_member(o, !mnos_chinese() && json_object_has_member(o,"description_en") ? "description_en" : "description");
         e.icon = string_member(o, "icon");
         e.category = string_member(o, "category");
         e.id = id_for(e.name);
         if (json_object_has_member(o, "ctf"))
             e.ctf = json_object_get_boolean_member(o, "ctf");
-        JsonArray *args = json_object_get_array_member(o, "command");
+        JsonArray *args = json_object_get_array_member(o, !mnos_chinese() && json_object_has_member(o,"command_en") ? "command_en" : "command");
         if (!args || !json_array_get_length(args))
             throw std::runtime_error("Empty tool command");
         for (guint a = 0; a < json_array_get_length(args); ++a) {
@@ -181,7 +182,7 @@ static void discover_commands() {
             continue;
         Entry e;
         e.name = name;
-        e.description = "已安装命令 · " + path + " · 点击查看离线帮助";
+        e.description = i18n::text("已安装命令 · ") + path + i18n::text(" · 点击查看离线帮助");
         e.category = "Linux 命令";
         e.icon = "utilities-terminal";
         e.id = "command-" + id_for(name);
@@ -216,14 +217,14 @@ static std::vector<std::string> launch_args(const Entry &e) {
         args.erase(args.begin());
         std::string path = executable(args[0]);
         if (path.empty())
-            throw std::runtime_error("未找到程序：" + args[0]);
+            throw std::runtime_error(i18n::text("未找到程序：") + args[0]);
         args[0] = path;
         // xfce4-terminal parses argv with GLib; it does not invoke a shell.
         return {"/usr/bin/xfce4-terminal", "--hold", "--command", quote_args(args)};
     }
     auto path = executable(args[0]);
     if (path.empty())
-        throw std::runtime_error("未找到程序：" + args[0]);
+        throw std::runtime_error(i18n::text("未找到程序：") + args[0]);
     args[0] = path;
     return args;
 }
@@ -249,7 +250,7 @@ static void launch(Entry &e) {
         bool old_popup = popup;
         popup = false;
         auto *d = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR,
-                                         GTK_BUTTONS_CLOSE, "无法打开工具");
+                                         GTK_BUTTONS_CLOSE, i18n::text("无法打开工具"));
         gtk_message_dialog_format_secondary_text(GTK_MESSAGE_DIALOG(d), "%s",
                                                  error ? error->message : "Unknown error");
         gtk_dialog_run(GTK_DIALOG(d));
@@ -260,7 +261,7 @@ static void launch(Entry &e) {
         gtk_widget_destroy(window);
 }
 static GtkWidget *label(const std::string &s) {
-    auto *w = gtk_label_new(s.c_str());
+    auto *w = gtk_label_new(i18n::text(s.c_str()));
     gtk_label_set_xalign(GTK_LABEL(w), 0);
     return w;
 }
@@ -331,15 +332,15 @@ static void render_entries() {
             gtk_box_pack_start(GTK_BOX(texts), desc, FALSE, FALSE, 0);
         }
         gtk_box_pack_start(GTK_BOX(inner), texts, TRUE, TRUE, 0);
-        auto *kind = label(e.app ? "打开" : "帮助");
+        auto *kind = label(e.app ? i18n::text("打开") : i18n::text("帮助"));
         css(kind, "muted");
         gtk_box_pack_end(GTK_BOX(inner), kind, FALSE, FALSE, 5);
         gtk_widget_set_tooltip_text(row, e.description.c_str());
         gtk_container_add(GTK_CONTAINER(list), row);
     }
     gtk_widget_show_all(list);
-    const std::string text = count ? "显示 " + std::to_string(std::min(count, visible_limit)) + " / " +
-        std::to_string(count) + " 项 · 图形应用直接打开，命令打开帮助" : "没有匹配项；可用 mnos-pkg search 搜索软件仓库";
+    const std::string text = count ? i18n::text("显示 ") + std::to_string(std::min(count, visible_limit)) + " / " +
+        std::to_string(count) + i18n::text(" 项 · 图形应用直接打开，命令打开帮助") : i18n::text("没有匹配项；可用 mnos-pkg search 搜索软件仓库");
     gtk_label_set_text(GTK_LABEL(results), text.c_str());
     gtk_widget_set_visible(more, count > visible_limit);
 }
@@ -399,7 +400,7 @@ static gboolean metrics(gpointer) {
     struct statvfs disk{};
     statvfs("/", &disk);
     char text[256];
-    snprintf(text, sizeof text, "CPU %.0f%%   ·   内存 %.1f / %.1f GiB   ·   磁盘可用 %.1f GiB",
+    snprintf(text, sizeof text, i18n::text("CPU %.0f%%   ·   内存 %.1f / %.1f GiB   ·   磁盘可用 %.1f GiB"),
              std::clamp(cpu, 0.0, 100.0), double(mt - ma) / 1048576, double(mt) / 1048576,
              double(disk.f_bavail) * disk.f_frsize / 1073741824);
     gtk_label_set_text(GTK_LABEL(summary), text);
@@ -407,7 +408,7 @@ static gboolean metrics(gpointer) {
 }
 static void build() {
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(window), popup ? "mnOS 应用与工具" : "mnOS 工具中心");
+    gtk_window_set_title(GTK_WINDOW(window), popup ? i18n::text("mnOS 应用与工具") : i18n::text("mnOS 工具中心"));
     gtk_window_set_icon_name(GTK_WINDOW(window), "mnos");
     css(window, "mnos");
     GdkMonitor *monitor = gdk_display_get_primary_monitor(gdk_display_get_default());
@@ -438,16 +439,16 @@ static void build() {
     if (!popup) {
         auto *heading = box(GTK_ORIENTATION_VERTICAL, 4);
         margin(heading, 14);
-        auto *title = label("应用与工具");
+        auto *title = label(i18n::text("应用与工具"));
         css(title, "heading");
         gtk_box_pack_start(GTK_BOX(heading), title, FALSE, FALSE, 0);
-        auto *subtitle = label("桌面应用  /  Linux 命令  /  CTF 工作台");
+        auto *subtitle = label(i18n::text("桌面应用  /  Linux 命令  /  CTF 工作台"));
         css(subtitle, "muted");
         gtk_box_pack_start(GTK_BOX(heading), subtitle, FALSE, FALSE, 0);
         gtk_box_pack_start(GTK_BOX(shell), heading, FALSE, FALSE, 0);
     }
     search = gtk_search_entry_new();
-    gtk_entry_set_placeholder_text(GTK_ENTRY(search), "搜索应用、工具和设置…");
+    gtk_entry_set_placeholder_text(GTK_ENTRY(search), i18n::text("搜索应用、工具和设置…"));
     margin(search, 12);
     gtk_box_pack_start(GTK_BOX(shell), search, FALSE, FALSE, 0);
     g_signal_connect(search, "changed", G_CALLBACK(changed), nullptr);
@@ -511,7 +512,7 @@ static void build() {
     css(results, "muted");
     gtk_label_set_ellipsize(GTK_LABEL(results), PANGO_ELLIPSIZE_END);
     gtk_box_pack_start(GTK_BOX(inventory), results, TRUE, TRUE, 0);
-    more = gtk_button_new_with_label("显示更多");
+    more = gtk_button_new_with_label(i18n::text("显示更多"));
     g_signal_connect(more, "clicked", G_CALLBACK(+[](GtkButton *, gpointer) {
         visible_limit += 180;
         render_entries();
@@ -526,19 +527,18 @@ static void build() {
     css(summary, "muted");
     gtk_box_pack_start(GTK_BOX(footer), summary, TRUE, TRUE, 0);
     auto *about = gtk_button_new_from_icon_name("help-about", GTK_ICON_SIZE_MENU);
-    gtk_widget_set_tooltip_text(about, "关于 mnOS");
+    gtk_widget_set_tooltip_text(about, i18n::text("关于 mnOS"));
     gtk_box_pack_start(GTK_BOX(footer), about, FALSE, FALSE, 0);
     g_signal_connect(
         about, "clicked", G_CALLBACK(+[](GtkButton *, gpointer) {
             GtkWidget *d =
                 gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL, GTK_MESSAGE_INFO,
-                                       GTK_BUTTONS_CLOSE, "mnOS · 双启动预览版");
+                                       GTK_BUTTONS_CLOSE, "mnOS Linux Edition");
             gtk_message_dialog_format_secondary_text(
                 GTK_MESSAGE_DIALOG(d),
-                "当前是 Linux 工具环境。\nmnOS 系统中心与工具菜单以 C++ 编写；内核另有 "
-                "C/汇编自研启动项。\nLinux、Xfce、GTK、驱动和第三方应用保留各自来源及许可。\nhelp "
-                "为英文帮助，help -cn "
-                "为中文帮助。\n普通用户可编辑文件、使用应用和修改个人设置；系统级修改需要认证。");
+                "%s", mnos_text(
+                    "This system runs Debian Linux and Xfce with mnOS C/C++ tools.\nNative Edition has a separate installer and its own kernel.\nHelp follows your language; use -cn for Chinese or -en for English.\nSystem changes require administrator authentication.",
+                    "本系统使用 Debian Linux、Xfce 和 mnOS C/C++ 工具。\n自研版通过独立安装镜像提供，使用自己的内核。\n帮助默认使用所选语言；-cn 中文，-en 英文。\n修改系统设置需要管理员认证。"));
             bool old = popup;
             popup = false;
             gtk_dialog_run(GTK_DIALOG(d));

@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <sys/utsname.h>
 #include <ctype.h>
+#include "mnos-locale.h"
 /* Fixed programs/argv, no shell, no automatic privilege escalation. */
 static int launch(const char *file, const char *a, const char *b, const char *c, const char *d) {
     char *args[]={(char *)file,(char *)a,(char *)b,(char *)c,(char *)d,NULL};
@@ -37,7 +38,8 @@ static void help(int cn) {
 }
 int main(int argc,char **argv) {
     const char *cmd=argc>1?argv[1]:"help";
-    if(!strcmp(cmd,"help")||!strcmp(cmd,"--help")){help(argc>2&&!strcmp(argv[2],"-cn"));return 0;}
+    if(!strcmp(cmd,"help")||!strcmp(cmd,"--help")){help(argc>2 ? !strcmp(argv[2],"-cn") : mnos_chinese());return 0;}
+    if(!strcmp(cmd,"region")&&argc==2)return launch("/usr/bin/mnos-region",NULL,NULL,NULL,NULL);
     if(!strcmp(cmd,"info")&&argc==2){struct utsname u;if(uname(&u))return 1;
         printf("mnOS Linux Edition\nHost kernel: %s %s / %s\nDesktop: Xfce with mnOS C/C++ tools\n",u.sysname,u.release,u.machine);
         puts("Native Edition has a separate original kernel and software Linux guest.");return 0;}

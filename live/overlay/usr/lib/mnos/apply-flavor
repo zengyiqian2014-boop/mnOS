@@ -7,7 +7,7 @@ case "${1:-}" in
     test ! -e /var/lib/mnos-login-process || exit 1
     printf 'lite\n' > /usr/share/mnos/flavor
     sed -i 's/^user-session=.*/user-session=mnos-lite/' /etc/lightdm/lightdm.conf.d/*.conf
-    rm -f /usr/share/pam-configs/mnos-2fa /etc/pam.d/mnos-security-setup \
+    rm -f /usr/share/pam-configs/mnos-face /usr/share/pam-configs/mnos-2fa /etc/pam.d/mnos-security-setup \
       /etc/systemd/system/mnos-login-process.service /etc/systemd/system/mnos-login-process.socket \
       /usr/lib/sysusers.d/mnos-login.conf /etc/xdg/autostart/mnos-face-preview.desktop
     ;;

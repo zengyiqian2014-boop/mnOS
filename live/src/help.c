@@ -7,10 +7,11 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include "mnos-locale.h"
 #ifndef MNOS_MANUAL_DIR
 #define MNOS_MANUAL_DIR "/usr/share/doc/mnos"
 #endif
-static const char *topics[]={"help","tools","commands","ctf","firefox","code","packages","apt","build","network","kernel","system","files","native","editions","management","2fa","updates"};
+static const char *topics[]={"help","tools","commands","ctf","firefox","code","packages","apt","build","network","kernel","system","files","native","editions","management","2fa","updates","region"};
 static int known(const char *s){for(size_t i=0;i<sizeof topics/sizeof *topics;i++)if(!strcmp(s,topics[i]))return 1;return !strcmp(s,"all");}
 static int has_manual(const char *topic) {
     pid_t child=fork();
@@ -27,11 +28,12 @@ static int has_manual(const char *topic) {
     return waited==child && WIFEXITED(status) && WEXITSTATUS(status)==0;
 }
 int main(int argc,char **argv){
-    int cn=0,pos=1;
+    int cn=mnos_chinese(),pos=1;
     if(argc==3 && !strcmp(argv[1],"--has-topic"))return known(argv[2])?0:1;
     if(pos<argc && !strcmp(argv[pos],"-cn")){cn=1;pos++;}
+    else if(pos<argc && !strcmp(argv[pos],"-en")){cn=0;pos++;}
     const char *topic=pos<argc?argv[pos++]:"all";
-    if(pos!=argc){fputs("Usage: help [-cn] [TOPIC|all|TOOL]\n",stderr);return 2;}
+    if(pos!=argc){fputs("Usage: help [-cn|-en] [TOPIC|all|TOOL]\n",stderr);return 2;}
     if(!strcmp(topic,"--help"))topic="help";
     if(!strcmp(topic,"--list")){for(size_t i=0;i<sizeof topics/sizeof *topics;i++)puts(topics[i]);return 0;}
     if(!strcmp(topic,"firefox-esr"))topic="firefox";

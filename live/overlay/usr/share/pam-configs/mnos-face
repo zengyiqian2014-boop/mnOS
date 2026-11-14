@@ -1,0 +1,9 @@
+Name: mnOS additional face verification
+Default: yes
+Priority: 1023
+Auth-Type: Additional
+Auth:
+ required pam_mnos_face.so
+Password-Type: Additional
+Password:
+ requisite pam_mnos_face.so

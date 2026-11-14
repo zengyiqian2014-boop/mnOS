@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #define _GNU_SOURCE
 #include "login-protocol.h"
+#include "mnos-locale.h"
 #include <security/pam_modules.h>
 #include <security/pam_ext.h>
 #include <pwd.h>
@@ -28,9 +29,9 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pam,int flags,int argc,const ch
     const char *password=NULL;
     if(pam_get_authtok(pam,PAM_AUTHTOK,&password,NULL)!=PAM_SUCCESS||!password)return PAM_AUTH_ERR;
     char *code=NULL;
-    if(pam_prompt(pam,PAM_PROMPT_ECHO_OFF,&code,"Authenticator code or recovery code: ")!=PAM_SUCCESS||!code)return PAM_AUTH_ERR;
+    if(pam_prompt(pam,PAM_PROMPT_ECHO_OFF,&code,"%s",mnos_text("Authenticator code or recovery code: ","验证器验证码或恢复码："))!=PAM_SUCCESS||!code)return PAM_AUTH_ERR;
     int result=request(LOGIN_VERIFY,uid,password,code);explicit_bzero(code,strlen(code));free(code);
-    if(result==LOGIN_RETRY)pam_error(pam,"Please wait before trying another verification code.");
+    if(result==LOGIN_RETRY)pam_error(pam,"%s",mnos_text("Please wait before trying another verification code.","请稍后再试其他验证码。"));
     return result==LOGIN_OK?PAM_SUCCESS:PAM_AUTH_ERR;
 }
 PAM_EXTERN int pam_sm_setcred(pam_handle_t *p,int f,int a,const char **v) {(void)p;(void)f;(void)a;(void)v;return PAM_SUCCESS;}

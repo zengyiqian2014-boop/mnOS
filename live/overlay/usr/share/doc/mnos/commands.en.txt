@@ -1,9 +1,10 @@
 @@help
 mnOS Linux tools environment — command reference
 
-help                         English manual (default)
+help                         Manual in the selected system language
+help -en                     English manual
 help -cn                     Chinese manual
-help [-cn] TOPIC             Read one chapter
+help [-cn|-en] TOPIC             Read one chapter
 help --list                  List chapters
 help all | less              Read every chapter with a pager
 help TOOL                    Read the installed manual or catalogued tool help
@@ -352,7 +353,7 @@ Each edition has AMD64 and ARM64 media with documented device limits.
 No edition claims universal hardware compatibility or security certification.
 
 @@management
-mnos-admin help                  English command reference
+mnos-admin help                  Command reference in the selected language
 mnos-admin help -cn              Chinese command reference
 mnos-admin gui                   System management center
 mnos-admin info                  Edition, architecture and real host kernel
@@ -379,7 +380,7 @@ when applying changes. Host administration is separate from guest administration
 LOGIN SECURITY: PASSWORD + AUTHENTICATOR
   mnos-security                  Open your account's graphical settings.
   mnos-security --help           Print a short overview without opening a display.
-  help 2fa / help -cn 2fa        English / Chinese manual.
+  help -en 2fa / help -cn 2fa    English / Chinese manual.
 
 Enrollment is optional during installation and can be enabled later in Settings.
 Scan the locally generated QR code OR manually enter the same Base32 key. Choose
@@ -396,16 +397,19 @@ Linux password changes: disable the authenticator in Settings first, change the
 password, then pair again. PAM currently blocks password changes while enrolled.
 Native Edition instead re-encrypts the secret when its own passwd command runs.
 
-CAMERA PREVIEW (LINUX ONLY)
-  mnos-face-preview --enroll     Authenticate, run challenges, save encrypted template.
+ADDITIONAL FACE VERIFICATION (LINUX FULL ONLY)
+  mnos-face-preview --enroll     Authenticate, run camera checks, save recovery codes, enable.
   mnos-face-preview --test       Authenticate and test against the saved template.
   mnos-face-preview --delete     Authenticate and delete the saved template.
   mnos-face-preview --help       Print usage without opening the camera.
 
-Ordinary cameras estimate head pose; they do not measure trusted depth. Random
-blink/head-turn and color-response checks are experimental. This version does
-NOT use their results to unlock the system or replace password/TOTP. Photos and
-video are not saved or uploaded. After changing the password, enroll again.
+Face verification is required AFTER the password and any enabled TOTP in PAM.
+At the face prompt, press Enter for the local X11 camera window, or enter one of
+the eight separate one-use face recovery codes. Keep these codes offline. SSH,
+TTY, Wayland and unavailable cameras need a face recovery code. Photos/video
+are not saved or uploaded. Ordinary RGB cameras only estimate pose, not trusted
+depth; sophisticated replay remains a risk. Disable face verification before
+changing the password, then enroll again. Native has no camera login driver.
 
 The Linux Login Process account protects encrypted TOTP files from ordinary
 users. Software permissions and encryption at rest do not protect live secrets
@@ -484,9 +488,9 @@ Existing packages are not removed. This is not a persistent APT hold. Use plain
 package names; options, versions and wildcards are not accepted with --without.
 The selected Full installation does not request the all-features mnos-full metapackage.
 
-The Full feature pack restores optional authenticator setup, camera preview and
+The Full feature pack restores optional authenticator setup, face verification and
 the broader Linux desktop/development/CTF package selection. Camera preview is
-not yet face login. APT downloads dependencies, including Python if a selected
+includes optional PAM face verification with separate recovery codes. APT downloads dependencies, including Python if a selected
 Full tool requires it; the Lite ISO itself has no Python runtime. Your account
 and files stay in place. There is no automatic activation of 2FA: open Login
 Security and explicitly pair your authenticator using QR or the manual key.
@@ -518,3 +522,12 @@ APT or these packages until its Linux guest gains the required userspace and
 network devices. Its current software interpreter keeps guest addresses private;
 there is no implemented switch that makes arbitrary Linux binaries native or
 removes that memory boundary. Choosing a Linux host means booting Linux Edition.
+
+@@region
+Language, region and time
+
+mnos settings (or mnos-region) opens regional settings. Choose English or Simplified Chinese, regional formats and an IANA time zone. Language changes apply at the next login.
+
+Default time source: pool.ntp.org. Presets: ntp.aliyun.com, ntp.tencent.com, time.cloudflare.com, time.google.com. Custom hostnames and IP addresses are accepted. Google leap-smear sources must be used separately. chronyc tracking and chronyc sources report actual synchronization.
+
+Saving system settings requires administrator authentication. The previous chrony configuration is kept as /etc/chrony/chrony.conf.before-mnos on the first change. Third-party translations depend on the application.

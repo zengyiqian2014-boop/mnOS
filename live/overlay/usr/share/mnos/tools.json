@@ -8,7 +8,9 @@
       "--help"
     ],
     "description": "C 编译器",
-    "ctf": false
+    "ctf": false,
+    "name_en": "GCC",
+    "description_en": "C compiler"
   },
   {
     "name": "G++",
@@ -19,7 +21,9 @@
       "--help"
     ],
     "description": "C++ 编译器",
-    "ctf": false
+    "ctf": false,
+    "name_en": "G++",
+    "description_en": "C++ compiler"
   },
   {
     "name": "Clang",
@@ -30,7 +34,9 @@
       "--help"
     ],
     "description": "C / C++ 编译器",
-    "ctf": false
+    "ctf": false,
+    "name_en": "Clang",
+    "description_en": "C / C++ compiler"
   },
   {
     "name": "clangd",
@@ -41,7 +47,9 @@
       "--help"
     ],
     "description": "C / C++ 语言服务器",
-    "ctf": false
+    "ctf": false,
+    "name_en": "clangd",
+    "description_en": "C / C++ language server"
   },
   {
     "name": "LLD",
@@ -52,7 +60,9 @@
       "--help"
     ],
     "description": "LLVM 链接器",
-    "ctf": false
+    "ctf": false,
+    "name_en": "LLD",
+    "description_en": "LLVM linker"
   },
   {
     "name": "Rust",
@@ -63,7 +73,9 @@
       "--help"
     ],
     "description": "Rust 编译器",
-    "ctf": false
+    "ctf": false,
+    "name_en": "Rust",
+    "description_en": "Rust compiler"
   },
   {
     "name": "Cargo",
@@ -74,7 +86,9 @@
       "--help"
     ],
     "description": "Rust 项目与依赖管理",
-    "ctf": false
+    "ctf": false,
+    "name_en": "Cargo",
+    "description_en": "Rust projects and dependencies"
   },
   {
     "name": "Go",
@@ -85,7 +99,9 @@
       "help"
     ],
     "description": "Go 语言与构建工具",
-    "ctf": false
+    "ctf": false,
+    "name_en": "Go",
+    "description_en": "Go language and build tools"
   },
   {
     "name": "Node.js",
@@ -96,7 +112,9 @@
       "--help"
     ],
     "description": "JavaScript 运行环境",
-    "ctf": false
+    "ctf": false,
+    "name_en": "Node.js",
+    "description_en": "JavaScript runtime"
   },
   {
     "name": "npm",
@@ -107,7 +125,9 @@
       "--help"
     ],
     "description": "JavaScript 包与项目管理",
-    "ctf": false
+    "ctf": false,
+    "name_en": "npm",
+    "description_en": "JavaScript packages and projects"
   },
   {
     "name": "Git",
@@ -118,7 +138,9 @@
       "--help"
     ],
     "description": "版本管理",
-    "ctf": false
+    "ctf": false,
+    "name_en": "Git",
+    "description_en": "Version control"
   },
   {
     "name": "Make",
@@ -129,7 +151,9 @@
       "--help"
     ],
     "description": "编译任务",
-    "ctf": false
+    "ctf": false,
+    "name_en": "Make",
+    "description_en": "Build tasks"
   },
   {
     "name": "CMake",
@@ -140,7 +164,9 @@
       "--help"
     ],
     "description": "项目构建配置",
-    "ctf": false
+    "ctf": false,
+    "name_en": "CMake",
+    "description_en": "Project build configuration"
   },
   {
     "name": "Ninja",
@@ -151,7 +177,9 @@
       "--help"
     ],
     "description": "构建任务执行器",
-    "ctf": false
+    "ctf": false,
+    "name_en": "Ninja",
+    "description_en": "Build executor"
   },
   {
     "name": "pkg-config",
@@ -162,7 +190,9 @@
       "--help"
     ],
     "description": "查找库的编译参数",
-    "ctf": false
+    "ctf": false,
+    "name_en": "pkg-config",
+    "description_en": "Library compiler and linker flags"
   },
   {
     "name": "ShellCheck",
@@ -173,7 +203,9 @@
       "--help"
     ],
     "description": "Shell 脚本检查",
-    "ctf": false
+    "ctf": false,
+    "name_en": "ShellCheck",
+    "description_en": "Shell script checks"
   },
   {
     "name": "Nano",
@@ -184,7 +216,9 @@
       "--help"
     ],
     "description": "终端文件编辑器",
-    "ctf": false
+    "ctf": false,
+    "name_en": "Nano",
+    "description_en": "Terminal text editor"
   },
   {
     "name": "Vim",
@@ -195,7 +229,9 @@
       "--help"
     ],
     "description": "终端文件编辑器",
-    "ctf": false
+    "ctf": false,
+    "name_en": "Vim",
+    "description_en": "Terminal text editor"
   },
   {
     "name": "ripgrep",
@@ -206,7 +242,9 @@
       "--help"
     ],
     "description": "快速搜索文件内容",
-    "ctf": false
+    "ctf": false,
+    "name_en": "ripgrep",
+    "description_en": "Search file contents"
   },
   {
     "name": "fd",
@@ -217,7 +255,9 @@
       "--help"
     ],
     "description": "按名称查找文件",
-    "ctf": false
+    "ctf": false,
+    "name_en": "fd",
+    "description_en": "Find files by name"
   },
   {
     "name": "GDB",
@@ -228,7 +268,9 @@
       "--help"
     ],
     "description": "程序调试器",
-    "ctf": true
+    "ctf": true,
+    "name_en": "GDB",
+    "description_en": "Program debugger"
   },
   {
     "name": "GDB Multiarch",
@@ -239,7 +281,9 @@
       "--help"
     ],
     "description": "跨架构调试器",
-    "ctf": true
+    "ctf": true,
+    "name_en": "GDB Multiarch",
+    "description_en": "Multi-architecture debugger"
   },
   {
     "name": "Pwntools",
@@ -250,7 +294,9 @@
       "--help"
     ],
     "description": "Pwn 与二进制分析工具集",
-    "ctf": true
+    "ctf": true,
+    "name_en": "Pwntools",
+    "description_en": "Pwn and binary analysis toolkit"
   },
   {
     "name": "Checksec",
@@ -261,7 +307,9 @@
       "--help"
     ],
     "description": "ELF 编译保护检查",
-    "ctf": true
+    "ctf": true,
+    "name_en": "Checksec",
+    "description_en": "ELF hardening checks"
   },
   {
     "name": "objdump",
@@ -272,7 +320,9 @@
       "--help"
     ],
     "description": "反汇编与目标文件信息",
-    "ctf": true
+    "ctf": true,
+    "name_en": "objdump",
+    "description_en": "Disassembly and object file inspection"
   },
   {
     "name": "readelf",
@@ -283,7 +333,9 @@
       "--help"
     ],
     "description": "ELF 结构分析",
-    "ctf": true
+    "ctf": true,
+    "name_en": "readelf",
+    "description_en": "ELF structure analysis"
   },
   {
     "name": "nm",
@@ -294,7 +346,9 @@
       "--help"
     ],
     "description": "符号表",
-    "ctf": true
+    "ctf": true,
+    "name_en": "nm",
+    "description_en": "Symbol tables"
   },
   {
     "name": "strings",
@@ -305,7 +359,9 @@
       "--help"
     ],
     "description": "提取可读字符串",
-    "ctf": true
+    "ctf": true,
+    "name_en": "strings",
+    "description_en": "Extract readable strings"
   },
   {
     "name": "patchelf",
@@ -316,7 +372,9 @@
       "--help"
     ],
     "description": "调整 ELF 解释器和库路径",
-    "ctf": true
+    "ctf": true,
+    "name_en": "patchelf",
+    "description_en": "Change ELF interpreter and library paths"
   },
   {
     "name": "strace",
@@ -327,7 +385,9 @@
       "--help"
     ],
     "description": "跟踪系统调用",
-    "ctf": true
+    "ctf": true,
+    "name_en": "strace",
+    "description_en": "Trace system calls"
   },
   {
     "name": "ltrace",
@@ -338,7 +398,9 @@
       "--help"
     ],
     "description": "跟踪动态库调用",
-    "ctf": true
+    "ctf": true,
+    "name_en": "ltrace",
+    "description_en": "Trace dynamic library calls"
   },
   {
     "name": "xxd",
@@ -349,7 +411,9 @@
       "-h"
     ],
     "description": "十六进制转储",
-    "ctf": true
+    "ctf": true,
+    "name_en": "xxd",
+    "description_en": "Hexadecimal dump"
   },
   {
     "name": "Hexedit",
@@ -360,7 +424,9 @@
       "--help"
     ],
     "description": "十六进制文件编辑器",
-    "ctf": true
+    "ctf": true,
+    "name_en": "Hexedit",
+    "description_en": "Hexadecimal file editor"
   },
   {
     "name": "file",
@@ -371,7 +437,9 @@
       "--help"
     ],
     "description": "识别文件类型",
-    "ctf": true
+    "ctf": true,
+    "name_en": "file",
+    "description_en": "Identify file types"
   },
   {
     "name": "Nmap",
@@ -382,7 +450,9 @@
       "--help"
     ],
     "description": "主机、端口与服务探测",
-    "ctf": true
+    "ctf": true,
+    "name_en": "Nmap",
+    "description_en": "Discover hosts, ports and services"
   },
   {
     "name": "tcpdump",
@@ -393,7 +463,9 @@
       "--help"
     ],
     "description": "网络抓包",
-    "ctf": true
+    "ctf": true,
+    "name_en": "tcpdump",
+    "description_en": "Packet capture"
   },
   {
     "name": "TShark",
@@ -404,7 +476,9 @@
       "--help"
     ],
     "description": "命令行报文分析",
-    "ctf": true
+    "ctf": true,
+    "name_en": "TShark",
+    "description_en": "Command-line packet analysis"
   },
   {
     "name": "mnos-net",
@@ -415,7 +489,9 @@
       "help"
     ],
     "description": "NET_ADMIN / NET_RAW 授权入口",
-    "ctf": false
+    "ctf": false,
+    "name_en": "mnos-net",
+    "description_en": "Authorized NET_ADMIN / NET_RAW tools"
   },
   {
     "name": "ip",
@@ -426,7 +502,9 @@
       "help"
     ],
     "description": "网卡、地址和路由",
-    "ctf": false
+    "ctf": false,
+    "name_en": "ip",
+    "description_en": "Network interfaces, addresses and routes"
   },
   {
     "name": "tc",
@@ -437,7 +515,9 @@
       "-help"
     ],
     "description": "流量控制",
-    "ctf": false
+    "ctf": false,
+    "name_en": "tc",
+    "description_en": "Traffic control"
   },
   {
     "name": "iw",
@@ -448,7 +528,9 @@
       "help"
     ],
     "description": "Wi-Fi 无线设备",
-    "ctf": false
+    "ctf": false,
+    "name_en": "iw",
+    "description_en": "Wi-Fi devices"
   },
   {
     "name": "nmcli",
@@ -459,7 +541,9 @@
       "--help"
     ],
     "description": "NetworkManager 网络配置",
-    "ctf": false
+    "ctf": false,
+    "name_en": "nmcli",
+    "description_en": "NetworkManager configuration"
   },
   {
     "name": "ethtool",
@@ -470,7 +554,9 @@
       "--help"
     ],
     "description": "以太网设备参数",
-    "ctf": false
+    "ctf": false,
+    "name_en": "ethtool",
+    "description_en": "Ethernet device settings"
   },
   {
     "name": "ss",
@@ -481,7 +567,9 @@
       "--help"
     ],
     "description": "连接与套接字",
-    "ctf": false
+    "ctf": false,
+    "name_en": "ss",
+    "description_en": "Connections and sockets"
   },
   {
     "name": "ping",
@@ -492,7 +580,9 @@
       "-h"
     ],
     "description": "网络可达性",
-    "ctf": false
+    "ctf": false,
+    "name_en": "ping",
+    "description_en": "Network reachability"
   },
   {
     "name": "traceroute",
@@ -503,7 +593,9 @@
       "--help"
     ],
     "description": "网络路径",
-    "ctf": false
+    "ctf": false,
+    "name_en": "traceroute",
+    "description_en": "Network route tracing"
   },
   {
     "name": "MTR",
@@ -514,7 +606,9 @@
       "--help"
     ],
     "description": "持续路由诊断",
-    "ctf": false
+    "ctf": false,
+    "name_en": "MTR",
+    "description_en": "Continuous route diagnostics"
   },
   {
     "name": "dig",
@@ -525,7 +619,9 @@
       "-h"
     ],
     "description": "DNS 查询",
-    "ctf": false
+    "ctf": false,
+    "name_en": "dig",
+    "description_en": "DNS queries"
   },
   {
     "name": "iperf3",
@@ -536,7 +632,9 @@
       "--help"
     ],
     "description": "带宽测试",
-    "ctf": false
+    "ctf": false,
+    "name_en": "iperf3",
+    "description_en": "Bandwidth testing"
   },
   {
     "name": "Netcat",
@@ -547,7 +645,9 @@
       "-h"
     ],
     "description": "TCP / UDP 命令行工具",
-    "ctf": true
+    "ctf": true,
+    "name_en": "Netcat",
+    "description_en": "TCP / UDP command-line tool"
   },
   {
     "name": "socat",
@@ -558,7 +658,9 @@
       "-h"
     ],
     "description": "数据流与套接字转发",
-    "ctf": true
+    "ctf": true,
+    "name_en": "socat",
+    "description_en": "Stream and socket forwarding"
   },
   {
     "name": "curl",
@@ -570,7 +672,9 @@
       "all"
     ],
     "description": "HTTP 与数据传输",
-    "ctf": true
+    "ctf": true,
+    "name_en": "curl",
+    "description_en": "HTTP and data transfer"
   },
   {
     "name": "wget",
@@ -581,7 +685,9 @@
       "--help"
     ],
     "description": "下载工具",
-    "ctf": false
+    "ctf": false,
+    "name_en": "wget",
+    "description_en": "File downloads"
   },
   {
     "name": "SSH",
@@ -591,7 +697,9 @@
       "ssh"
     ],
     "description": "SSH 客户端命令帮助",
-    "ctf": false
+    "ctf": false,
+    "name_en": "SSH",
+    "description_en": "SSH client help"
   },
   {
     "name": "SFTP",
@@ -602,7 +710,9 @@
       "-h"
     ],
     "description": "SSH 文件传输",
-    "ctf": false
+    "ctf": false,
+    "name_en": "SFTP",
+    "description_en": "SSH file transfer"
   },
   {
     "name": "rsync",
@@ -613,7 +723,9 @@
       "--help"
     ],
     "description": "文件同步",
-    "ctf": false
+    "ctf": false,
+    "name_en": "rsync",
+    "description_en": "File synchronization"
   },
   {
     "name": "SQLmap",
@@ -624,7 +736,9 @@
       "-h"
     ],
     "description": "Web 数据库测试",
-    "ctf": true
+    "ctf": true,
+    "name_en": "SQLmap",
+    "description_en": "Web database testing"
   },
   {
     "name": "ffuf",
@@ -635,7 +749,9 @@
       "-h"
     ],
     "description": "HTTP 模糊测试",
-    "ctf": true
+    "ctf": true,
+    "name_en": "ffuf",
+    "description_en": "HTTP fuzzing"
   },
   {
     "name": "Gobuster",
@@ -646,7 +762,9 @@
       "--help"
     ],
     "description": "目录、DNS 和服务枚举",
-    "ctf": true
+    "ctf": true,
+    "name_en": "Gobuster",
+    "description_en": "Directory, DNS and service enumeration"
   },
   {
     "name": "dirb",
@@ -656,7 +774,9 @@
       "dirb"
     ],
     "description": "Web 内容发现",
-    "ctf": true
+    "ctf": true,
+    "name_en": "dirb",
+    "description_en": "Web content discovery"
   },
   {
     "name": "mitmproxy",
@@ -667,7 +787,9 @@
       "--help"
     ],
     "description": "交互式 HTTP 代理",
-    "ctf": true
+    "ctf": true,
+    "name_en": "mitmproxy",
+    "description_en": "Interactive HTTP proxy"
   },
   {
     "name": "mitmdump",
@@ -678,7 +800,9 @@
       "--help"
     ],
     "description": "命令行 HTTP 代理",
-    "ctf": true
+    "ctf": true,
+    "name_en": "mitmdump",
+    "description_en": "Command-line HTTP proxy"
   },
   {
     "name": "mitmweb",
@@ -689,7 +813,9 @@
       "--help"
     ],
     "description": "Web 界面代理工具",
-    "ctf": true
+    "ctf": true,
+    "name_en": "mitmweb",
+    "description_en": "Proxy with a web interface"
   },
   {
     "name": "John the Ripper",
@@ -699,7 +825,9 @@
       "john"
     ],
     "description": "离线密码分析",
-    "ctf": true
+    "ctf": true,
+    "name_en": "John the Ripper",
+    "description_en": "Offline password analysis"
   },
   {
     "name": "Hashcat",
@@ -710,7 +838,9 @@
       "--help"
     ],
     "description": "密码散列分析",
-    "ctf": true
+    "ctf": true,
+    "name_en": "Hashcat",
+    "description_en": "Password hash analysis"
   },
   {
     "name": "Hydra",
@@ -721,7 +851,9 @@
       "-h"
     ],
     "description": "授权认证测试",
-    "ctf": true
+    "ctf": true,
+    "name_en": "Hydra",
+    "description_en": "Authorized authentication testing"
   },
   {
     "name": "OpenSSL",
@@ -732,7 +864,9 @@
       "help"
     ],
     "description": "证书、密码算法与 TLS",
-    "ctf": true
+    "ctf": true,
+    "name_en": "OpenSSL",
+    "description_en": "Certificates, cryptography and TLS"
   },
   {
     "name": "Binwalk",
@@ -743,7 +877,9 @@
       "--help"
     ],
     "description": "固件签名分析",
-    "ctf": true
+    "ctf": true,
+    "name_en": "Binwalk",
+    "description_en": "Firmware signature analysis"
   },
   {
     "name": "ExifTool",
@@ -753,7 +889,9 @@
       "exiftool"
     ],
     "description": "文件元数据",
-    "ctf": true
+    "ctf": true,
+    "name_en": "ExifTool",
+    "description_en": "File metadata"
   },
   {
     "name": "Steghide",
@@ -764,7 +902,9 @@
       "--help"
     ],
     "description": "隐写文件工具",
-    "ctf": true
+    "ctf": true,
+    "name_en": "Steghide",
+    "description_en": "Steganography tools"
   },
   {
     "name": "Foremost",
@@ -775,7 +915,9 @@
       "-h"
     ],
     "description": "按文件特征恢复数据",
-    "ctf": true
+    "ctf": true,
+    "name_en": "Foremost",
+    "description_en": "Recover files by signature"
   },
   {
     "name": "YARA",
@@ -786,7 +928,9 @@
       "--help"
     ],
     "description": "文件规则扫描",
-    "ctf": true
+    "ctf": true,
+    "name_en": "YARA",
+    "description_en": "File rule scanning"
   },
   {
     "name": "7-Zip",
@@ -797,7 +941,9 @@
       "-h"
     ],
     "description": "归档与解压",
-    "ctf": true
+    "ctf": true,
+    "name_en": "7-Zip",
+    "description_en": "Archive and extraction tools"
   },
   {
     "name": "Unzip",
@@ -808,7 +954,9 @@
       "-h"
     ],
     "description": "ZIP 解压",
-    "ctf": true
+    "ctf": true,
+    "name_en": "Unzip",
+    "description_en": "Extract ZIP archives"
   },
   {
     "name": "Zip",
@@ -819,7 +967,9 @@
       "-h"
     ],
     "description": "ZIP 归档",
-    "ctf": true
+    "ctf": true,
+    "name_en": "Zip",
+    "description_en": "Create ZIP archives"
   },
   {
     "name": "jq",
@@ -830,7 +980,9 @@
       "--help"
     ],
     "description": "JSON 处理",
-    "ctf": true
+    "ctf": true,
+    "name_en": "jq",
+    "description_en": "JSON processing"
   },
   {
     "name": "TestDisk",
@@ -841,7 +993,9 @@
       "--help"
     ],
     "description": "分区与文件恢复",
-    "ctf": true
+    "ctf": true,
+    "name_en": "TestDisk",
+    "description_en": "Partition and file recovery"
   },
   {
     "name": "PhotoRec",
@@ -852,7 +1006,9 @@
       "--help"
     ],
     "description": "文件恢复",
-    "ctf": true
+    "ctf": true,
+    "name_en": "PhotoRec",
+    "description_en": "File recovery"
   },
   {
     "name": "MNFS",
@@ -862,7 +1018,9 @@
       "mnfs"
     ],
     "description": "自研文件系统镜像工具",
-    "ctf": true
+    "ctf": true,
+    "name_en": "MNFS",
+    "description_en": "Original MNFS filesystem image tools"
   },
   {
     "name": "内核设置",
@@ -873,7 +1031,9 @@
       "help"
     ],
     "description": "内核、CPU、内存、GPU、模块与性能配置",
-    "ctf": false
+    "ctf": false,
+    "name_en": "Kernel settings",
+    "description_en": "Kernel, CPU, memory, GPU, modules and performance settings"
   },
   {
     "name": "TuneD",
@@ -884,7 +1044,9 @@
       "--help"
     ],
     "description": "性能策略配置",
-    "ctf": false
+    "ctf": false,
+    "name_en": "TuneD",
+    "description_en": "Performance policy configuration"
   },
   {
     "name": "sysctl",
@@ -895,7 +1057,9 @@
       "--help"
     ],
     "description": "Linux 内核参数",
-    "ctf": false
+    "ctf": false,
+    "name_en": "sysctl",
+    "description_en": "Linux kernel parameters"
   },
   {
     "name": "modprobe",
@@ -906,7 +1070,9 @@
       "--help"
     ],
     "description": "Linux 内核模块",
-    "ctf": false
+    "ctf": false,
+    "name_en": "modprobe",
+    "description_en": "Linux kernel modules"
   },
   {
     "name": "xrandr",
@@ -917,7 +1083,9 @@
       "--help"
     ],
     "description": "显示器、屏幕分辨率和输出",
-    "ctf": false
+    "ctf": false,
+    "name_en": "xrandr",
+    "description_en": "Displays, screen resolution and outputs"
   },
   {
     "name": "UFW",
@@ -928,7 +1096,9 @@
       "--help"
     ],
     "description": "防火墙设置",
-    "ctf": false
+    "ctf": false,
+    "name_en": "UFW",
+    "description_en": "Firewall configuration"
   },
   {
     "name": "systemctl",
@@ -939,7 +1109,9 @@
       "--help"
     ],
     "description": "服务与系统状态",
-    "ctf": false
+    "ctf": false,
+    "name_en": "systemctl",
+    "description_en": "Services and system status"
   },
   {
     "name": "loginctl",
@@ -950,7 +1122,9 @@
       "--help"
     ],
     "description": "用户登录会话",
-    "ctf": false
+    "ctf": false,
+    "name_en": "loginctl",
+    "description_en": "Login sessions"
   },
   {
     "name": "timedatectl",
@@ -961,7 +1135,9 @@
       "--help"
     ],
     "description": "日期和时区",
-    "ctf": false
+    "ctf": false,
+    "name_en": "timedatectl",
+    "description_en": "Date and time zone"
   },
   {
     "name": "localectl",
@@ -972,7 +1148,9 @@
       "--help"
     ],
     "description": "系统语言和键盘",
-    "ctf": false
+    "ctf": false,
+    "name_en": "localectl",
+    "description_en": "System locale and keyboard"
   },
   {
     "name": "useradd",
@@ -983,7 +1161,9 @@
       "--help"
     ],
     "description": "新增本地账号",
-    "ctf": false
+    "ctf": false,
+    "name_en": "useradd",
+    "description_en": "Create a local account"
   },
   {
     "name": "usermod",
@@ -994,7 +1174,9 @@
       "--help"
     ],
     "description": "用户组与账号配置",
-    "ctf": false
+    "ctf": false,
+    "name_en": "usermod",
+    "description_en": "Groups and account configuration"
   },
   {
     "name": "passwd",
@@ -1005,7 +1187,9 @@
       "--help"
     ],
     "description": "账号密码",
-    "ctf": false
+    "ctf": false,
+    "name_en": "passwd",
+    "description_en": "Account passwords"
   },
   {
     "name": "apt",
@@ -1016,7 +1200,9 @@
       "--help"
     ],
     "description": "软件包管理",
-    "ctf": false
+    "ctf": false,
+    "name_en": "apt",
+    "description_en": "Package management"
   },
   {
     "name": "dpkg",
@@ -1027,7 +1213,9 @@
       "--help"
     ],
     "description": "Debian 软件包",
-    "ctf": false
+    "ctf": false,
+    "name_en": "dpkg",
+    "description_en": "Debian packages"
   },
   {
     "name": "parted",
@@ -1038,7 +1226,9 @@
       "--help"
     ],
     "description": "磁盘分区管理",
-    "ctf": false
+    "ctf": false,
+    "name_en": "parted",
+    "description_en": "Disk partition management"
   },
   {
     "name": "lsblk",
@@ -1049,7 +1239,9 @@
       "--help"
     ],
     "description": "磁盘与分区信息",
-    "ctf": false
+    "ctf": false,
+    "name_en": "lsblk",
+    "description_en": "Disk and partition information"
   },
   {
     "name": "findmnt",
@@ -1060,7 +1252,9 @@
       "--help"
     ],
     "description": "挂载信息",
-    "ctf": false
+    "ctf": false,
+    "name_en": "findmnt",
+    "description_en": "Mount information"
   },
   {
     "name": "cryptsetup",
@@ -1071,7 +1265,9 @@
       "--help"
     ],
     "description": "加密卷管理",
-    "ctf": false
+    "ctf": false,
+    "name_en": "cryptsetup",
+    "description_en": "Encrypted volumes"
   },
   {
     "name": "btrfs",
@@ -1082,7 +1278,9 @@
       "--help"
     ],
     "description": "Btrfs 文件系统管理",
-    "ctf": false
+    "ctf": false,
+    "name_en": "btrfs",
+    "description_en": "Btrfs filesystem management"
   },
   {
     "name": "mdadm",
@@ -1093,7 +1291,9 @@
       "--help"
     ],
     "description": "Linux 软件 RAID",
-    "ctf": false
+    "ctf": false,
+    "name_en": "mdadm",
+    "description_en": "Linux software RAID"
   },
   {
     "name": "lvm",
@@ -1104,7 +1304,9 @@
       "help"
     ],
     "description": "逻辑卷管理",
-    "ctf": false
+    "ctf": false,
+    "name_en": "lvm",
+    "description_en": "Logical volume management"
   },
   {
     "name": "htop",
@@ -1115,7 +1317,9 @@
       "--help"
     ],
     "description": "进程与资源监控",
-    "ctf": false
+    "ctf": false,
+    "name_en": "htop",
+    "description_en": "Processes and resource monitoring"
   },
   {
     "name": "btop",
@@ -1126,7 +1330,9 @@
       "--help"
     ],
     "description": "终端资源监控",
-    "ctf": false
+    "ctf": false,
+    "name_en": "btop",
+    "description_en": "Terminal resource monitoring"
   },
   {
     "name": "iostat",
@@ -1137,7 +1343,9 @@
       "--help"
     ],
     "description": "磁盘与 CPU 统计",
-    "ctf": false
+    "ctf": false,
+    "name_en": "iostat",
+    "description_en": "Disk and CPU statistics"
   },
   {
     "name": "iotop",
@@ -1148,7 +1356,9 @@
       "--help"
     ],
     "description": "进程磁盘 I/O",
-    "ctf": false
+    "ctf": false,
+    "name_en": "iotop",
+    "description_en": "Per-process disk I/O"
   },
   {
     "name": "smartctl",
@@ -1159,7 +1369,9 @@
       "--help"
     ],
     "description": "磁盘健康状态",
-    "ctf": false
+    "ctf": false,
+    "name_en": "smartctl",
+    "description_en": "Disk health"
   },
   {
     "name": "nvme",
@@ -1170,7 +1382,9 @@
       "help"
     ],
     "description": "NVMe 设备管理",
-    "ctf": false
+    "ctf": false,
+    "name_en": "nvme",
+    "description_en": "NVMe device management"
   },
   {
     "name": "lspci",
@@ -1181,7 +1395,9 @@
       "--help"
     ],
     "description": "PCI 设备",
-    "ctf": false
+    "ctf": false,
+    "name_en": "lspci",
+    "description_en": "PCI devices"
   },
   {
     "name": "lsusb",
@@ -1192,7 +1408,9 @@
       "--help"
     ],
     "description": "USB 设备",
-    "ctf": false
+    "ctf": false,
+    "name_en": "lsusb",
+    "description_en": "USB devices"
   },
   {
     "name": "sensors",
@@ -1203,7 +1421,9 @@
       "--help"
     ],
     "description": "温度和电压",
-    "ctf": false
+    "ctf": false,
+    "name_en": "sensors",
+    "description_en": "Temperature and voltage"
   },
   {
     "name": "journalctl",
@@ -1214,7 +1434,9 @@
       "--help"
     ],
     "description": "系统日志",
-    "ctf": false
+    "ctf": false,
+    "name_en": "journalctl",
+    "description_en": "System journal"
   },
   {
     "name": "stress-ng",
@@ -1225,7 +1447,9 @@
       "--help"
     ],
     "description": "硬件压力测试",
-    "ctf": false
+    "ctf": false,
+    "name_en": "stress-ng",
+    "description_en": "Hardware stress testing"
   },
   {
     "name": "fio",
@@ -1236,7 +1460,9 @@
       "--help"
     ],
     "description": "存储性能测试",
-    "ctf": false
+    "ctf": false,
+    "name_en": "fio",
+    "description_en": "Storage performance testing"
   },
   {
     "name": "glxinfo",
@@ -1247,7 +1473,9 @@
       "-h"
     ],
     "description": "OpenGL 显卡信息",
-    "ctf": false
+    "ctf": false,
+    "name_en": "glxinfo",
+    "description_en": "OpenGL graphics information"
   },
   {
     "name": "vulkaninfo",
@@ -1258,7 +1486,9 @@
       "--help"
     ],
     "description": "Vulkan 显卡信息",
-    "ctf": false
+    "ctf": false,
+    "name_en": "vulkaninfo",
+    "description_en": "Vulkan graphics information"
   },
   {
     "name": "clinfo",
@@ -1269,7 +1499,9 @@
       "--help"
     ],
     "description": "OpenCL 设备信息",
-    "ctf": false
+    "ctf": false,
+    "name_en": "clinfo",
+    "description_en": "OpenCL device information"
   },
   {
     "name": "Lynis",
@@ -1280,7 +1512,9 @@
       "--help"
     ],
     "description": "系统配置审计",
-    "ctf": false
+    "ctf": false,
+    "name_en": "Lynis",
+    "description_en": "System configuration audit"
   },
   {
     "name": "debsums",
@@ -1291,7 +1525,9 @@
       "--help"
     ],
     "description": "软件包文件校验",
-    "ctf": false
+    "ctf": false,
+    "name_en": "debsums",
+    "description_en": "Package file verification"
   },
   {
     "name": "debsecan",
@@ -1302,7 +1538,9 @@
       "--help"
     ],
     "description": "Debian 漏洞状态",
-    "ctf": false
+    "ctf": false,
+    "name_en": "debsecan",
+    "description_en": "Debian vulnerability status"
   },
   {
     "name": "mnOS 帮助",
@@ -1311,8 +1549,10 @@
     "command": [
       "mnos-help"
     ],
-    "description": "英文命令帮助；help -cn 查看中文版",
-    "ctf": false
+    "description": "按系统语言显示帮助；-cn 中文，-en 英文",
+    "ctf": false,
+    "name_en": "mnOS Help",
+    "description_en": "Command help in the selected language; -cn for Chinese, -en for English"
   },
   {
     "name": "软件包管理",
@@ -1323,7 +1563,9 @@
       "--help"
     ],
     "description": "查询、安装与更新签名软件包",
-    "ctf": false
+    "ctf": false,
+    "name_en": "Package management",
+    "description_en": "Query, install and update signed packages"
   },
   {
     "name": "CTF 入门手册",
@@ -1335,7 +1577,9 @@
       "ctf"
     ],
     "description": "分类、离线练习、工具用法与权限",
-    "ctf": true
+    "ctf": true,
+    "name_en": "CTF guide",
+    "description_en": "Categories, offline exercises, tool usage and permissions"
   },
   {
     "name": "Sleuth Kit / fls",
@@ -1346,7 +1590,9 @@
       "fls"
     ],
     "description": "列出取证磁盘镜像中的文件；help fls 查看参数",
-    "ctf": true
+    "ctf": true,
+    "name_en": "Sleuth Kit / fls",
+    "description_en": "List files in forensic disk images; help fls shows options"
   },
   {
     "name": "Sleuth Kit / mmls",
@@ -1357,7 +1603,9 @@
       "mmls"
     ],
     "description": "分析取证镜像分区布局；help mmls 查看参数",
-    "ctf": true
+    "ctf": true,
+    "name_en": "Sleuth Kit / mmls",
+    "description_en": "Analyze forensic image partitions; help mmls shows options"
   },
   {
     "name": "Sleuth Kit / icat",
@@ -1368,7 +1616,9 @@
       "icat"
     ],
     "description": "按 inode 提取镜像文件；help icat 查看参数",
-    "ctf": true
+    "ctf": true,
+    "name_en": "Sleuth Kit / icat",
+    "description_en": "Extract image files by inode; help icat shows options"
   },
   {
     "name": "SQLite",
@@ -1379,7 +1629,9 @@
       "-help"
     ],
     "description": "查询 SQLite 数据库与应用痕迹",
-    "ctf": true
+    "ctf": true,
+    "name_en": "SQLite",
+    "description_en": "Query SQLite databases and application records"
   },
   {
     "name": "PNGCheck",
@@ -1390,7 +1642,9 @@
       "-h"
     ],
     "description": "检查 PNG 数据块与图像结构",
-    "ctf": true
+    "ctf": true,
+    "name_en": "PNGCheck",
+    "description_en": "Check PNG chunks and image structure"
   },
   {
     "name": "ZBar",
@@ -1401,7 +1655,9 @@
       "--help"
     ],
     "description": "识别本地图片中的二维码与条形码",
-    "ctf": true
+    "ctf": true,
+    "name_en": "ZBar",
+    "description_en": "Read QR codes and barcodes from local images"
   },
   {
     "name": "tcpflow",
@@ -1412,7 +1668,9 @@
       "-h"
     ],
     "description": "从 PCAP 重组 TCP 数据流",
-    "ctf": true
+    "ctf": true,
+    "name_en": "tcpflow",
+    "description_en": "Reassemble TCP streams from PCAP files"
   },
   {
     "name": "ngrep",
@@ -1423,7 +1681,9 @@
       "-h"
     ],
     "description": "按表达式检索数据包内容",
-    "ctf": true
+    "ctf": true,
+    "name_en": "ngrep",
+    "description_en": "Search packet content using expressions"
   },
   {
     "name": "fcrackzip",
@@ -1434,7 +1694,9 @@
       "--help"
     ],
     "description": "CTF ZIP 密码恢复",
-    "ctf": true
+    "ctf": true,
+    "name_en": "fcrackzip",
+    "description_en": "CTF ZIP password recovery"
   },
   {
     "name": "tmux",
@@ -1445,7 +1707,9 @@
       "tmux"
     ],
     "description": "终端多窗口与会话管理",
-    "ctf": false
+    "ctf": false,
+    "name_en": "tmux",
+    "description_en": "Terminal windows and session management"
   },
   {
     "name": "Linux 命令手册",
@@ -1457,6 +1721,8 @@
       "commands"
     ],
     "description": "文件、文本、进程、网络与系统管理命令",
-    "ctf": false
+    "ctf": false,
+    "name_en": "Linux command guide",
+    "description_en": "File, text, process, network and system management commands"
   }
 ]

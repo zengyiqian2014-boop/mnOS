@@ -1,6 +1,9 @@
+#include "i18n.hpp"
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "process.hpp"
 #include "security-ui.hpp"
+#include "region-ui.hpp"
+#include <clocale>
 #include <gtk/gtk.h>
 #include <json-glib/json-glib.h>
 #include <csignal>
@@ -21,6 +24,7 @@ static void marker(const std::string &text) {
 }
 
 struct Installer {
+    region::Fields regional;
     GtkWidget *window{}, *form{}, *disks{}, *name{}, *password{}, *again{}, *network{},
         *status{}, *progress{}, *log{}, *install{}, *refresh{}, *finish{}, *factor{}, *face{};
     GSubprocess *child{};
@@ -30,6 +34,36 @@ struct Installer {
     std::string account_name;
     int security_fd=-1;
     bool factor_requested=false, factor_enabled=false;
+
+    static void translate_widget(GtkWidget *widget, gpointer) {
+        if (GTK_IS_BUTTON(widget)) {
+            const char *label = gtk_button_get_label(GTK_BUTTON(widget));
+            if (label) { std::string text = i18n::text(label); gtk_button_set_label(GTK_BUTTON(widget), text.c_str()); }
+        } else if (GTK_IS_LABEL(widget)) {
+            std::string text = i18n::text(gtk_label_get_label(GTK_LABEL(widget)));
+            if (gtk_label_get_use_underline(GTK_LABEL(widget)))
+                gtk_label_set_text_with_mnemonic(GTK_LABEL(widget), text.c_str());
+            else gtk_label_set_text(GTK_LABEL(widget), text.c_str());
+        } else if (GTK_IS_ENTRY(widget)) {
+            const char *text = gtk_entry_get_placeholder_text(GTK_ENTRY(widget));
+            if (text) { std::string translated = i18n::text(text); gtk_entry_set_placeholder_text(GTK_ENTRY(widget), translated.c_str()); }
+        } else if (GTK_IS_EXPANDER(widget)) {
+            std::string text = i18n::text(gtk_expander_get_label(GTK_EXPANDER(widget)));
+            gtk_expander_set_label(GTK_EXPANDER(widget), text.c_str());
+        }
+        if (GTK_IS_CONTAINER(widget)) gtk_container_foreach(GTK_CONTAINER(widget), translate_widget, nullptr);
+    }
+    void change_language() {
+        const char *id = gtk_combo_box_get_active_id(GTK_COMBO_BOX(regional.language));
+        if (!id) return;
+        g_unsetenv("LC_ALL"); g_unsetenv("LC_MESSAGES");
+        g_setenv("LANG", id, true);
+        g_setenv("LANGUAGE", !strcmp(id, "zh_CN.UTF-8") ? "zh_CN:zh" : "en_US:en", true);
+        setlocale(LC_ALL, "");
+        translate_widget(window, nullptr);
+        regional.translate(mnos_chinese());
+        gtk_window_set_title(GTK_WINDOW(window), i18n::text("mnOS 安装程序 / Installer"));
+    }
 
     void message(const std::string &text, GtkMessageType type = GTK_MESSAGE_ERROR) {
         auto *dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL, type,
@@ -86,8 +120,8 @@ struct Installer {
         gtk_combo_box_set_active(GTK_COMBO_BOX(disks), count ? 0 : -1);
         gtk_widget_set_sensitive(install, count != 0);
         gtk_label_set_text(GTK_LABEL(status), count ?
-            "安装前会再次确认目标磁盘，确认后才开始写入。" :
-            "未找到可安装磁盘。请添加至少 32 GiB 的可写磁盘，再点击刷新。已挂载的磁盘不会列出。");
+            i18n::text("安装前会再次确认目标磁盘，确认后才开始写入。") :
+            i18n::text("未找到可安装磁盘。请添加至少 32 GiB 的可写磁盘，再点击刷新。已挂载的磁盘不会列出。"));
     }
     static void read_line(GObject *source, GAsyncResult *result, gpointer data) {
         auto *self = static_cast<Installer *>(data);
@@ -128,34 +162,39 @@ struct Installer {
         if (ok) {
             gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(self->progress), 1);
             gtk_label_set_text(GTK_LABEL(self->status), self->factor_enabled ?
-                "安装完成，已开启密码 + 验证器。关机后移除安装介质，再从硬盘启动。" :
-                "安装完成，使用密码登录。可在系统设置中开启验证器。关机后移除安装介质，再从硬盘启动。");
+                i18n::text("安装完成，已开启密码 + 验证器。关机后移除安装介质，再从硬盘启动。") :
+                i18n::text("安装完成，使用密码登录。可在系统设置中开启验证器。关机后移除安装介质，再从硬盘启动。"));
             gtk_widget_show(self->finish);
         } else {
             marker("MNOS INSTALL FAIL: " + std::string(error ? error->message : "Installation failed"));
-            self->message("安装未完成。请查看下方日志；目标盘可能已被重新分区。\n" +
+            self->message(i18n::text("安装未完成。请查看下方日志；目标盘可能已被重新分区。\n") +
                           std::string(error ? error->message : "Installation failed"));
-            gtk_label_set_text(GTK_LABEL(self->status), "安装失败。日志保留在当前窗口及系统日志中。");
+            gtk_label_set_text(GTK_LABEL(self->status), i18n::text("安装失败。日志保留在当前窗口及系统日志中。"));
             gtk_widget_set_sensitive(self->form, true);
+            gtk_widget_set_sensitive(self->regional.grid, true);
+            gtk_widget_set_sensitive(self->regional.language, true);
         }
         if (error) g_error_free(error);
     }
     void begin() {
+        region::Config region_config;
+        try { region_config = regional.value(); region::validate(region_config); }
+        catch (const std::exception &e) { message(e.what()); return; }
         const char *selected = gtk_combo_box_get_active_id(GTK_COMBO_BOX(disks));
-        if (!selected) { message("请选择目标磁盘。"); return; }
+        if (!selected) { message(i18n::text("请选择目标磁盘。")); return; }
         device = selected;
         std::string account = gtk_entry_get_text(GTK_ENTRY(name));
         std::string secret = gtk_entry_get_text(GTK_ENTRY(password));
         std::string repeat = gtk_entry_get_text(GTK_ENTRY(again));
         if (getpwnam(account.c_str()) || getgrnam(account.c_str())) {
             mnos::erase(secret); mnos::erase(repeat);
-            message("此用户名已被系统占用，请填写一个其他的");
+            message(i18n::text("此用户名已被系统占用，请填写一个其他的"));
             gtk_widget_grab_focus(name);
             return;
         }
         if (!mnos::username(account) || secret.empty() || secret != repeat) {
             mnos::erase(secret); mnos::erase(repeat);
-            message("用户名须以小写字母开头，使用字母、数字、下划线或连字符。\n请填写密码，并确保两次输入一致。");
+            message(i18n::text("用户名须以小写字母开头，使用字母、数字、下划线或连字符。\n请填写密码，并确保两次输入一致。"));
             return;
         }
         mnos::erase(repeat);
@@ -172,16 +211,16 @@ struct Installer {
         if (!valid) {
             mnos::erase(secret);
             message(validation_message && *validation_message ? validation_message :
-                "账号验证未完成；尚未修改磁盘。请重试。");
+                i18n::text("账号验证未完成；尚未修改磁盘。请重试。"));
         }
         g_free(validation_message);
         if (validation_error) g_error_free(validation_error);
         if (!valid) return;
-        auto *dialog = gtk_dialog_new_with_buttons("确认清空目标磁盘", GTK_WINDOW(window), GTK_DIALOG_MODAL,
-                                                  "取消", GTK_RESPONSE_CANCEL, "清空并安装", GTK_RESPONSE_ACCEPT, nullptr);
+        auto *dialog = gtk_dialog_new_with_buttons(i18n::text("确认清空目标磁盘"), GTK_WINDOW(window), GTK_DIALOG_MODAL,
+                                                  i18n::text("取消"), GTK_RESPONSE_CANCEL, i18n::text("清空并安装"), GTK_RESPONSE_ACCEPT, nullptr);
         auto *content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
         gtk_container_set_border_width(GTK_CONTAINER(content), 24);
-        std::string warning = "将删除 " + device + " 上的全部分区和文件。\n此操作无法撤销。请输入完整磁盘路径确认：";
+        std::string warning = i18n::text("将删除 ") + device + i18n::text(" 上的全部分区和文件。\n此操作无法撤销。请输入完整磁盘路径确认：");
         gtk_box_pack_start(GTK_BOX(content), label(warning.c_str()), false, false, 8);
         auto *confirmation = gtk_entry_new();
         gtk_entry_set_placeholder_text(GTK_ENTRY(confirmation), device.c_str());
@@ -197,11 +236,12 @@ struct Installer {
         GError *error = nullptr;
         auto *launcher=g_subprocess_launcher_new(static_cast<GSubprocessFlags>(G_SUBPROCESS_FLAGS_STDIN_PIPE |
             G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_MERGE));
+        g_subprocess_launcher_setenv(launcher, "LANG", region_config.language.c_str(), true);
         factor_requested=access("/usr/lib/mnos/login-helper",X_OK)==0 && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(factor));
         account_name=account;
         if(factor_requested) {
             int pair[2];
-            if(socketpair(AF_UNIX,SOCK_STREAM|SOCK_CLOEXEC,0,pair)) {g_object_unref(launcher);mnos::erase(secret);message("无法开启认证设置通道，尚未修改磁盘。");return;}
+            if(socketpair(AF_UNIX,SOCK_STREAM|SOCK_CLOEXEC,0,pair)) {g_object_unref(launcher);mnos::erase(secret);message(i18n::text("无法开启认证设置通道，尚未修改磁盘。"));return;}
             security_fd=pair[0];g_subprocess_launcher_take_fd(launcher,pair[1],3);
         }
         child = g_subprocess_launcher_spawn(launcher, &error,
@@ -210,7 +250,8 @@ struct Installer {
         std::string input = account + '\n' + secret + '\n' +
             (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(network)) ? "delegated\n" : "root\n")+
             (factor_requested ? "authenticator\n" : "password\n")+
-            (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(face)) ? "face-preview\n" : "off\n");
+            (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(face)) ? "face-preview\n" : "off\n") +
+            region::serialize(region_config);
         mnos::erase(secret);
         bool sent = child && g_output_stream_write_all(g_subprocess_get_stdin_pipe(child), input.data(), input.size(), nullptr, nullptr, &error);
         mnos::erase(input);
@@ -226,13 +267,17 @@ struct Installer {
         }
         running = true;
         gtk_widget_set_sensitive(form, false);
+        gtk_widget_set_sensitive(regional.grid, false);
+        gtk_widget_set_sensitive(regional.language, false);
         output = g_data_input_stream_new(g_subprocess_get_stdout_pipe(child));
         g_data_input_stream_read_line_async(output, G_PRIORITY_DEFAULT, nullptr, read_line, this);
         g_subprocess_wait_check_async(child, nullptr, exited, this);
     }
-    Installer() {
+    Installer() : regional([] { region::Config c;
+        c.language = mnos_chinese() ? "zh_CN.UTF-8" : "en_US.UTF-8";
+        c.formats = c.language; return c; }()) {
         window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-        gtk_window_set_title(GTK_WINDOW(window), "mnOS 安装程序 / Installer");
+        gtk_window_set_title(GTK_WINDOW(window), i18n::text("mnOS 安装程序 / Installer"));
         auto *display = gdk_display_get_default();
         auto *monitor = gdk_display_get_primary_monitor(display);
         if (!monitor) monitor = gdk_display_get_monitor(display, 0);
@@ -262,8 +307,20 @@ struct Installer {
         gtk_widget_set_size_request(body, 720, -1);
         gtk_container_add(GTK_CONTAINER(scroll), body);
         gtk_box_pack_start(GTK_BOX(body), label("mnOS  /  INSTALL", "brand"), false, false, 0);
-        gtk_box_pack_start(GTK_BOX(body), label("安装 mnOS", "title"), false, false, 0);
-        gtk_box_pack_start(GTK_BOX(body), label("离线安装 · 桌面与开发工具 · 虚拟机和实体硬件", "muted"), false, false, 0);
+        gtk_box_pack_start(GTK_BOX(body), label(i18n::text("安装 mnOS"), "title"), false, false, 0);
+        gtk_box_pack_start(GTK_BOX(body), label(i18n::text("离线安装 · 桌面与开发工具 · 虚拟机和实体硬件"), "muted"), false, false, 0);
+        auto *language_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 18);
+        for (auto *widget : {regional.captions[0], regional.language}) {
+            g_object_ref(widget);
+            gtk_container_remove(GTK_CONTAINER(regional.grid), widget);
+            gtk_box_pack_start(GTK_BOX(language_row), widget, widget == regional.language, widget == regional.language, 0);
+            g_object_unref(widget);
+        }
+        gtk_box_pack_start(GTK_BOX(body), language_row, false, false, 4);
+        auto *regional_box = gtk_expander_new(mnos_text("Region and time", "地区与时间"));
+        gtk_container_add(GTK_CONTAINER(regional_box), regional.grid);
+        gtk_box_pack_start(GTK_BOX(body), regional_box, false, false, 8);
+        g_signal_connect_swapped(regional.language, "changed", G_CALLBACK(+[](Installer *s) { s->change_language(); }), this);
         form = gtk_grid_new();
         gtk_grid_set_row_spacing(GTK_GRID(form), 10);
         gtk_grid_set_column_spacing(GTK_GRID(form), 18);
@@ -276,44 +333,44 @@ struct Installer {
             gtk_widget_set_hexpand(widget, true);
             gtk_grid_attach(GTK_GRID(form), widget, 1, row, 1, 1);
         };
-        disks = gtk_combo_box_text_new(); field("目标磁盘 (_D)", disks, 0);
-        refresh = gtk_button_new_with_label("刷新");
+        disks = gtk_combo_box_text_new(); field(i18n::text("目标磁盘 (_D)"), disks, 0);
+        refresh = gtk_button_new_with_label(i18n::text("刷新"));
         gtk_grid_attach(GTK_GRID(form), refresh, 2, 0, 1, 1);
-        name = gtk_entry_new(); gtk_entry_set_placeholder_text(GTK_ENTRY(name), "你的用户名，例如 alex"); field("用户名 (_U)", name, 1);
-        password = gtk_entry_new(); gtk_entry_set_visibility(GTK_ENTRY(password), false); field("密码 (_P)", password, 2);
-        again = gtk_entry_new(); gtk_entry_set_visibility(GTK_ENTRY(again), false); field("确认密码 (_C)", again, 3);
-        network = gtk_check_button_new_with_label("向此账号开放 NET_ADMIN / NET_RAW 网络工具权限");
+        name = gtk_entry_new(); gtk_entry_set_placeholder_text(GTK_ENTRY(name), i18n::text("你的用户名，例如 alex")); field(i18n::text("用户名 (_U)"), name, 1);
+        password = gtk_entry_new(); gtk_entry_set_visibility(GTK_ENTRY(password), false); field(i18n::text("密码 (_P)"), password, 2);
+        again = gtk_entry_new(); gtk_entry_set_visibility(GTK_ENTRY(again), false); field(i18n::text("确认密码 (_C)"), again, 3);
+        network = gtk_check_button_new_with_label(i18n::text("向此账号开放 NET_ADMIN / NET_RAW 网络工具权限"));
         gtk_grid_attach(GTK_GRID(form), network, 1, 4, 2, 1);
-        gtk_grid_attach(GTK_GRID(form), label("默认关闭：特权网络操作需 sudo；日常应用无需 root。", "muted"), 1, 5, 2, 1);
-        factor=gtk_check_button_new_with_label("为安装后的系统开启验证器（2FA）：扫码或手动填写");
+        gtk_grid_attach(GTK_GRID(form), label(i18n::text("默认关闭：特权网络操作需 sudo；日常应用无需 root。"), "muted"), 1, 5, 2, 1);
+        factor=gtk_check_button_new_with_label(i18n::text("为安装后的系统开启验证器（2FA）：扫码或手动填写"));
         bool full=access("/usr/lib/mnos/login-helper",X_OK)==0;
         if(full)gtk_grid_attach(GTK_GRID(form),factor,1,6,2,1);
-        gtk_grid_attach(GTK_GRID(form),label(full ? "可跳过，之后在系统设置中开启。" : "精简版：仅密码验证。安装完整版功能包后可开启其他验证。","muted"),1,7,2,1);
-        face=gtk_check_button_new_with_label("首次登录时录入人脸辅助模板（实验性）");
+        gtk_grid_attach(GTK_GRID(form),label(full ? i18n::text("可跳过，之后在系统设置中开启。") : i18n::text("精简版：仅密码验证。安装完整版功能包后可开启其他验证。"),"muted"),1,7,2,1);
+        face=gtk_check_button_new_with_label(i18n::text("首次登录时设置附加人脸验证（普通摄像头）"));
         if(full) {
             gtk_grid_attach(GTK_GRID(form),face,1,8,2,1);
-            gtk_grid_attach(GTK_GRID(form),label("普通摄像头：支持动作与颜色响应测试，暂不作为系统登录凭据。","muted"),1,9,2,1);
+            gtk_grid_attach(GTK_GRID(form),label(i18n::text("普通摄像头：支持动作与颜色响应测试，暂不作为系统登录凭据。"),"muted"),1,9,2,1);
         }
-        install = gtk_button_new_with_mnemonic("开始安装 (_I)");
+        install = gtk_button_new_with_mnemonic(i18n::text("开始安装 (_I)"));
         gtk_style_context_add_class(gtk_widget_get_style_context(install), "suggested-action");
         gtk_grid_attach(GTK_GRID(form), install, 1, 10, 1, 1);
-        status = label("正在发现磁盘…", "muted");
+        status = label(i18n::text("正在发现磁盘…"), "muted");
         gtk_box_pack_start(GTK_BOX(body), status, false, false, 0);
         g_signal_connect_swapped(name, "changed", G_CALLBACK(+[](Installer *s) {
             const char *account = gtk_entry_get_text(GTK_ENTRY(s->name));
             bool occupied = *account && (getpwnam(account) || getgrnam(account));
             gtk_label_set_text(GTK_LABEL(s->status), occupied ?
-                "此用户名已被系统占用，请填写一个其他的" :
-                "安装前会再次确认目标磁盘，确认后才开始写入。");
+                i18n::text("此用户名已被系统占用，请填写一个其他的") :
+                i18n::text("安装前会再次确认目标磁盘，确认后才开始写入。"));
         }), this);
         progress = gtk_progress_bar_new(); gtk_box_pack_start(GTK_BOX(body), progress, false, false, 0);
-        auto *expander = gtk_expander_new("安装日志 / Installation log");
+        auto *expander = gtk_expander_new(i18n::text("安装日志 / Installation log"));
         log = gtk_text_view_new(); gtk_text_view_set_editable(GTK_TEXT_VIEW(log), false);
         gtk_text_view_set_monospace(GTK_TEXT_VIEW(log), true);
         auto *logs = gtk_scrolled_window_new(nullptr, nullptr);
         gtk_widget_set_size_request(logs, -1, 150); gtk_container_add(GTK_CONTAINER(logs), log);
         gtk_container_add(GTK_CONTAINER(expander), logs); gtk_box_pack_start(GTK_BOX(body), expander, true, true, 0);
-        finish = gtk_button_new_with_mnemonic("关机，移除安装介质 (_S)");
+        finish = gtk_button_new_with_mnemonic(i18n::text("关机，移除安装介质 (_S)"));
         gtk_box_pack_start(GTK_BOX(body), finish, false, false, 0);
         g_signal_connect_swapped(refresh, "clicked", G_CALLBACK(+[](Installer *s) { s->reload(); }), this);
         g_signal_connect_swapped(install, "clicked", G_CALLBACK(+[](Installer *s) { s->begin(); }), this);
@@ -322,7 +379,7 @@ struct Installer {
         }), this);
         g_signal_connect(window, "delete-event", G_CALLBACK(+[](GtkWidget *, GdkEvent *, gpointer data) -> gboolean {
             auto *s = static_cast<Installer *>(data);
-            s->message(s->running ? "正在安装，请勿关闭电源。" : "如需退出，请关闭虚拟机或计算机。", GTK_MESSAGE_INFO);
+            s->message(s->running ? i18n::text("正在安装，请勿关闭电源。") : i18n::text("如需退出，请关闭虚拟机或计算机。"), GTK_MESSAGE_INFO);
             return true;
         }), this);
         gtk_widget_show_all(window); gtk_widget_hide(finish);

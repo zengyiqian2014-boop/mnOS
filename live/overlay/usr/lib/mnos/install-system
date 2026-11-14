@@ -44,6 +44,17 @@ IFS= read -r factor_policy || factor_policy=password
 case "$factor_policy" in password|authenticator) ;; *) fail 'Invalid authentication policy.' ;; esac
 IFS= read -r face_policy || face_policy=off
 case "$face_policy" in off|face-preview) ;; *) fail 'Invalid face preview choice.' ;; esac
+region_input=$(head -c 8193)
+[ "${#region_input}" -le 8192 ] || fail 'Regional settings are too large.'
+if [ -z "$region_input" ]; then
+    region_input=$'en_US.UTF-8\nen_US.UTF-8\nEtc/UTC\npool.ntp.org'
+fi
+printf '%s\n' "$region_input" | /usr/lib/mnos/configure-region --check || fail 'Invalid regional settings; no disk changes were made.'
+region_lang=${region_input%%$'\n'*}
+stage() {
+    if [ "$region_lang" = zh_CN.UTF-8 ]; then printf 'STAGE %s %s\n' "$1" "$3";
+    else printf 'STAGE %s %s\n' "$1" "$2"; fi
+}
 if [ ! -x /usr/lib/mnos/login-helper ]; then
     [ "$factor_policy" = password ] && [ "$face_policy" = off ] || fail 'Lite edition supports password authentication only; install the full feature package first.'
 fi
@@ -56,7 +67,7 @@ unset secret
 [[ "$password_hash" == '$y$'* ]] || fail 'Password hashing did not produce a usable account.'
 medium=/run/live/medium
 [ -r "$medium/live/filesystem.squashfs" ] && [ -r "$medium/live/filesystem.sha256" ] || fail 'Installation payload is missing.'
-echo 'STAGE 5 Checking installation media / 检查安装介质'
+stage 5 'Checking installation media' '检查安装介质'
 (cd "$medium/live" && sha256sum -c filesystem.sha256) || fail 'Installation media is damaged.'
 arch=$(dpkg --print-architecture)
 case "$arch" in amd64) efi=x86_64-efi; suffix=x64 ;; arm64) efi=arm64-efi; suffix=aa64
@@ -71,7 +82,7 @@ cleanup() {
     rmdir "$target" 2>/dev/null || true
 }
 trap cleanup EXIT
-echo 'STAGE 10 Creating disk partitions / 创建磁盘分区'
+stage 10 'Creating disk partitions' '创建磁盘分区'
 # A BIOS boot partition and ESP make the SAME amd64 disk bootable by BIOS or UEFI.
 wipefs --all "$disk"
 sgdisk --zap-all --new=1:2048:+2M --typecode=1:ef02 --change-name=1:BIOS \
@@ -85,7 +96,7 @@ esp=$(part 2); root=$(part 3)
 mkfs.vfat -F 32 -n MNOS_EFI "$esp"
 mkfs.ext4 -F -L mnOS -E lazy_itable_init=0,lazy_journal_init=0 "$root"
 mount "$root" "$target"
-echo 'STAGE 20 Installing system and applications / 安装系统和应用'
+stage 20 'Installing system and applications' '安装系统和应用'
 unsquashfs -f -no-progress -processors 2 -d "$target" "$medium/live/filesystem.squashfs"
 # Also deploy the account-login fix when the ISO carries a verified installer
 # overlay over an older base filesystem. Never patch PAM or enable autologin.
@@ -102,7 +113,7 @@ for dir in dev proc sys run; do
     mount --rbind "/$dir" "$target/$dir"
     mount --make-rslave "$target/$dir"
 done
-echo 'STAGE 65 Creating your account / 创建用户账号'
+stage 65 'Creating your account' '创建用户账号'
 chroot "$target" useradd --create-home --shell /bin/bash --groups sudo,netdev,plugdev "$account"
 printf '%s:%s\n' "$account" "$password_hash" | chroot "$target" chpasswd --encrypted
 unset password_hash
@@ -132,7 +143,7 @@ install -d -m 755 "$target/var/lib/mnos"
 printf '%s\n' "$account" > "$target/var/lib/mnos/setup-complete"
 printf 'mnOS\n' > "$target/etc/hostname"
 printf '127.0.0.1 localhost\n127.0.1.1 mnOS\n::1 localhost ip6-localhost ip6-loopback\n' > "$target/etc/hosts"
-printf 'LANG=en_US.UTF-8\n' > "$target/etc/default/locale"
+printf '%s\n' "$region_input" | chroot "$target" /usr/lib/mnos/configure-region --offline
 rm -f "$target/etc/machine-id" "$target/var/lib/dbus/machine-id" "$target/var/lib/systemd/random-seed"
 touch "$target/etc/machine-id"
 chmod 644 "$target/etc/machine-id"
@@ -147,7 +158,7 @@ fi
 chroot "$target" systemctl set-default graphical.target
 printf '#!/bin/sh\nexit 101\n' > "$target/usr/sbin/policy-rc.d"
 chmod 755 "$target/usr/sbin/policy-rc.d"
-echo 'STAGE 75 Configuring hardware and bootloader / 配置硬件和引导'
+stage 75 'Configuring hardware and bootloader' '配置硬件和引导'
 chroot "$target" update-initramfs -u -k all
 # Signed fallback EFI path boots even when the VM recreates its NVRAM.
 mkdir -p "$target/boot/efi/EFI/BOOT" "$target/boot/efi/EFI/debian" "$target/boot/grub"
@@ -178,5 +189,5 @@ jq -n --arg arch "$arch" --arg source "$(cat "$target/etc/mnos/source-commit")" 
     > "$target/var/lib/mnos/installation.json"
 rm -f "$target/usr/share/applications/install-mnos.desktop" "$target/usr/share/applications/calamares-install-debian.desktop"
 sync
-echo 'STAGE 100 Installation complete. Remove the ISO before rebooting. / 安装完成，请移除 ISO 后重启。'
+stage 100 'Installation complete. Remove the ISO before rebooting.' '安装完成，请移除 ISO 后重启。'
 echo 'MNOS INSTALL PASS'

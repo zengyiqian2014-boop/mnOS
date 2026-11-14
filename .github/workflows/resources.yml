@@ -24,14 +24,14 @@ jobs:
       - run: bash live/fetch-face-models.sh
       - name: Verify real authentication and package update transactions
         run: |
-          docker run --rm --network none -e MNOS_AUTH_TEST_CONTAINER=1 \
+          docker run --rm --init --network none -e MNOS_AUTH_TEST_CONTAINER=1 \
             -v "$PWD:/source" -w /source/live mnos-auth-test bash tests/authentication.sh
-          docker run --rm --network none -e MNOS_UPDATE_TEST_CONTAINER=1 \
+          docker run --rm --init --network none -e MNOS_UPDATE_TEST_CONTAINER=1 \
             -v "$PWD:/source" -w /source/live mnos-auth-test bash tests/updates.sh
       - name: Build compiled runtime and full feature packages
         run: |
           mkdir -p resources
-          docker run --rm --network none -v "$PWD:/source:ro" -v "$PWD/resources:/out" \
+          docker run --rm --init --network none -v "$PWD:/source:ro" -v "$PWD/resources:/out" \
             -w /source/live mnos-auth-test bash -ec '
             make -C src -j4 OUT=/tmp/build
             make -C src OUT=/tmp/build DESTDIR=/tmp/compiled install

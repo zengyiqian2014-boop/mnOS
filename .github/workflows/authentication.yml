@@ -22,7 +22,7 @@ jobs:
       - run: bash live/fetch-face-models.sh
       - name: Verify real PAM, daemon, installer enrollment and QR/manual parity
         run: |
-          docker run --rm --network none -e MNOS_AUTH_TEST_CONTAINER=1 \
+          docker run --rm --init --network none -e MNOS_AUTH_TEST_CONTAINER=1 \
             -v "$PWD:/source" -w /source/live mnos-auth-test bash tests/authentication.sh
   native:
     runs-on: ubuntu-24.04
@@ -32,7 +32,7 @@ jobs:
       - run: docker build -t mnos-native-builder -f native/Builder.Dockerfile .
       - name: Verify both real native installations and authenticator logins
         run: |
-          docker run --rm --network none -v "$PWD/native:/native" -w /native mnos-native-builder bash -ec '
+          docker run --rm --init --network none -v "$PWD/native:/native" -w /native mnos-native-builder bash -ec '
             make host-tests
             sh installer/build.sh
             c++ -std=c++17 -O2 -Wall -Wextra -Werror tests/factor_vm.cpp -lcrypto -o build/factor-vm

@@ -7,6 +7,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include "mnos-locale.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,7 +31,7 @@ static void help(void) {
          "Only administrative operations require root. No automatic elevation.\n"
          "Runtime sysctl/CPU changes reset on reboot; TuneD profile selection persists.\n"
          "GPU output reports the bound driver; it does not certify acceleration.");
-    puts("English: kernel help    Chinese: kernel help -cn");
+    puts("English: kernel help -en    Chinese: kernel help -cn");
 }
 static void help_cn(void) {
     puts("kernel <指令> [对象]\n"
@@ -50,7 +51,7 @@ static void help_cn(void) {
          "仅管理操作需要 root，程序不会自动提权。\n"
          "运行时参数和 CPU 状态重启后恢复；TuneD 配置选择会保留。\n"
          "显卡命令显示绑定驱动，不代表已验证加速。\n"
-         "英文帮助：kernel help    中文帮助：kernel help -cn");
+         "英文帮助：kernel help -en    中文帮助：kernel help -cn");
 }
 static int show(const char *path) {
     FILE *file = fopen(path, "re");
@@ -84,7 +85,8 @@ static int gpu(void) {
 }
 int main(int argc, char **argv) {
     if (argc == 3 && !strcmp(argv[1], "help") && !strcmp(argv[2], "-cn")) { help_cn(); return 0; }
-    if (argc == 1 || (argc == 2 && (!strcmp(argv[1], "help") || !strcmp(argv[1], "--help")))) { help(); return 0; }
+    if (argc == 3 && !strcmp(argv[1], "help") && !strcmp(argv[2], "-en")) { help(); return 0; }
+    if (argc == 1 || (argc == 2 && (!strcmp(argv[1], "help") || !strcmp(argv[1], "--help")))) { if(mnos_chinese())help_cn();else help(); return 0; }
     if (argc > 3) { help(); return 2; }
     const char *cmd = argv[1]; char *object = argc == 3 ? argv[2] : NULL;
     if (!strcmp(cmd, "info") && !object) {

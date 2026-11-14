@@ -1,0 +1,55 @@
+mnOS Linux Edition
+==================
+
+Choose the installer for your CPU: AMD64 for Intel/AMD 64-bit computers,
+ARM64 for AArch64 UEFI machines. Each image includes support for virtual machines
+and supported physical hardware. See the release notes for tested devices.
+
+This edition runs Debian Linux and Xfce with mnOS C/C++ tools. The original
+mnOS kernel and desktop have a separate Native Edition installer. Native's
+current software Linux guest supports console applications; it does not yet
+run Firefox, VS Code or the full graphical CTF environment.
+
+The installer lets you choose English or Simplified Chinese. Language controls
+translated menus, system messages and mnOS help. Regional formats and the time
+zone are separate choices. Open Language, Region & Time in system settings,
+or run mnos settings, to change them later. Sign out and back in after changing
+the language. Third-party programs use their available upstream translations.
+
+Time synchronization uses chrony. The default is pool.ntp.org. Presets include
+ntp.aliyun.com, ntp.tencent.com, time.cloudflare.com and time.google.com.
+Add a custom hostname or IP address in the time-server field. Separate addresses
+with spaces. Google uses leap smear and must be used separately from ordinary
+NTP sources. Saving settings requests administrator authentication.
+Use chronyc tracking and chronyc sources to inspect actual synchronization.
+Saving a server address alone does not mean the clock has synchronized.
+
+help: command manual in the selected language
+help -en: English manual
+help -cn: Chinese manual
+help code / firefox / packages / build / network / kernel: selected chapter
+help TOOL: the tool's installed upstream manual or help
+mnos-admin gui: applications and system management
+
+The graphical installer erases the explicitly selected and confirmed whole disk.
+Manual partitioning, preserving an existing installation and disk encryption
+are not currently offered. After installation, shut down, remove the ISO and
+boot from disk. There is no default password; direct root login is locked.
+Use your normal account for applications and files, sudo/Polkit for system changes.
+Changes in the live installation session are temporary.
+
+Full includes Firefox ESR, VS Code, development and CTF tools. Python is retained
+only as a dependency of selected third-party software. Lite contains C/C++ tools
+and a smaller network/CTF set, with password-only authentication. Use mnos full
+to install the Full feature package. Package versions are recorded in packages.tsv.
+
+mnos packages: list installed packages
+mnos apt install PACKAGE: use APT with its dependency and confirmation checks
+mnos full --without PACKAGE: exclude a package from this installation transaction
+mnos update: verify the signed resource catalog and update mnOS components
+mnos rollback VERSION: restore retained component versions, not disk snapshots
+
+In UTM use the QEMU backend. Apple Virtualization.framework is a separate backend
+and is not currently verified. QEMU on a matching ARM64 Mac can use HVF CPU
+acceleration. Native Edition requires Secure Boot off; Linux Edition uses the
+Debian signed boot chain. This Linux installation uses ext4; Native uses MNFS.
