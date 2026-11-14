@@ -25,8 +25,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          stage=validate-input
+          trap 'printf "::error::Diagnostic export failed during %s\n" "$stage"' ERR
           [[ "$RUN_ID" =~ ^[0-9]+$ ]]
           test "$GH_REPO" = zengyiqian2014-boop/mnOS
+          stage=read-run
           gh api "repos/$GH_REPO/actions/runs/$RUN_ID" > run.json
           jq -e --arg repo "$GH_REPO" '
             .repository.full_name == $repo and .head_repository.full_name == $repo and
@@ -36,14 +39,19 @@ jobs:
           # or accepting an executable from an artifact or pull-request branch.
           name="ci-$RUN_ID"
           if [ -n "$JOB_ID" ]; then
+            stage=validate-job
             [[ "$JOB_ID" =~ ^[0-9]+$ ]]
             gh api "repos/$GH_REPO/actions/jobs/$JOB_ID" > job.json
             jq -e --argjson run "$RUN_ID" '.run_id == $run and .status == "completed"' job.json >/dev/null
             name="$name-$JOB_ID"
+            stage=download-job-log
             gh api "repos/$GH_REPO/actions/jobs/$JOB_ID/logs" > "$name.log"
           else
+            stage=download-run-log
             jq -e '.status == "completed"' run.json >/dev/null
             gh run view "$RUN_ID" --repo "$GH_REPO" --log > "$name.log"
           fi
+          stage=compress
           gzip "$name.log"
+          stage=upload-draft-evidence
           gh release upload ci-evidence --repo "$GH_REPO" "$name.log.gz" --clobber
