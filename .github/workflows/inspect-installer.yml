@@ -1,0 +1,61 @@
+name: Inspect installer validation
+on:
+  workflow_dispatch:
+    inputs:
+      build_run:
+        description: Completed Lite installer run to inspect without rebuilding
+        required: true
+      architecture:
+        type: choice
+        options: [arm64, amd64]
+        default: arm64
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Verify source workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_RUN: ${{ inputs.build_run }}
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
+          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN" > source.json
+          jq -e --arg repo "$GH_REPO" '.repository.full_name == $repo and .path == ".github/workflows/lite.yml" and .status == "completed"' source.json
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-lite-${{ inputs.architecture }}
+          run-id: ${{ inputs.build_run }}
+          github-token: ${{ github.token }}
+          path: diagnostic
+      - name: Show bounded serial evidence
+        run: |
+          set -euo pipefail
+          find diagnostic/validation -maxdepth 1 -type f -printf '%f %s bytes\n'
+          for file in diagnostic/validation/install.log; do
+            detail=$(tail -c 6000 "$file")
+            detail=${detail//%/%25}
+            detail=${detail//$'\r'/%0D}
+            detail=${detail//$'\n'/%0A}
+            printf '::notice title=Installer serial log::%s\n' "$detail"
+          done
+      - name: Export the last test screen for clients without artifact storage access
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends imagemagick
+          convert diagnostic/validation/install-current.ppm -resize 960x540 -quality 88 diagnostic/last-screen.jpg
+          # Only the known, disposable QA account is used in this VM. The
+          # screenshot contains its masked form and validation dialog, not
+          # credentials from a real installation. Keep annotations bounded.
+          base64 -w 0 diagnostic/last-screen.jpg | fold -w 24000 > diagnostic/screen-chunks.txt
+          index=0
+          while IFS= read -r part || [ -n "$part" ]; do
+            index=$((index+1))
+            printf '::notice title=QA screen JPEG part %s::%s\n' "$index" "$part"
+          done < diagnostic/screen-chunks.txt
