@@ -489,8 +489,8 @@ package names; options, versions and wildcards are not accepted with --without.
 The selected Full installation does not request the all-features mnos-full metapackage.
 
 The Full feature pack restores optional authenticator setup, face verification and
-the broader Linux desktop/development/CTF package selection. Camera preview is
-includes optional PAM face verification with separate recovery codes. APT downloads dependencies, including Python if a selected
+the broader Linux desktop/development/CTF package selection. Optional PAM face
+verification includes separate recovery codes. APT downloads dependencies, including Python if a selected
 Full tool requires it; the Lite ISO itself has no Python runtime. Your account
 and files stay in place. There is no automatic activation of 2FA: open Login
 Security and explicitly pair your authenticator using QR or the manual key.

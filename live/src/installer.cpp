@@ -349,7 +349,7 @@ struct Installer {
         face=gtk_check_button_new_with_label(i18n::text("首次登录时设置附加人脸验证（普通摄像头）"));
         if(full) {
             gtk_grid_attach(GTK_GRID(form),face,1,8,2,1);
-            gtk_grid_attach(GTK_GRID(form),label(i18n::text("普通摄像头：支持动作与颜色响应测试，暂不作为系统登录凭据。"),"muted"),1,9,2,1);
+            gtk_grid_attach(GTK_GRID(form),label(i18n::text("普通摄像头：附加验证，非可信 3D 深度。录入后请保存恢复码。"),"muted"),1,9,2,1);
         }
         install = gtk_button_new_with_mnemonic(i18n::text("开始安装 (_I)"));
         gtk_style_context_add_class(gtk_widget_get_style_context(install), "suggested-action");

@@ -90,7 +90,7 @@ inline constexpr Message messages[] = {
     {"可跳过，之后在系统设置中开启。", "Optional. You can enable it later in system settings."},
     {"精简版：仅密码验证。安装完整版功能包后可开启其他验证。", "Lite: password authentication only. Install the Full feature package to enable other methods."},
     {"首次登录时设置附加人脸验证（普通摄像头）", "Set up additional face verification after the first login (ordinary camera)"},
-    {"普通摄像头：支持动作与颜色响应测试，暂不作为系统登录凭据。", "Standard camera: motion and color-response testing; currently not accepted as a login credential."},
+    {"普通摄像头：附加验证，非可信 3D 深度。录入后请保存恢复码。", "Ordinary camera: additional verification, not trusted 3D depth. Save the recovery codes after enrollment."},
     {"开始安装 (_I)", "Install (_I)"},
     {"正在发现磁盘…", "Finding disks…"},
     {"安装日志 / Installation log", "Installation log"},
