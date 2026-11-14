@@ -40,33 +40,14 @@
   </header>
 
   <main id="main">
-    <section class="hero" aria-labelledby="hero-title">
-      <div class="hero-halo" aria-hidden="true"></div>
-      <div class="hero-copy shell">
-        <div class="eyebrow hero-intro"><span class="status-dot"></span> 自研内核 · AMD64 / ARM64</div>
-        <h1 id="hero-title">mn<span>OS</span></h1>
-        <p class="hero-description">自研内核与原生图形桌面。<br>提供安装镜像，内置可选的 Linux 模拟环境。</p>
-        <a class="button button-light" href="#experience">查看系统功能 <svg class="icon"><use href="#arrow"/></svg></a>
-      </div>
-
-      <div class="core-scene" aria-hidden="true">
-        <canvas id="flow-field"></canvas>
-        <div class="core-orbit orbit-one"></div><div class="core-orbit orbit-two"></div>
-        <div class="core-shadow"></div>
-        <div class="core-float"><div class="core-chip">
-          <div class="chip-edge"></div><div class="chip-face"><div class="chip-trace"></div><svg class="chip-mark"><use href="#mark"/></svg><span class="chip-word">mnOS</span><span class="chip-label">MNOS KERNEL</span><i class="chip-dot"></i></div>
-        </div></div>
-        <span class="scene-note scene-note-left">ORIGINAL KERNEL<br><b>C · C++ · ASSEMBLY</b></span><span class="scene-note scene-note-right">TWO ARCHITECTURES<br><b>AMD64 + ARM64</b></span>
-      </div>
-      <div class="hero-bottom shell"><span>SOURCE CODE ON GITHUB</span><a href="#experience">系统介绍 <span class="scroll-line"></span></a><span>自研内核 · 按需模拟</span></div>
-    </section>
-
-    <section class="scroll-film" id="experience" aria-label="mnOS 动态介绍">
+<section class="scroll-film" id="experience" aria-label="mnOS 动态介绍">
       <div class="film-sticky">
-        <div class="film-topline shell"><span>mnOS / INSIDE THE SYSTEM</span><a href="#editions">跳过介绍 ↗</a></div>
+        <canvas class="film-canvas" aria-hidden="true"></canvas>
+        <div class="film-title"><h1 id="hero-title">mnOS</h1><p>自研内核。原生桌面。</p></div>
+        <div class="film-topline shell"><span>NATIVE EDITION / AMD64 + ARM64</span><a href="#editions">跳过介绍 ↗</a></div>
         <div class="film-scenes shell">
           <article class="film-scene film-kernel" data-scene="0">
-            <div class="film-copy"><p class="eyebrow">01 / 自研内核</p><h2>从内核，<br><span>开始。</span></h2><p>C 与汇编编写。<br>启动后，运行 mnOS 自己的内核。</p></div>
+            <div class="film-copy"><p class="eyebrow">01 / 自研内核</p><h2>自研内核。<br><span>原生桌面。</span></h2><p>C 与汇编编写。<br>启动后，运行 mnOS 自己的内核。</p></div>
             <div class="film-visual kernel-visual" aria-hidden="true">
               <div class="kernel-horizon"></div><div class="kernel-grid"></div>
               <svg class="kernel-routes" viewBox="0 0 640 640"><g><path d="M0 160h160l100 100h60M0 480h160l100-100h60M640 160H480L380 260h-60M640 480H480L380 380h-60M160 0v160l100 100v60M480 0v160L380 260v60M160 640V480l100-100v-60M480 640V480L380 380v-60"/></g></svg>
@@ -74,20 +55,21 @@
               <div class="kernel-slab slab-top"><svg><use href="#mark"/></svg><strong>mnOS</strong><span>ORIGINAL KERNEL</span></div>
               <div class="kernel-architecture"><span>AMD64</span><i></i><span>ARM64</span></div>
             </div>
-            <span class="film-caption">内核结构示意 · C / Assembly</span>
+            <span class="film-caption">设备为演示模型 · 系统画面来自 mnOS 实际运行</span>
           </article>
           <article class="film-scene film-desktop" data-scene="1">
-            <div class="film-copy"><p class="eyebrow">02 / 原生图形界面</p><h2>看得见。<br><span>用得上。</span></h2><p>窗口、文件、编辑器与终端。<br>从同一个桌面打开。</p></div>
+            <div class="film-copy"><p class="eyebrow">02 / 原生图形界面</p><h2>文件、窗口<br><span>和终端。</span></h2><p>窗口、文件、编辑器与终端。<br>从同一个桌面打开。</p></div>
             <figure class="film-visual film-screen"><div class="film-screen-edge"><div class="film-screen-top"><span>mnOS Native</span><svg class="icon"><use href="#mark"/></svg></div><img src="./assets/native-desktop.png" width="1280" height="720" alt="真实 mnOS 原生桌面，文件、编辑器、终端、设置及 Linux 模拟窗口" loading="lazy" decoding="async"></div><div class="film-screen-shadow"></div></figure>
-            <span class="film-caption">真实系统画面 · 不是界面效果图</span>
+            <span class="film-caption">真实系统画面 · 文件、编辑器与终端</span>
           </article>
           <article class="film-scene film-guest" data-scene="2">
-            <div class="film-copy"><p class="eyebrow">03 / LINUX 模拟环境</p><h2>需要时，<br><span>再启动。</span></h2><p>默认关闭。经你确认后运行。<br>在设置中，随时暂停或停止。</p></div>
+            <div class="film-copy"><p class="eyebrow">03 / LINUX 模拟环境</p><h2>按需启动<br><span>Linux。</span></h2><p>默认关闭。经你确认后运行。<br>在设置中，随时暂停或停止。</p></div>
             <div class="film-visual guest-visual" aria-hidden="true"><div class="guest-host"><span class="guest-host-label">mnOS / HOST</span><div class="guest-orbit"></div><div class="guest-window"><div class="guest-heading"><svg class="icon"><use href="#terminal"/></svg><span>Linux</span><span class="guest-switch"><i></i></span></div><div class="guest-command"><span>❯</span> linux start</div><div class="guest-lines"><span>RV64 Linux / BusyBox</span><i></i><i></i><i></i></div><span class="guest-mode">按需启动 / 独立客体内存</span></div><span class="guest-host-bottom">HOST → GUEST</span></div></div>
             <span class="film-caption">运行方式示意 · 当前支持控制台程序，尚不支持网络或 Linux GUI</span>
           </article>
         </div>
-        <div class="film-controls shell"><div class="film-chapters" role="group" aria-label="介绍章节"><button type="button" data-chapter="0" aria-label="查看自研内核" aria-pressed="true"><span>01</span><i></i><b>内核</b></button><button type="button" data-chapter="1" aria-label="查看原生桌面" aria-pressed="false"><span>02</span><i></i><b>桌面</b></button><button type="button" data-chapter="2" aria-label="查看 Linux 模拟" aria-pressed="false"><span>03</span><i></i><b>模拟</b></button></div><button class="film-play" type="button" aria-pressed="false">播放介绍 <span>↗</span></button><span class="film-scroll-hint">向下滚动，继续观看 ↓</span></div>
+        <aside class="film-audio" hidden aria-label="3 Strikes 音乐播放器"><div class="film-audio-top"><a href="https://soundcloud.com/terrorjr/3-strikes" target="_blank" rel="noopener">Terror Jr · 3 Strikes</a><button type="button" class="film-audio-close" aria-label="停止音乐并关闭播放器">×</button></div><p class="film-audio-status" role="status">音乐从约 00:12 开始，画面跟随播放进度。</p><div class="film-audio-player"></div></aside>
+        <div class="film-controls shell"><div class="film-chapters" role="group" aria-label="介绍章节"><button type="button" data-chapter="0" aria-label="查看自研内核" aria-pressed="true"><span>01</span><i></i><b>内核</b></button><button type="button" data-chapter="1" aria-label="查看原生桌面" aria-pressed="false"><span>02</span><i></i><b>桌面</b></button><button type="button" data-chapter="2" aria-label="查看 Linux 模拟" aria-pressed="false"><span>03</span><i></i><b>模拟</b></button></div><button class="film-play" type="button" aria-pressed="false">播放介绍 <span>↗</span></button><button class="film-music" type="button" aria-expanded="false">音乐版 · 3 Strikes ↗</button><span class="film-scroll-hint">下滑推进镜头 ↓</span></div>
       </div>
     </section>
 

@@ -28,6 +28,8 @@ jobs:
         run: |
           node --check website/app.mjs
           node --check website/film.mjs
+          node --check website/film-scene.mjs
+          node --check website/film-audio.mjs
           node --test website/scripts/catalog.test.mjs
       - name: Verify published catalog with the pinned archive key
         run: |
