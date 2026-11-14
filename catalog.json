@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "latest_linux_runtime": "2.2.0~preview4",
-  "updated": "2026-11-14T10:11:52Z",
+  "latest_linux_runtime": "2.2.0~preview5",
+  "updated": "2026-11-14T11:23:17Z",
   "resources": [
     {
       "name": "mnOS-2.1-linux-preview.1-amd64.iso",
@@ -10,6 +10,7 @@
       "sha256": "e49515a581644a83969f6f8488582ffff4806695f0434d7631a30ffd188d1c98",
       "kind": "full",
       "edition": "linux",
+      "delivery": "offline",
       "architecture": "amd64",
       "version": "v2.1-linux-preview.1",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.1-linux-preview.1"
@@ -21,6 +22,7 @@
       "sha256": "b9f46a3d3d76a5bca996fec03b8cff6b3c84248672fb736b2803dd3a0e2a28f9",
       "kind": "full",
       "edition": "linux",
+      "delivery": "offline",
       "architecture": "arm64",
       "version": "v2.1-linux-preview.1",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.1-linux-preview.1"
@@ -32,6 +34,7 @@
       "sha256": "65e78bbed60b253c9fa2678f43b582bdceab34a43a371093f6f0dd825f9d4abc",
       "kind": "full",
       "edition": "native",
+      "delivery": "offline",
       "architecture": "amd64",
       "version": "v0.2-native-preview.1",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.2-native-preview.1"
@@ -43,6 +46,7 @@
       "sha256": "27f00862569403f0c17b2c6af35f462b74c484c98a96b751893bc5a474b9f0ce",
       "kind": "full",
       "edition": "native",
+      "delivery": "offline",
       "architecture": "amd64",
       "version": "v0.3-native-preview.1",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.3-native-preview.1"
@@ -54,6 +58,7 @@
       "sha256": "9955c8abbe4a5bc94671076f405253c44dc8ababd6874a54eed6d73124d1b5ae",
       "kind": "full",
       "edition": "native",
+      "delivery": "offline",
       "architecture": "amd64",
       "version": "v0.3-native-preview.2",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.3-native-preview.2"
@@ -65,6 +70,7 @@
       "sha256": "880bf0a345aa1390a664f474458c5964970f333801e89e2f23e9a680de4240be",
       "kind": "full",
       "edition": "native",
+      "delivery": "offline",
       "architecture": "amd64",
       "version": "v0.5-native-preview.1",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.5-native-preview.1"
@@ -76,6 +82,7 @@
       "sha256": "1ae03d48db7f5bcca5cf67578e08c769406c769f286b0d6dd4d2639b8d7f951c",
       "kind": "full",
       "edition": "native",
+      "delivery": "offline",
       "architecture": "amd64",
       "version": "v0.5-native-preview.2",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.5-native-preview.2"
@@ -87,6 +94,7 @@
       "sha256": "c5bd857be76911ae67572fc3b8da116606ae42ff224d81637d01768399a4c600",
       "kind": "full",
       "edition": "native",
+      "delivery": "offline",
       "architecture": "amd64",
       "version": "v0.6-native-preview.1",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.6-native-preview.1"
@@ -98,6 +106,7 @@
       "sha256": "c7621bb3a12f4207067d045113d5b9816fcd8a8ce566f375a80ff17d5fd0d8d6",
       "kind": "full",
       "edition": "native",
+      "delivery": "offline",
       "architecture": "arm64",
       "version": "v0.2-native-preview.1",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.2-native-preview.1"
@@ -109,6 +118,7 @@
       "sha256": "957973905745f3a93610d0e94b4213c8a60859cebcfbfff0186e5c8b1d7320ce",
       "kind": "full",
       "edition": "native",
+      "delivery": "offline",
       "architecture": "arm64",
       "version": "v0.3-native-preview.1",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.3-native-preview.1"
@@ -120,6 +130,7 @@
       "sha256": "ba4a765755455bcb263ddae0aac42e6f391fee46a27ac55a548461e866f12cd3",
       "kind": "full",
       "edition": "native",
+      "delivery": "offline",
       "architecture": "arm64",
       "version": "v0.3-native-preview.2",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.3-native-preview.2"
@@ -131,6 +142,7 @@
       "sha256": "5dbd4a446792ad872c02ae86487568fcf00c5bc8efaa0cd84bb000a417aa09b5",
       "kind": "full",
       "edition": "native",
+      "delivery": "offline",
       "architecture": "arm64",
       "version": "v0.5-native-preview.1",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.5-native-preview.1"
@@ -142,6 +154,7 @@
       "sha256": "bd1b5f03159a3f38f14b6386f28360981b01a1031cd44e00784f06927e390034",
       "kind": "full",
       "edition": "native",
+      "delivery": "offline",
       "architecture": "arm64",
       "version": "v0.5-native-preview.2",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.5-native-preview.2"
@@ -153,6 +166,7 @@
       "sha256": "5bad109e7525d76a4dfeb60195d3227d81b52c20ed22b418a7e1104608c2dc56",
       "kind": "full",
       "edition": "native",
+      "delivery": "offline",
       "architecture": "arm64",
       "version": "v0.6-native-preview.1",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.6-native-preview.1"
@@ -164,6 +178,7 @@
       "sha256": "45c328c80752e80bdf0b68acf2617d80a327bb8c402439f5936db135f4c7a321",
       "kind": "patch",
       "edition": "linux",
+      "delivery": "offline",
       "architecture": "amd64",
       "version": "2.2.0~preview1",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
@@ -175,6 +190,7 @@
       "sha256": "9b7c0b095eb09d8861b1abc5169f6ee276d77b42a488a33e943dd71371facadd",
       "kind": "patch",
       "edition": "linux",
+      "delivery": "offline",
       "architecture": "amd64",
       "version": "2.2.0~preview1",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
@@ -186,6 +202,7 @@
       "sha256": "434b16c678ca3106d5a90e00937ad8749fd764feab4d3620c8792f6214b83a74",
       "kind": "patch",
       "edition": "linux",
+      "delivery": "offline",
       "architecture": "amd64",
       "version": "2.2.0~preview1",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
@@ -197,6 +214,7 @@
       "sha256": "b543d94ea0847fd51722956df55be84b7edf16480efbe9e99f4521d07604dd0a",
       "kind": "patch",
       "edition": "linux",
+      "delivery": "offline",
       "architecture": "amd64",
       "version": "2.2.0~preview2",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
@@ -208,6 +226,7 @@
       "sha256": "44df6ae5a615d595d85cb6a5a590c1db2042aee965ad7c3b318cec079199f6cd",
       "kind": "patch",
       "edition": "linux",
+      "delivery": "offline",
       "architecture": "amd64",
       "version": "2.2.0~preview2",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
@@ -219,6 +238,7 @@
       "sha256": "c880f2370af83bba2189098ed9a6e2949ad4bbf597713b2ec0e354e9ef0871ce",
       "kind": "patch",
       "edition": "linux",
+      "delivery": "offline",
       "architecture": "amd64",
       "version": "2.2.0~preview2",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
@@ -230,6 +250,7 @@
       "sha256": "9fd8d7645db9ab4ad9053c9c6eb2e9cd920188b4b9874a8a81b7fc1a94246d3a",
       "kind": "patch",
       "edition": "linux",
+      "delivery": "offline",
       "architecture": "amd64",
       "version": "2.2.0~preview4",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
@@ -241,6 +262,7 @@
       "sha256": "f0bd54fd6413cc7cab698081d764aef8c9218ffb25494174be650beaff2c700d",
       "kind": "patch",
       "edition": "linux",
+      "delivery": "offline",
       "architecture": "amd64",
       "version": "2.2.0~preview4",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
@@ -252,8 +274,45 @@
       "sha256": "b4321e832c400f3e17e4a9eab59008950e6f356653c20e9d599fd701c8dc98ea",
       "kind": "patch",
       "edition": "linux",
+      "delivery": "offline",
       "architecture": "amd64",
       "version": "2.2.0~preview4",
+      "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
+    },
+    {
+      "name": "mnos-auth_2.2.0.preview5_amd64.deb",
+      "url": "https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/mnos-auth_2.2.0.preview5_amd64.deb",
+      "bytes": 35995868,
+      "sha256": "706a5133394ed89b44ee0088a2771be63ca177ef03a794b750f7fb2d39c04185",
+      "kind": "patch",
+      "edition": "linux",
+      "delivery": "offline",
+      "architecture": "amd64",
+      "version": "2.2.0~preview5",
+      "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
+    },
+    {
+      "name": "mnos-full_2.2.0.preview5_amd64.deb",
+      "url": "https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/mnos-full_2.2.0.preview5_amd64.deb",
+      "bytes": 2128,
+      "sha256": "ea4d759d28c73b374fefe3e357a78a5b7d8045ad087b60f50e43d7c46249e609",
+      "kind": "patch",
+      "edition": "linux",
+      "delivery": "offline",
+      "architecture": "amd64",
+      "version": "2.2.0~preview5",
+      "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
+    },
+    {
+      "name": "mnos-runtime_2.2.0.preview5_amd64.deb",
+      "url": "https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/mnos-runtime_2.2.0.preview5_amd64.deb",
+      "bytes": 320128,
+      "sha256": "00c3cdc6e2141727637af38770924ad68bbdf231f03d46f7fcbe7975fd493355",
+      "kind": "patch",
+      "edition": "linux",
+      "delivery": "offline",
+      "architecture": "amd64",
+      "version": "2.2.0~preview5",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
     },
     {
@@ -263,6 +322,7 @@
       "sha256": "b6c6e280136b5b10ef066fb934014393b8f66e101e6702ca1bd9172a1a89890f",
       "kind": "patch",
       "edition": "linux",
+      "delivery": "offline",
       "architecture": "arm64",
       "version": "2.2.0~preview1",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
@@ -274,6 +334,7 @@
       "sha256": "39f07873560f4b3c3ebe3bc3511b24bbfa13c82d85f88dd95046f5c5ca2f6c76",
       "kind": "patch",
       "edition": "linux",
+      "delivery": "offline",
       "architecture": "arm64",
       "version": "2.2.0~preview1",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
@@ -285,6 +346,7 @@
       "sha256": "0774ac331135b9ad29c5d581fd20d34b6b4e9c60ba43933502b6d6f97e00827d",
       "kind": "patch",
       "edition": "linux",
+      "delivery": "offline",
       "architecture": "arm64",
       "version": "2.2.0~preview1",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
@@ -296,6 +358,7 @@
       "sha256": "2b06d693d5db8d7174de2c951a6f4f5d27d1c89e25f6d53d6a9460ebcc386df7",
       "kind": "patch",
       "edition": "linux",
+      "delivery": "offline",
       "architecture": "arm64",
       "version": "2.2.0~preview2",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
@@ -307,6 +370,7 @@
       "sha256": "f95cee6428e940af3d63fd34fbca6c3dc9898e963db9e1582bcab5120391791d",
       "kind": "patch",
       "edition": "linux",
+      "delivery": "offline",
       "architecture": "arm64",
       "version": "2.2.0~preview2",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
@@ -318,6 +382,7 @@
       "sha256": "b72e643ce61bfbb95741c4bb0991a3236fbd7facd7ab7417ba90da4acd24c35e",
       "kind": "patch",
       "edition": "linux",
+      "delivery": "offline",
       "architecture": "arm64",
       "version": "2.2.0~preview2",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
@@ -329,6 +394,7 @@
       "sha256": "37c02fd85bbfdcc4e86b11b0fdec5ec02071e1441685f409fecdaada8a72b894",
       "kind": "patch",
       "edition": "linux",
+      "delivery": "offline",
       "architecture": "arm64",
       "version": "2.2.0~preview4",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
@@ -340,6 +406,7 @@
       "sha256": "5f61fcc050f7d1a28de1adcf63091254617916f1574e615bcee271245d10e6c6",
       "kind": "patch",
       "edition": "linux",
+      "delivery": "offline",
       "architecture": "arm64",
       "version": "2.2.0~preview4",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
@@ -351,8 +418,45 @@
       "sha256": "c1b093b265a350952943a015a5766b8709ecbd46d533c9c1e254fc8431f41f31",
       "kind": "patch",
       "edition": "linux",
+      "delivery": "offline",
       "architecture": "arm64",
       "version": "2.2.0~preview4",
+      "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
+    },
+    {
+      "name": "mnos-auth_2.2.0.preview5_arm64.deb",
+      "url": "https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/mnos-auth_2.2.0.preview5_arm64.deb",
+      "bytes": 35985328,
+      "sha256": "65cb10a5ce9b901df48d5ce0291d4a39759386d09ee907a6e0fcc51a310d770a",
+      "kind": "patch",
+      "edition": "linux",
+      "delivery": "offline",
+      "architecture": "arm64",
+      "version": "2.2.0~preview5",
+      "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
+    },
+    {
+      "name": "mnos-full_2.2.0.preview5_arm64.deb",
+      "url": "https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/mnos-full_2.2.0.preview5_arm64.deb",
+      "bytes": 2132,
+      "sha256": "885a003f103591da723b62b5cd6d1ca311bb570e5f7e0f0b3cff8e4039250579",
+      "kind": "patch",
+      "edition": "linux",
+      "delivery": "offline",
+      "architecture": "arm64",
+      "version": "2.2.0~preview5",
+      "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
+    },
+    {
+      "name": "mnos-runtime_2.2.0.preview5_arm64.deb",
+      "url": "https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/mnos-runtime_2.2.0.preview5_arm64.deb",
+      "bytes": 291088,
+      "sha256": "ebe9df766c9d916ef073a379d6042e6693fd226019e9795224abcc2ebc13ddb0",
+      "kind": "patch",
+      "edition": "linux",
+      "delivery": "offline",
+      "architecture": "arm64",
+      "version": "2.2.0~preview5",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/updates-stable"
     }
   ]
