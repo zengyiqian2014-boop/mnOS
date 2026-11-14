@@ -1,11 +1,15 @@
 # mnOS
 
+[**mnOS 官网 / Explore mnOS**](https://zengyiqian2014-boop.github.io/mnOS/) · [统一资源 / Downloads](https://github.com/zengyiqian2014-boop/mnOS/tree/resources)
+
 [English](README.md) | [中文](README.zh.md)
 
-**Authentication in development:** optional password + authenticator enrollment,
+**Authentication preview:** optional password + authenticator enrollment,
 QR/manual pairing and settings controls. See [implemented behavior and tests](AUTHENTICATION.md).
 The ordinary-camera feature is an enrollment/test preview, not a login factor.
-Existing release ISOs below do not yet contain these source changes.
+Native 0.6 Preview 1 includes the tested authentication changes. Linux 2.1 ISOs
+predate them; signed 2.2 components are published separately while newer Full/Lite
+installation images complete validation.
 
 Full/Lite build profiles are being validated. Linux Lite has real APT and a
 C/C++ toolchain, without a Python runtime or extra login factors. The C++ `mnos`
@@ -26,15 +30,16 @@ Firefox, VS Code, the full CTF suite and a unified C system-management command.
 The guest initially supports RV64IMAC/LP64 console programs, not Linux GUI apps.
 See the edition guide for commands, permissions, build steps and limits.
 
-**Native Edition 0.5 Preview 2 is available:**
-[AMD64 installer](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.5-native-preview.2/mnOS-native-0.5-preview.2-amd64.iso)
-· [ARM64 installer](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.5-native-preview.2/mnOS-native-0.5-preview.2-arm64.iso)
-· [Checksums, source and tested scope](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.5-native-preview.2).
+**Native Edition 0.6 Preview 1 is available:**
+[AMD64 installer](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.6-native-preview.1/mnOS-native-0.6-preview.1-amd64.iso)
+· [ARM64 installer](https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.6-native-preview.1/mnOS-native-0.6-preview.1-arm64.iso)
+· [Checksums, source and tested scope](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.6-native-preview.1).
 Both architectures passed GUI installation, disk boot without the ISO and actual Linux guest commands.
 Linux simulation is off by default. Opening a supported Linux console app asks for
 confirmation; Settings can disable it and clear guest RAM immediately. This preview
-also fixes delayed AMD64 keyboard/mouse input and colon/quote key mapping.
-The attached images were tested locally in QEMU; see the release evidence and provenance.
+adds password/authenticator enrollment and idle guest yielding. The published
+images passed QEMU installation and disk boot tests on both architectures;
+see the release evidence and source provenance.
 
 ![Actual native desktop executing Linux guest programs](assets/native-linux-guest.png)
 

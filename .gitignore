@@ -20,3 +20,6 @@
 
 /live/tests/enrollment-runtime
 /live/src/build/
+
+# Static GitHub Pages build
+/_site/
