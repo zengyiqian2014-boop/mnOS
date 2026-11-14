@@ -1,16 +1,24 @@
-[kernel] linux start|status|pause|resume|stop|restart|send COMMAND
-管理软件模拟的 Linux 客体
-无需 root：start 在自研桌面打开 Linux 控制台。自研 C 模拟器
-执行 RV64IMAC/Sv39 指令，运行真实 Linux 内核及 BusyBox。
-客体使用 64 MiB RAM、一个软件 CPU；pause/resume 保留状态，
-stop/restart 会丢弃全部客体文件。宿主切换账号时擦除客体 RAM。
-客体 root 不能访问宿主文件、磁盘、设备和网络。
-仅运行兼容 RV64IMAC/LP64 的程序，未实现客体 GPU、浮点指令或桌面应用。
-Firefox、VS Code 和完整 CTF 桌面使用 Linux Edition。
-客体内 busybox --list 列命令、命令 --help 查帮助；F5 返回宿主。
-send 发送客体命令，不作为宿主命令执行。
+[kernel] linux memory auto|MIB; linux apps|open APP|start|status|pause|resume|stop|restart|enable|disable|send COMMAND
+管理 Linux 模拟
+无需 root。启动及切换宿主账号后默认关闭；关闭状态打开 Linux
+程序先询问：Enter 开启并打开，Esc 取消。start/enable 打开终端。
+apps 列入口；open APP 可用 terminal、files、processes、system、
+commands，分别打开终端、文件列表、进程、系统信息和命令目录。
+确认后才启动真实 Linux 客体，待控制台就绪后执行所选程序。
+F7 系统设置中的 Linux 模拟（L）随时开关；F5 返回宿主终端。
+pause/resume 保留状态；stop/disable 立即停止并擦除客体内存。
+restart 丢弃客体文件，关闭时重启也须确认。关窗口只隐藏窗口。
+开启状态不跨登录保存。自研 C RV64IMAC/Sv39 模拟器，一个软件 CPU。
+自动内存上限 1 GiB，依据宿主空闲内存调整。停止时用 memory auto
+或 memory MIB 调整上限；MIB 为 128..524288，启动需有足够内存。
+保留 32 MiB 宿主内存；按需分配页面，停止时擦除并归还。
+客体文件临时保存，不共享宿主文件、设备或网络。
+仅支持 RV64IMAC/LP64 命令行程序，暂无 GPU、浮点或图形应用。
+Firefox、VS Code、完整 CTF 工具使用 Linux Edition。
+send COMMAND 只向客体发送输入，不执行宿主命令。
+客体内 busybox --list 列工具，COMMAND --help 查看详细说明。
 示例：
-linux start
+linux open system
 
 system [status|cpu|memory|processes|storage|security|display|guest]
 统一原生系统管理入口
@@ -269,6 +277,19 @@ root 可停止所有原生用户进程；无效或不存在的编号会报错。
 尚无信号编号选项，也不能用它终止内核服务。
 示例：
 kernel kill 2
+
+[kernel] 2fa status|enable|disable
+密码与验证器
+status 查询本账号的双重验证状态。enable 先验证当前密码，
+然后扫码或手动输入 Base32 密钥；输入有效的六位验证码才启用。
+验证器选择基于时间、SHA1、六位、30 秒。请保存八条一次性恢复码。
+disable 必须再次输入密码和验证码或恢复码。
+密钥由密码经 PBKDF2 派生的独立密钥加密，使用 XChaCha20-Poly1305。
+不使用 Base64 充当加密；明文仅在绑定时展示。
+已启用 2FA 的账号不能由其他 root 会话重置密码。
+当前版本没有硬件隔离，不能抵抗已被攻破的内核。
+示例：
+2fa enable
 
 [kernel] whoami
 当前账号名

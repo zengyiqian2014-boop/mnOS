@@ -2,10 +2,14 @@
 #include "kernel.h"
 #include "auth.h"
 #include "guest.h"
+#include "guest_memory.h"
 #include "linux_guest.h"
 extern const unsigned char linux_image_start[],linux_image_end[],linux_dtb_start[],linux_dtb_end[];
 static struct guest vm;
-static uint8_t *ram;
+static struct guest_memory memory;
+static uint64_t requested_mib, active_mib;
+static uint32_t memory_owner=UINT32_MAX;
+static uint8_t dtb[65536];
 static bool running, paused, confirming, shell_ready;
 static uint32_t owner=UINT32_MAX;
 static unsigned requested_app, prompt_match;
@@ -24,6 +28,11 @@ static unsigned char utf[4];
 static unsigned char keys[256];
 static unsigned key_read,key_write;
 static const char *state="Disabled / Linux simulation is off by default";
+static uint64_t guest_page_allocate(void) {
+    /* Other host tasks can consume RAM after the guest starts. Retain the
+     * reserve at each allocation, not only when choosing its initial budget. */
+    return pages_free() > (32u*1024u*1024u)/PAGE ? page_try_alloc() : 0;
+}
 static void newline(void) {
     if(line_count<128)line_count++;
     else {for(unsigned i=1;i<128;i++)memcpy(screen[i-1],screen[i],sizeof screen[0]);}
@@ -86,12 +95,13 @@ void linux_guest_clear(void) {
     running=paused=confirming=shell_ready=false;key_read=key_write=prompt_match=0;
     queued_command=NULL;requested_app=0;owner=UINT32_MAX;
     memset(keys,0,sizeof keys);memset(screen,0,sizeof screen);line_count=1;column=used=escape=utf_count=utf_need=0;
-    /* Keep one bounded allocation for reuse; wipe across EVERY host account
-     * boundary. No MNFS credentials, host files or devices are shared. */
-    if(ram)auth_wipe(ram,GUEST_RAM);
+    /* Return every private page to the host after wiping it, including the
+     * sparse page tables. Stopping a guest no longer retains a 64 MiB buffer. */
+    guest_memory_clear(&memory);active_mib=0;
     memset(&vm,0,sizeof vm);state="Stopped / guest RAM cleared";
 }
 static bool session(void) {
+    if(memory_owner!=auth_uid()||!auth_logged_in()){requested_mib=0;memory_owner=UINT32_MAX;}
     if(owner!=UINT32_MAX && (!auth_logged_in()||owner!=auth_uid()))linux_guest_clear();
     return auth_logged_in();
 }
@@ -103,19 +113,27 @@ static bool start(void (*out)(const char *)) {
     size_t dtb_size=(size_t)(linux_dtb_end-linux_dtb_start);
     if(!image_size){out("Linux guest payload is not included in this build.");return false;}
     if(image_size>GUEST_DTB-GUEST_LOAD||dtb_size>65536){out("Invalid bundled Linux image extent.");return false;}
-    if(!ram){
-        if(pages_free()<GUEST_RAM/PAGE+4096){out("At least 80 MiB free host RAM is required.");return false;}
-        ram=kernel_alloc(GUEST_RAM);
-        if(!ram){out("Unable to allocate Linux guest memory.");return false;}
-    }
-    linux_guest_clear();guest_init(&vm,ram,GUEST_RAM);vm.input=input;vm.output=output;
+    linux_guest_clear();
+    uint64_t free=pages_free(), reserve=(32u*1024u*1024u)/PAGE;
+    if(free<=reserve+(128u*1024u*1024u)/PAGE){out("At least 160 MiB free host RAM is required.");return false;}
+    uint64_t available=(free-reserve)/(1024u*1024u/PAGE);
+    uint64_t size=requested_mib?requested_mib:available/2;
+    if(!requested_mib){if(size>1024)size=1024;if(size<128)size=128;}
+    if(size>available){out("Requested guest RAM exceeds available host memory. Stop the guest and choose a smaller limit.");return false;}
+    memory=(struct guest_memory){.bytes=size*1024u*1024u,.budget=free-reserve,.allocate=guest_page_allocate,.pointer=phys_pointer,.release=page_free};
+    memcpy(dtb,linux_dtb_start,dtb_size);
+    if(!guest_dtb_memory(dtb,dtb_size,memory.bytes)){out("Bundled Linux memory map is invalid.");return false;}
+    if(!guest_memory_page(&memory,0)){linux_guest_clear();out("Unable to allocate private Linux pages.");return false;}
+    guest_init(&vm,NULL,(size_t)memory.bytes);vm.ram_page=guest_memory_page;vm.ram_context=&memory;vm.input=input;vm.output=output;
+    active_mib=size;
     if(!guest_copy(&vm,GUEST_BASE+GUEST_LOAD,linux_image_start,image_size)||
-       !guest_copy(&vm,GUEST_BASE+GUEST_DTB,linux_dtb_start,dtb_size)) {
+       !guest_copy(&vm,GUEST_BASE+GUEST_DTB,dtb,dtb_size)) {
         linux_guest_clear();out("Unable to load Linux guest; memory cleared.");return false;
     }
     owner=auth_uid();running=true;vm.yield_on_idle=1;host_tick=ticks;
     state="Running / Linux in original RV64 interpreter";
-    out("Starting Linux guest: 64 MiB private RAM, one software CPU.");
+    out("Starting Linux guest / private RAM limit in MiB:");char amount[32];number(amount,active_mib);out(amount);
+    out("One software CPU. Physical pages are allocated as used and returned on stop.");
     out("Guest files are temporary. No host disks, network or GPU are exposed.");
     log_write("LINUX GUEST: start / original mnOS host / " MNOS_ARCH "\n");return true;
 }
@@ -152,9 +170,19 @@ bool linux_guest_command(const char *cmd,void (*out)(const char *)) {
     if(strcmp(cmd,"linux")&&strncmp(cmd,"linux ",6))return false;
     if(!session()){out("Sign in to manage your Linux guest.");return true;}
     const char *p=cmd[5]?cmd+6:"status";
-    if(!strcmp(p,"status")){out(state);out("RV64IMAC / Sv39 / Linux SBI / 64 MiB / volatile files");
+    if(!strcmp(p,"status")){out(state);out("RV64IMAC / Sv39 / Linux SBI / private sparse RAM / volatile files");
+        char size[32];number(size,active_mib?active_mib:requested_mib);out("RAM limit in MiB (0 = automatic when stopped):");out(size);
+        number(size,memory.pages*PAGE/(1024u*1024u));out("Host pages currently used in MiB:");out(size);
         out("Idle CPU yields to mnOS; input and scheduled timers resume it automatically.");
         out("No Linux desktop apps, floating point, network or host sharing yet.");}
+    else if(!strncmp(p,"memory ",7)){
+        if(running||confirming){out("Stop or cancel the Linux guest before changing its RAM limit.");return true;}
+        if(!strcmp(p+7,"auto")){requested_mib=0;memory_owner=auth_uid();out("Automatic RAM: up to 1 GiB, bounded by free host memory.");return true;}
+        uint64_t value=0;const char *q=p+7;
+        for(;*q>='0'&&*q<='9';++q){if(value>524288/10){value=UINT64_MAX;break;}value=value*10+(unsigned)(*q-'0');}
+        if(*q||value<128||value>524288)out("Usage: linux memory auto | linux memory MIB (128..524288, subject to free host RAM)");
+        else {requested_mib=value;memory_owner=auth_uid();out("Guest RAM limit set. Opening the guest still requires confirmation.");}
+    }
     else if(!strcmp(p,"apps")){for(unsigned i=0;i<ARRAY_SIZE(apps);i++){out(apps[i].id);out(apps[i].name);}}
     else if(!strncmp(p,"open ",5)){linux_guest_open(p+5,out);}
     else if(!strcmp(p,"start")||!strcmp(p,"enable")){linux_guest_open("terminal",out);}
@@ -167,7 +195,7 @@ bool linux_guest_command(const char *cmd,void (*out)(const char *)) {
         else if(queued_command)out("Wait for the queued Linux app before sending another command.");
         else if(strlen(p+5)+1>=sizeof keys-(key_write+sizeof keys-key_read)%sizeof keys)out("Linux input is too long; it was not sent.");
         else {for(p+=5;*p;p++)linux_guest_key((unsigned char)*p);linux_guest_key('\n');}}
-    else out("Usage: linux apps|open APP|start|status|pause|resume|stop|restart|enable|disable|send COMMAND");
+    else out("Usage: linux memory auto|MIB; linux apps|open APP|start|status|pause|resume|stop|restart|enable|disable|send COMMAND");
     return true;
 }
 void linux_guest_tick(void) {
@@ -187,6 +215,7 @@ void linux_guest_tick(void) {
     }
     state="Running / Linux in original RV64 interpreter";
     guest_run(&vm,100000);
+    if(memory.failed){linux_guest_clear();state="Guest memory exhausted / simulation stopped / host memory returned";log_write("LINUX GUEST: memory exhausted, stopped safely\n");return;}
     if(vm.stopped){
         bool fault=vm.stopped!=1;
         log_write("LINUX GUEST: stopped, cause=");log_hex(vm.cause);log_write(" pc=");log_hex(vm.pc);log_write("\n");

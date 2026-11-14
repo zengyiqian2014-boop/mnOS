@@ -26,6 +26,13 @@ use GPLv3 with the GCC Runtime Library Exception. Preserve the archive hashes,
 kernel and BusyBox configs and complete matching source archives when publishing
 the bundled binary. Native/interpreter changes are GPL-3.0-or-later.
 
+Before startup, `linux memory auto` selects up to 1 GiB from available host RAM.
+`linux memory MIB` accepts an explicit limit from 128 MiB to 512 GiB; startup
+rejects limits above free host memory minus a 32 MiB reserve. The host uses a
+sparse page map instead of reserving a contiguous 64 MiB buffer. Pages are zeroed
+on allocation, and wiped and freed on stop. The device tree advertises the
+selected size to Linux. These controls expand RAM, not the supported devices or ISA.
+
 Guest RAM is bounded and every guest memory access is translated and range
 checked. A guest address never becomes a host pointer. No filesystem/syscall
 passthrough or host shell execution exists. Guest root is an isolated guest

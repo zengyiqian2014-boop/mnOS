@@ -16,7 +16,7 @@ build/flavor-config: FORCE_FLAVOR
 	@printf '%s\n' '$(FLAVOR)' > $@.tmp
 	@cmp -s $@.tmp $@ || cp $@.tmp $@
 SOURCES = src/core.c src/string.c src/phys.c src/memory.c src/smp.c src/interrupts.c src/devices.c src/rng.c src/block.c src/mnfs.c src/files.c src/password.c src/auth.c src/ui.c src/exec.c assets/font.c
-SOURCES += src/process.c src/usercopy.c src/file_api.c src/disk_layout.c src/text.c src/commands.c assets/icons.c src/guest.c src/linux_guest.c
+SOURCES += src/process.c src/usercopy.c src/file_api.c src/disk_layout.c src/text.c src/commands.c assets/icons.c src/guest.c src/guest_memory.c src/guest_dtb.c src/linux_guest.c
 SOURCES += src/factor.c src/clock.c src/rtc.c vendor/monocypher/monocypher.c
 SOURCES += vendor/qrcodegen/qrcodegen.c
 GUEST ?= 0
@@ -51,7 +51,9 @@ host-tests:
 	mkdir -p build
 	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude tests/guest.c src/guest.c -o build/guest-test
 	./build/guest-test
-	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -DMNOS_HOST_PROCESS_TEST -Iinclude tests/linux_guest.c tests/linux_guest_image.S src/linux_guest.c -o build/linux-guest-test
+	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude tests/guest_memory.c tests/linux_guest_image.S src/guest_memory.c src/guest_dtb.c src/guest.c -o build/guest-memory-test
+	./build/guest-memory-test
+	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -DMNOS_HOST_PROCESS_TEST -Iinclude tests/linux_guest.c tests/linux_guest_image.S src/linux_guest.c src/guest_memory.c src/guest_dtb.c -o build/linux-guest-test
 	./build/linux-guest-test
 	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -Iinclude tests/commands.c src/commands.c -o build/commands-test
 	./build/commands-test
@@ -79,7 +81,7 @@ host-tests:
 build/mnos.elf: $(OBJECTS) linker.ld
 	$(LD) -nostdlib -z max-page-size=0x1000 -T linker.ld -o $@ $(OBJECTS)
 
-build/%.o: %.c build/flavor-config include/kernel.h include/boot_layout.h include/phys.h include/mnfs.h include/block.h include/auth.h include/factor.h include/clock.h include/exec.h include/process.h include/file_api.h include/usercopy.h include/font.h include/icons.h include/commands.h include/guest.h include/linux_guest.h
+build/%.o: %.c build/flavor-config include/kernel.h include/boot_layout.h include/phys.h include/mnfs.h include/block.h include/auth.h include/factor.h include/clock.h include/exec.h include/process.h include/file_api.h include/usercopy.h include/font.h include/icons.h include/commands.h include/guest.h include/guest_memory.h include/linux_guest.h
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 

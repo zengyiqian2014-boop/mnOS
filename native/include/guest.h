@@ -16,6 +16,10 @@ struct guest {
     uint64_t status, ie, ip, vector, scratch, epc, cause, tval, satp, counteren;
     uint8_t *ram;
     size_t ram_size;
+    /* A host may supply sparse pages instead of one permanent allocation.
+     * The callback returns a page base for a bounded guest RAM offset. */
+    void *(*ram_page)(void *, uint64_t);
+    void *ram_context;
     unsigned privilege, stopped, waiting, yield_on_idle;
     struct guest_tlb tlb[256];
     int (*input)(void *);

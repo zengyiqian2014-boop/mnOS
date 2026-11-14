@@ -21,6 +21,8 @@ int main(void) {
     strcpy(line,"kernel disk un");assert(command_complete(line,sizeof line,emit));assert(!strcmp(line,"kernel disk unlock "));
     strcpy(line,"linux en");assert(command_complete(line,sizeof line,emit));assert(!strcmp(line,"linux enable "));
     strcpy(line,"kernel linux open sys");assert(command_complete(line,sizeof line,emit));assert(!strcmp(line,"kernel linux open system "));
+    strcpy(line,"linux mem");assert(command_complete(line,sizeof line,emit));assert(!strcmp(line,"linux memory "));
+    strcpy(line,"kernel linux memory a");assert(command_complete(line,sizeof line,emit));assert(!strcmp(line,"kernel linux memory auto "));
     out[0]=0;command_help("linux",emit);assert(strstr(out,"Off by default")&&strstr(out,"Esc cancels"));
     out[0]=0;command_help("-cn linux",emit);assert(strstr(out,"默认关闭")&&strstr(out,"Esc 取消"));
     strcpy(line,"help -cn kernel mem");assert(command_complete(line,sizeof line,emit));assert(!strcmp(line,"help -cn kernel mem"));

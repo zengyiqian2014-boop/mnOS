@@ -1,16 +1,26 @@
-[kernel] linux start|status|pause|resume|stop|restart|send COMMAND
-Manage the software Linux guest
-No root: start opens a Linux console in the native GUI. Original C
-RV64IMAC/Sv39 interpretation runs an actual Linux kernel and BusyBox.
-64 MiB guest RAM, one emulated CPU. pause/resume preserve guest state;
-stop/restart discard ALL guest files. Host account changes wipe RAM.
-Guest root cannot access host files, disks, devices or network.
-Only compatible RV64IMAC/LP64 programs run; no guest GPU, floating-point
-ISA or desktop apps. Use Linux Edition for Firefox, VS Code and full CTF.
-In the guest: busybox --list and COMMAND --help. F5 returns to host.
-send queues a Linux command; it does not execute a native host command.
+[kernel] linux memory auto|MIB; linux apps|open APP|start|status|pause|resume|stop|restart|enable|disable|send COMMAND
+Manage Linux simulation
+No root needed. Off by default on boot and after host account changes.
+Opening an app while off asks permission: Enter enables, Esc cancels.
+start/enable open the terminal; apps lists the supported launchers.
+open APP accepts terminal, files, processes, system or commands.
+After approval the selected console program runs in a real Linux guest.
+F7 Settings: Linux simulation (L) toggles it; F5 returns to host Terminal.
+pause/resume preserve state. stop/disable immediately stop and wipe RAM.
+restart discards guest files; when off it also requires confirmation.
+Closing the window only hides it. Enabling is not saved across logins.
+Original C RV64IMAC/Sv39 interpreter, one software CPU.
+RAM: automatic up to 1 GiB, bounded by available host memory.
+When stopped, memory auto or memory MIB changes the limit.
+MIB accepts 128..524288; start checks free RAM and reserves 32 MiB.
+Pages are allocated as used, wiped and freed on stop.
+Guest files are temporary; no host files/disks/devices/network are shared.
+RV64IMAC/LP64 console programs only; no GPU, floating-point or desktop apps.
+Use Linux Edition for Firefox, VS Code and full CTF tools.
+send COMMAND queues guest input, never a host command. In the guest,
+busybox --list lists utilities; COMMAND --help explains each utility.
 Example:
-linux start
+linux open system
 
 system [status|cpu|memory|processes|storage|security|display|guest]
 Unified native system management
@@ -275,6 +285,20 @@ root may stop any native user process. Invalid/missing IDs are errors.
 No signal-number options yet. Kernel services cannot be killed here.
 Example:
 kernel kill 2
+
+[kernel] 2fa status|enable|disable
+Password and authenticator
+status shows whether your own account uses 2FA. enable verifies the
+current password, shows a local QR code and Base32 manual key, and requires
+a correct six-digit TOTP before saving. Use a time-based authenticator
+(SHA1, 6 digits, 30 seconds). Save all eight one-use recovery codes.
+disable requires your password and a current code or recovery code.
+Secrets are password-encrypted with PBKDF2 and XChaCha20-Poly1305;
+plain text appears only during enrollment. Root cannot reset another
+2FA user's password through this account API. Hardware memory isolation
+and protection against a compromised kernel are not provided.
+Example:
+2fa enable
 
 [kernel] whoami
 Current account name

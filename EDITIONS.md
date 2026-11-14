@@ -18,7 +18,11 @@ virtual memory translation, instruction decoder, SBI interface and desktop
 integration are original C code. Linux, BusyBox, musl and compiler runtime inside
 the guest are upstream components with their own licenses.
 
-The guest has 64 MiB RAM and one emulated RV64IMAC CPU with Sv39 and S/U modes.
+The guest has one emulated RV64IMAC CPU with Sv39 and S/U modes. RAM defaults
+to half the available host memory, capped at 1 GiB, with a 32 MiB host reserve.
+`linux memory MIB` selects a different limit before startup (128 MiB to 512 GiB,
+subject to available host RAM); `linux memory auto` restores automatic selection.
+Private pages are allocated as used, and wiped and returned to the host on stop.
 Its Linux ABI is RV64IMAC/LP64; arbitrary AMD64/ARM64 Linux binaries, floating-point
 ISA, vectors and graphical Linux applications are **not supported**. BusyBox's
 compiled command inventory includes commands whose devices/services are absent;

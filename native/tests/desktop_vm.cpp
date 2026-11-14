@@ -367,6 +367,7 @@ int main(int argc, char **argv) {
                 vm.wait("LINUX SIMULATION: cancelled",request);
                 require(vm.output.find("LINUX GUEST: start")==std::string::npos,"cancel booted a guest");
                 vm.page_key("f5",4);
+                vm.command("linux memory 256","Guest RAM limit set.");
                 vm.command("linux open system","LINUX SIMULATION: confirmation requested");
                 auto enabled=vm.output.size();
                 vm.click_at((screen_width-650)/2+150,(screen_height-280)/2+227);
@@ -381,6 +382,7 @@ int main(int argc, char **argv) {
                 vm.wait("linux-guest# ",vm.output.find("LINUX SIMULATION: app sent to guest shell",opened));
                 require(vm.output.find("LINUX SIMULATION: confirmation requested",opened)==std::string::npos,"enabled guest asked again");
                 vm.command("uname -s", "\r\nLinux\r\n");
+                vm.command("awk '/MemTotal:/ {if ($2 > 131072) print \"RAM_OVER_128_MIB\"}' /proc/meminfo", "\r\nRAM_OVER_128_MIB\r\n");
                 vm.command("printf abc | sha256sum", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  -");
                 vm.command("awk 'BEGIN { print 6*7 }'", "\r\n42\r\n");
                 vm.command("echo guest-private > /tmp/note; cat /tmp/note", "\r\nguest-private\r\n");
@@ -404,15 +406,17 @@ int main(int argc, char **argv) {
                 vm.screenshot(build/(arch+"-linux-guest-settings-off.ppm"));
                 vm.page_key("f5",4);
                 vm.command("linux status","Stopped / guest RAM cleared");
+                vm.command("linux memory 128","Guest RAM limit set.");
                 auto restart=vm.send("linux start\n");
                 vm.wait("LINUX SIMULATION: confirmation requested",restart);
                 vm.key("ret");
                 vm.wait("LINUX GUEST: start",restart);
                 vm.wait("linux-guest# ",restart);
+                vm.command("awk '/MemTotal:/ {if ($2 > 65536 && $2 < 131072) print \"RAM_128_MIB\"}' /proc/meminfo", "\r\nRAM_128_MIB\r\n");
                 vm.command("test ! -e /tmp/note && printf '%s%s\\n' RAM_ CLEARED", "\r\nRAM_CLEARED\r\n");
                 vm.send(std::string(1,(char)0x85));
                 vm.command("linux stop","Stopped / guest RAM cleared");
-                std::cout << "NATIVE LINUX GUEST PASS " << arch << ": consent/cancel, actual app launch, settings disable, actual Linux, checksums, text, files, pause/resume and RAM reset\n";
+                std::cout << "NATIVE LINUX GUEST PASS " << arch << ": consent/cancel, actual app launch, settings disable, actual Linux, 256/128 MiB RAM, checksums, text, files, pause/resume and RAM reset\n";
             }
             vm.command("kernel su", "Root password:");
             vm.command("rootadmintest785", "Root session:");

@@ -19,16 +19,28 @@ void guest_init(struct guest *g, uint8_t *ram, size_t size) {
     memset(g, 0, sizeof *g); g->ram = ram; g->ram_size = size;
     g->pc = GUEST_BASE + GUEST_LOAD; g->privilege = 1;
     g->deadline = UINT64_MAX; g->reservation = UINT64_MAX;
-    g->x[11] = GUEST_BASE + size - 65536;
+    /* The boot blob lives at a fixed address below 64 MiB even when RAM is
+     * enlarged. A larger limit must not move a1 away from the loaded DTB. */
+    g->x[11] = GUEST_BASE + GUEST_DTB;
 }
 static uint8_t *physical(struct guest *g, uint64_t p, size_t n) {
     if (p < GUEST_BASE || p - GUEST_BASE > g->ram_size ||
         n > g->ram_size - (size_t)(p - GUEST_BASE)) return NULL;
-    return g->ram + (size_t)(p - GUEST_BASE);
+    if (g->ram) return g->ram + (size_t)(p - GUEST_BASE);
+    uint64_t offset = p - GUEST_BASE;
+    if (!g->ram_page || n > 4096 - (offset & 4095)) return NULL;
+    uint8_t *page = g->ram_page(g->ram_context, offset);
+    return page ? page + (offset & 4095) : NULL;
 }
 bool guest_copy(struct guest *g, uint64_t p, const void *src, size_t n) {
-    uint8_t *dst = physical(g, p, n); if (!dst) return false;
-    memcpy(dst, src, n); return true;
+    if (p < GUEST_BASE || p - GUEST_BASE > g->ram_size || n > g->ram_size - (p - GUEST_BASE)) return false;
+    const uint8_t *s = src;
+    while (n) {
+        size_t count = 4096 - (p & 4095); if (count > n) count = n;
+        uint8_t *dst = physical(g, p, count); if (!dst) return false;
+        memcpy(dst, s, count); p += count; s += count; n -= count;
+    }
+    return true;
 }
 static uint64_t le(const uint8_t *p, unsigned n) {
     uint64_t v = 0; for (unsigned i = 0; i < n; i++) v |= (uint64_t)p[i] << (8*i);

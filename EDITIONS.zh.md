@@ -35,7 +35,10 @@ F5 回到宿主终端，`linux pause`／`linux resume` 暂停和恢复，`linux 
 `system status` 汇总宿主信息；`system cpu|memory|processes|storage|security|display|guest`
 按对象查询。原生命令也有 `help` 和 `help -cn`，与客体命令各自独立。
 
-初期客体分配 64 MiB RAM、一个软件 CPU。支持 RV64IMAC 指令与 LP64 ABI，
+客体使用一个软件 CPU；默认按可用内存的一半分配上限，最多 1 GiB，并为宿主保留 32 MiB。
+停止时可用 `linux memory MIB` 调整上限（128 MiB 至 512 GiB，启动时须有足够宿主内存），
+`linux memory auto` 恢复自动设置。物理页面按需分配，停止时擦除并归还宿主。
+支持 RV64IMAC 指令与 LP64 ABI，
 没有浮点／向量 ISA、虚拟网卡、GPU、宿主文件、磁盘或设备共享。
 不能直接运行 AMD64／ARM64 Linux 二进制；Firefox、VS Code 和图形 Linux 应用尚不支持。
 窗口是 UTF-8 行式控制台（`TERM=dumb`），尚未实现完整 ANSI 光标控制和全屏编辑器。
