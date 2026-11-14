@@ -13,7 +13,8 @@ command manages signed feature packages, updates and component-version rollback;
 `mnos list` shows the [unified resource catalog](https://github.com/zengyiqian2014-boop/mnOS/tree/resources),
 `mnos packages` lists local packages, and `mnos full --without PACKAGE...` excludes
 selected components. Updates first verify the signed GitHub Raw version index.
-see [resource details](live/update/RELEASE.md) and `help apt` / `help updates`.
+`mnos --uninstall PACKAGE` removes packages with a toolchain guard. See
+[resource details](live/update/RELEASE.md) and `help apt` / `help updates`.
 Native's BusyBox guest still lacks APT/network devices; Full/Lite packaging does
 not remove that compatibility gap. Native idle execution now yields until input
 or a scheduled guest timer, retaining guest RAM.

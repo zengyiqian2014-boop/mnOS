@@ -423,6 +423,7 @@ sudo apt update                  Refresh signed repository metadata
 sudo apt install PACKAGE         Install application and its dependencies
 sudo apt upgrade                 Update installed applications and system packages
 sudo apt remove PACKAGE          Remove an application; keep package configuration
+sudo mnos --uninstall PACKAGE...  Remove selected packages; protect C/C++/ASM toolchains
 sudo apt install ./FILE.deb      Install a trusted local Debian package
 
 Examples:
@@ -443,6 +444,13 @@ mnOS adds --without to its C++ package command: every following name is excluded
 from that installation, including dependencies. Existing packages stay installed;
 required dependency conflicts stop the transaction. This is a mnos option, not
 an upstream apt option. See help updates for selecting Full features.
+
+mnos --uninstall also accepts the mobile-keyboard spelling mnos —uninstall.
+It checks all targets before removing anything, and checks APT's dependency-removal
+plan. C, CPP, C++, ASM are case-insensitive protected aliases; GCC/G++/Clang,
+assemblers and compiler/header packages are protected too. APT still asks before
+removing ordinary packages. It does not automatically autoremove dependencies.
+This guard belongs to mnos; it is not a restriction on root using other tools.
 
 Inside a supported Linux guest, APT installs INTO THAT GUEST, not into the mnOS
 native kernel. Current Native Edition's RV64 BusyBox guest does NOT yet provide

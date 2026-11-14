@@ -11,6 +11,7 @@
 #include <vector>
 #include <algorithm>
 #include <stdexcept>
+#include <sstream>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -20,6 +21,27 @@ static int run(std::vector<std::string> words) {
     if(!child) {execv(args[0],args.data());perror(args[0]);_exit(127);}
     int status=0;pid_t waited;do {waited=waitpid(child,&status,0);}while(waited<0&&errno==EINTR);
     return waited==child&&WIFEXITED(status)?WEXITSTATUS(status):1;
+}
+static int capture(std::vector<std::string> words,std::string &output) {
+    int fds[2];if(pipe(fds))return 1;
+    pid_t child=fork();
+    if(child<0) {close(fds[0]);close(fds[1]);return 1;}
+    if(!child) {
+        close(fds[0]);if(dup2(fds[1],STDOUT_FILENO)<0)_exit(127);close(fds[1]);
+        std::vector<char *> args;for(auto &word:words)args.push_back(word.data());args.push_back(nullptr);
+        execv(args[0],args.data());_exit(127);
+    }
+    close(fds[1]);char buffer[4096];bool valid=true;
+    for(;;) {
+        ssize_t n=read(fds[0],buffer,sizeof buffer);
+        if(n<0&&errno==EINTR)continue;
+        if(n<=0) {if(n<0)valid=false;break;}
+        if(output.size()+size_t(n)>4*1024*1024) {valid=false;break;}
+        output.append(buffer,size_t(n));
+    }
+    close(fds[0]);int status=0;pid_t waited;
+    do {waited=waitpid(child,&status,0);}while(waited<0&&errno==EINTR);
+    return valid&&waited==child&&WIFEXITED(status)?WEXITSTATUS(status):1;
 }
 #include "catalog.hpp"
 static bool version(const std::string &s) {
@@ -52,6 +74,42 @@ static bool package_name(const std::string &name) {
         beginning=false;
     }
     return !beginning;
+}
+static bool protected_toolchain(std::string name) {
+    for(char &c:name)if(c>='A'&&c<='Z')c=char(c-'A'+'a');
+    name=name.substr(0,name.find(':'));
+    for(const char *word:{"c","cpp","c++","asm","gcc","g++","clang","clang++","binutils","nasm","yasm","build-essential","libc6-dev","linux-libc-dev"})
+        if(name==word)return true;
+    for(const char *prefix:{"gcc-","g++-","cpp-","clang-","binutils-","libstdc++-","libgcc-"})
+        if(name.compare(0,strlen(prefix),prefix)==0)return true;
+    return false;
+}
+static int protected_message(const std::string &name) {
+    std::cerr<<"你的胆子也是肥嘟嘟的，居然敢卸载["<<name<<"]\n";
+    return 1;
+}
+static int uninstall(const std::vector<std::string> &packages) {
+    if(packages.empty())return 2;
+    // Validate the complete request before changing anything, including mixed
+    // requests such as "nano C++". The language aliases are case insensitive.
+    for(const auto &name:packages) {
+        if(protected_toolchain(name))return protected_message(name);
+        if(!package_name(name)) {std::cerr<<"Uninstall expects package names only.\n";return 2;}
+    }
+    if(getuid()!=0||geteuid()!=0) {std::cerr<<"Use sudo mnos --uninstall PACKAGE...\n";return 1;}
+    unsetenv("APT_CONFIG");setenv("PATH","/usr/sbin:/usr/bin:/sbin:/bin",1);setenv("LC_ALL","C",1);
+    std::vector<std::string> plan{"/usr/bin/apt-get","--simulate","remove","--"};
+    plan.insert(plan.end(),packages.begin(),packages.end());
+    std::string output;int result=capture(plan,output);
+    if(result) {std::cerr<<output;return result;}
+    std::istringstream lines(output);std::string line;
+    while(std::getline(lines,line)) {
+        std::istringstream fields(line);std::string operation,name;fields>>operation>>name;
+        if(operation=="Remv"&&protected_toolchain(name))return protected_message(name);
+    }
+    std::vector<std::string> args{"/usr/bin/apt-get","remove","--"};
+    args.insert(args.end(),packages.begin(),packages.end());
+    return run(args);
 }
 static bool excluded(const std::string &name,const std::vector<std::string> &names) {
     for(const auto &entry:names)
@@ -134,6 +192,8 @@ int main(int argc,char **argv) {
     if(argc==1||!strcmp(argv[1],"help")||!strcmp(argv[1],"--help")) {
         std::cout << "mnos status | source | list [full|lite|patch|all] | packages [installed|full]\n"
           "mnos full | update | rollback VERSION | apt ...\n"
+          "mnos --uninstall PACKAGE...: remove selected packages with APT confirmation.\n"
+          "C/C++/ASM aliases and compiler toolchains are protected by this command.\n"
           "Queries need no root. Use sudo for full/update/rollback.\n"
           "full: add the full feature package, without reinstalling the OS.\n"
           "full --without PACKAGE...: omit these packages, including dependencies.\n"
@@ -149,6 +209,10 @@ int main(int argc,char **argv) {
         return 0;
     }
     std::string command=argv[1];
+    if(command=="--uninstall"||command==u8"—uninstall"||command=="uninstall") {
+        std::vector<std::string> packages;for(int i=2;i<argc;++i)packages.emplace_back(argv[i]);
+        return uninstall(packages);
+    }
     if(command=="list"&&(argc==2||argc==3)) {
         std::string kind=argc==3?argv[2]:"all";
         if(kind!="all"&&kind!="full"&&kind!="lite"&&kind!="patch")return 2;

@@ -7,6 +7,7 @@ mnOS 的签名 APT 更新资源。此页面发布组件包和完整版功能包�
 ```sh
 sudo mnos full                 # 精简版补装完整版功能
 sudo mnos full --without code  # 补装时排除列出的软件包
+sudo mnos --uninstall 包名     # 卸载普通软件，保护 C/C++/ASM 工具链
 sudo mnos update               # 更新已安装的 mnOS 组件
 apt-cache policy mnos-runtime  # 查看可用版本
 sudo mnos rollback 版本号       # 回退仍保留在源中的 mnOS 组件版本

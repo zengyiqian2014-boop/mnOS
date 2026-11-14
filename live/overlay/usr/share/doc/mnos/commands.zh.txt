@@ -393,6 +393,7 @@ sudo apt update                  刷新经过签名校验的软件源索引
 sudo apt install 软件包          安装软件及依赖
 sudo apt upgrade                 更新已安装的系统组件和应用
 sudo apt remove 软件包           卸载软件，保留软件包配置
+sudo mnos --uninstall 包名…       卸载指定软件，保护 C/C++/ASM 工具链
 sudo apt install ./文件.deb       安装可信的本地 Debian 软件包
 
 示例：
@@ -411,6 +412,12 @@ Linux 完整版和精简版均直接使用真实 APT，安装位置是该 Linux 
 C++ 命令 mnos 提供 --without：后面的所有名称均从本次安装中排除，依赖也
 不能把它们装回来。已安装的软件不卸载；必要依赖发生冲突时中止安装。
 这是 mnos 扩展参数，不是上游 apt 的参数；选装 Full 组件见 help -cn updates。
+
+卸载也接受手机输入的长横线：mnos —uninstall。C、CPP、C++、ASM 不区分大小写。
+遇到这些别名、GCC/G++/Clang、汇编器或工具链包，会中止整个卸载请求并显示：
+你的胆子也是肥嘟嘟的，居然敢卸载[包名]
+也会预先检查 APT 依赖移除计划，避免连带卸载工具链；普通包仍需确认后移除，
+不自动执行 autoremove。这是 mnos 的防误操作检查，不限制 root 使用其他工具。
 
 在支持 APT 的 Linux 客体中，软件装进该客体，不会变成自研内核的原生程序。
 当前 Native Edition 内置的 RV64 BusyBox 客体尚无 APT、虚拟网卡和 Debian

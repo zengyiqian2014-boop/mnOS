@@ -83,6 +83,23 @@ test ! -e /usr/share/mnos/test/mnos-excluded
 # An already installed exclusion is kept; this option must never mean removal.
 /tmp/mnos apt install mnos-selected --without mnos-selected >/tmp/update-without-existing.log 2>&1
 test "$(cat /usr/share/mnos/test/mnos-selected)" = 1.0
+for protected in c cpp c++ C CPP cPP Cpp CpP C++ asm aSM ASM ASm gcc g++ gcc-14 binutils; do
+    if /tmp/mnos --uninstall mnos-selected "$protected" > /tmp/update-protected.log 2>&1; then exit 1; fi
+    grep -Fq "你的胆子也是肥嘟嘟的，居然敢卸载[$protected]" /tmp/update-protected.log
+    test "$(cat /usr/share/mnos/test/mnos-selected)" = 1.0
+done
+if runuser -u nobody -- /tmp/mnos --uninstall mnos-selected >/dev/null 2>&1; then exit 1; fi
+printf 'Y\n' | /tmp/mnos —uninstall mnos-selected >/tmp/update-uninstall.log 2>&1
+test ! -e /usr/share/mnos/test/mnos-selected
+printf 'Y\n' | /tmp/mnos apt install mnos-selected >/dev/null
+# A dependency removal must not accidentally remove a compiler either.
+fixture mnos-compiler-base 1.0
+fixture gcc-99 1.0 'mnos-compiler-base'; sign; apt-get update >/dev/null
+apt-get install -y gcc-99 >/dev/null
+if /tmp/mnos --uninstall mnos-compiler-base >/tmp/update-uninstall-dependency.log 2>&1; then exit 1; fi
+grep -Fq '居然敢卸载[gcc-99]' /tmp/update-uninstall-dependency.log
+test -e /usr/share/mnos/test/mnos-compiler-base
+test -e /usr/share/mnos/test/gcc-99
 # Existing administrator pins continue to apply to other packages.
 printf 'Package: mnos-excluded\nPin: version *\nPin-Priority: 1001\n\nPackage: mnos-selected\nPin: version 2.0\nPin-Priority: -1\n' > /etc/apt/preferences
 fixture mnos-selected 2.0; sign; apt-get update >/dev/null
@@ -122,4 +139,4 @@ printf 'tampered\n' > /tmp/update-repo/catalog.json.asc
 if /tmp/mnos update >/tmp/update-catalog-signature.log 2>&1; then exit 1; fi
 grep -q 'Resource index signature failed' /tmp/update-catalog-signature.log
 test "$(cat /usr/share/mnos/test/mnos-runtime)" = 2.0
-echo 'PASS updates: real signed APT refresh/install/update/version rollback/full-feature transaction; --without selection, dependency refusal, existing packages and administrator pins; ordinary-user denial, invalid version, tampered payload and invalid signature rejected'
+echo 'PASS updates: signed Raw catalog, package listing, real APT updates/rollback; --without selection and dependency exclusion; uninstall, case-insensitive compiler aliases and dependency-removal protection; tampered metadata/payload rejected'

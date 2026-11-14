@@ -5,12 +5,13 @@
 尚未接入登录；下面的既有发布 ISO 不会自动包含这些源码改动。
 
 正在验证完整版 Full / 精简版 Lite 构建。Linux 精简版包含真实 APT、C/C++
-工具链，不带 Python 运行时或额外登录验证。C++ 命令 `mnos` 用于签名功能包、
+工具链，不带 Python 运行时或额外登录验证。C++ 命令 `mnos` 管理签名功能包、
+更新和组件版本回退，详见[资源说明](live/update/RELEASE.md)、`help -cn apt`
+和 `help -cn updates`。
 `mnos list` 查看[统一资源目录](https://github.com/zengyiqian2014-boop/mnOS/tree/resources)，
 `mnos packages` 列出本机软件包，`mnos full --without 包名…` 排除本次不装的组件。
 更新会先校验 GitHub Raw 的签名版本索引，再下载对应组件。
-更新和组件版本回退；见[资源说明](live/update/RELEASE.md)、`help -cn apt`
-和 `help -cn updates`。自研版的 BusyBox 客体仍缺 APT 和虚拟网卡，不能把
+`mnos --uninstall 包名` 用于卸载，支持工具链保护。自研版的 BusyBox 客体仍缺 APT 和虚拟网卡，不能把
 打包工作当作已经完成兼容；其空闲 CPU 会暂停解释执行，由输入或定时器唤醒。
 
 **当前开发分成两版：[自研版与 Linux 版](EDITIONS.zh.md)。** 自研版运行原生 C/汇编内核和 GUI，
