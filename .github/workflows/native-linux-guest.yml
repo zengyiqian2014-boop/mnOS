@@ -45,7 +45,7 @@ jobs:
           set -euo pipefail
           devices=()
           if [ -c /dev/kvm ]; then devices+=(--device /dev/kvm); fi
-          docker run --rm "${devices[@]}" -e MNOS_TEST_LINUX_GUEST=1 \
+          docker run --rm "${devices[@]}" -e MNOS_TEST_LINUX_GUEST=1 -e MNOS_TEST_SLOW_ATA=1 \
             -v "$PWD/native:/native" -w /native mnos-native-builder bash -ec '
             set -o pipefail
             for arch in amd64 arm64; do

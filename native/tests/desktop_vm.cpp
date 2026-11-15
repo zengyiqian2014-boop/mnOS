@@ -119,7 +119,7 @@ struct VM {
                  "-device",
                  "virtio-rng-pci",
                  "-drive",
-                 "file=" + disk.string() + ",format=raw,if=ide,index=0"};
+                 "file=" + disk.string() + ",format=raw,if=ide,index=0,id=systemdisk"};
         }
         if (const char *data = std::getenv("MNOS_QEMU_DATA")) {
             a.push_back("-L"); a.push_back(data);
@@ -415,6 +415,15 @@ int main(int argc, char **argv) {
             m=vm.send("ker\tsec\t\n");
             vm.wait("Session privilege: ordinary user",m);
             vm.command("kernel tools", "No native network stack, APT");
+            if(arch=="amd64" && std::getenv("MNOS_TEST_SLOW_ATA")) {
+                // Delayed completions must not become false disk failures.
+                // Throttle only writes so boot and metadata reads stay fast.
+                vm.qmp_command("{\"execute\":\"block_set_io_throttle\",\"arguments\":{\"device\":\"systemdisk\",\"bps\":0,\"bps_rd\":0,\"bps_wr\":0,\"iops\":0,\"iops_rd\":0,\"iops_wr\":1}}");
+                vm.command("write /disk/home/demo/ata-latency.txt delayed-completion", "OUT: written and flushed", 120);
+                vm.qmp_command("{\"execute\":\"block_set_io_throttle\",\"arguments\":{\"device\":\"systemdisk\",\"bps\":0,\"bps_rd\":0,\"bps_wr\":0,\"iops\":0,\"iops_rd\":0,\"iops_wr\":0}}");
+                vm.command("cat /disk/home/demo/ata-latency.txt", "OUT: delayed-completion");
+                std::cout<<"ATA DELAYED COMPLETION PASS "<<arch<<std::endl;
+            }
             if(std::getenv("MNOS_TEST_LINUX_GUEST")) {
                 vm.command("linux status","Stopped / guest RAM cleared");
                 require(vm.output.find("LINUX GUEST: start")==std::string::npos,"guest started without consent");
@@ -534,6 +543,8 @@ int main(int argc, char **argv) {
             vm.wait("Note: Hello from the original mnOS desktop.");
             vm.command("cat /disk/home/demo/untitled.txt", "A first save must retain the untitled document.");
             vm.command("write /disk/root/denied.txt blocked", "Permission denied");
+            if(arch=="amd64" && std::getenv("MNOS_TEST_SLOW_ATA"))
+                vm.command("cat /disk/home/demo/ata-latency.txt", "OUT: delayed-completion");
             if(std::getenv("MNOS_TEST_LINUX_GUEST")) {
                 vm.command("linux status","Stopped / guest RAM cleared");
                 require(vm.output.find("LINUX GUEST: start")==std::string::npos,"guest enabled after reboot");

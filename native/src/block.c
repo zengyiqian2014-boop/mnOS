@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "block.h"
+#include "usb_platform.h"
 /* A sector is one ATA data phase. String I/O lets a hypervisor batch its
  * 256 words into one I/O exit instead of trapping every word separately.
  * Keep status checks between sectors and preserve the flush protocol. */
@@ -13,13 +14,29 @@ static void write_sector(uint16_t port, const void *buffer) {
 }
 static void settle(struct block_device *d) { for (unsigned i = 0; i < 4; ++i) (void)inb(d->control); }
 static bool wait_ready(struct block_device *d, bool data) {
-    for (unsigned n = 0; n < 2000000; ++n) {
-        uint8_t status = inb(d->port + 7);
+    /* A poll count measures CPU speed, not device latency. In particular,
+     * a slow host fsync can outlast millions of polls in a virtual machine.
+     * The calibrated monotonic clock is initialized before disk discovery;
+     * it also advances while interrupts are disabled. */
+    uint64_t start = usb_millis();
+    uint8_t status;
+    for (;;) {
+        status = inb(d->port + 7);
         if (!status || status == 255) return false;
-        if (status & 0x80) { __asm__ volatile("pause"); continue; }
-        if (status & 0x21) return false;
-        if (!data || (status & 8)) return true;
+        if (!(status & 0x80)) {
+            if (status & 0x21) {
+                log_write("ATA: device error; port="); log_hex(d->port);
+                log_write(" status="); log_hex(status);
+                log_write(" error="); log_hex(inb(d->port + 1)); log_write("\n");
+                return false;
+            }
+            if (!data || (status & 8)) return true;
+        }
+        if (usb_millis() - start >= 30000) break;
+        __asm__ volatile("pause");
     }
+    log_write("ATA: command timed out after 30 seconds; port="); log_hex(d->port);
+    log_write(" status="); log_hex(status); log_write("\n");
     return false;
 }
 unsigned block_discover(struct block_device *devices, unsigned capacity) {
