@@ -599,6 +599,13 @@ static bool initialize(struct host *h, uint64_t bar) {
     for (unsigned port = 1; port <= h->ports && h->alive; ++port) {
         unsigned reg = h->op + 0x400 + (port - 1) * 16;
         uint32_t value = get(h, reg);
+        if ((c & 8) && !(value & (1u << 9))) {
+            /* Controllers with per-port power control may reset with VBUS
+             * off. Wait for power/debounce before testing connection state. */
+            put(h, reg, 1u << 9);
+            usb_delay(100);
+            value = get(h, reg);
+        }
         if (!(value & 1))
             continue;
         if (!(value & 2)) {

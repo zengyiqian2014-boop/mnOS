@@ -239,7 +239,10 @@ struct VM {
     }
     void click_at(int x,int y) {
         for(unsigned i=0;i<20;i++)mouse_move(-100,-100);
-        mouse_move(x,y);mouse_click();
+        // PS/2 packets cannot carry a whole-screen relative displacement.
+        // Move in bounded steps; VirtIO also accepts these same events.
+        while(x||y){int dx=x>100?100:x,dy=y>100?100:y;mouse_move(dx,dy);x-=dx;y-=dy;}
+        mouse_click();
     }
     void login(bool first,bool configure_factor=false) {
         wait(first ? "AUTH PROMPT: New username" : "AUTH PROMPT: Username:");
