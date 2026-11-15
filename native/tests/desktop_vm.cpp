@@ -441,9 +441,11 @@ int main(int argc, char **argv) {
                 vm.key("ret");
                 vm.wait("LINUX GUEST: start",enabled);
                 vm.wait("Linux Ethernet device ready",enabled);
+                vm.wait("mnOS disks: maximum synchronous transfer 128 KiB",enabled);
                 vm.wait("LINUX SIMULATION: app sent to guest shell",enabled);
                 vm.wait("Swap:",enabled);
                 vm.wait("linux-guest# ",vm.output.find("Swap:",enabled));
+                std::cout<<"LINUX BOOT PASS "<<arch<<": private disk mounted, 128 KiB transport negotiated"<<std::endl;
                 vm.guest_command("uname -s", "\r\nLinux\r\n");
                 vm.guest_command("dpkg --print-architecture", "\r\nriscv64\r\n");
                 vm.guest_command("printf abc | sha256sum", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  -");
@@ -482,6 +484,7 @@ int main(int argc, char **argv) {
                 vm.command("linux resume","UI: page 7");
                 vm.screenshot(build/(arch+"-linux-guest-gui.ppm"));
                 require_guest_frame(build/(arch+"-linux-guest-gui.ppm"),sx,sy,dw,dh);
+                std::cout<<"LINUX GUI INPUT PASS "<<arch<<std::endl;
                 vm.page_key("f5",4);
                 // Check the bundled offline GUI before the network-dependent
                 // package test. Full Debian index parsing takes billions of
@@ -489,10 +492,12 @@ int main(int argc, char **argv) {
                 // Keep a bounded longer deadline only for these two steps;
                 // record the elapsed time rather than treating it as fast.
                 auto apt_started=Clock::now();
+                std::cout<<"APT update started "<<arch<<std::endl;
                 vm.command("linux send export DEBIAN_FRONTEND=noninteractive; apt-get -q -o APT::Update::Error-Mode=any update && echo MNOS_APT_UPDATE_PASS", "\r\nMNOS_APT_UPDATE_PASS\r\n",3600);
                 vm.wait("linux-guest# ", vm.output.rfind("MNOS_APT_UPDATE_PASS"));
                 std::cout<<"APT update elapsed seconds "<<std::chrono::duration_cast<std::chrono::seconds>(Clock::now()-apt_started).count()<<std::endl;
                 apt_started=Clock::now();
+                std::cout<<"APT install started "<<arch<<std::endl;
                 vm.command("linux send apt-get -q install -y x11-utils && echo MNOS_APT_INSTALL_PASS", "\r\nMNOS_APT_INSTALL_PASS\r\n",3600);
                 vm.wait("linux-guest# ", vm.output.rfind("MNOS_APT_INSTALL_PASS"));
                 std::cout<<"APT install elapsed seconds "<<std::chrono::duration_cast<std::chrono::seconds>(Clock::now()-apt_started).count()<<std::endl;

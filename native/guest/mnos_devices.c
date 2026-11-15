@@ -5,6 +5,7 @@
 #include <linux/module.h>
 #include <linux/blkdev.h>
 #include <linux/bio.h>
+#include <linux/highmem.h>
 #include <linux/etherdevice.h>
 #include <linux/netdevice.h>
 #include <linux/input.h>
@@ -19,33 +20,61 @@ static struct sbiret call(unsigned fn,unsigned long a,unsigned long b,unsigned l
 {
     return sbi_ecall(0x09004d4e,fn,a,b,c,d,0,0);
 }
+static unsigned char *disk_buffer;
+static unsigned disk_io_max;
+static DEFINE_SPINLOCK(disk_lock);
 static void disk_submit(struct bio *bio)
 {
     unsigned disk=(unsigned)(uintptr_t)bio->bi_bdev->bd_disk->private_data;
-    unsigned op=bio_op(bio);
+    unsigned op=bio_op(bio),size=bio->bi_iter.bi_size,at=0;
     struct bio_vec bvec;struct bvec_iter iter;
     u64 offset=(u64)bio->bi_iter.bi_sector*512;
-    if(op==REQ_OP_FLUSH){if(call(GD_SYNC,disk,0,0,0).error)goto fail;bio_endio(bio);return;}
+    unsigned long flags;
+    spin_lock_irqsave(&disk_lock,flags);
+    if(op==REQ_OP_FLUSH){if(call(GD_SYNC,disk,0,0,0).error)goto fail;goto done;}
     if(op!=REQ_OP_READ&&op!=REQ_OP_WRITE)goto fail;
+    if(!size||size>disk_io_max||(size&511))goto fail;
     if((bio->bi_opf&REQ_PREFLUSH)&&call(GD_SYNC,disk,0,0,0).error)goto fail;
+    /* Gather the whole bio before one SBI call. Completing each 4 KiB page
+     * separately forces a full host filesystem transaction per page. The
+     * bounded, physically contiguous bounce buffer also handles nonadjacent
+     * Linux pages without exposing their host addresses. */
     bio_for_each_segment(bvec,bio,iter) {
         unsigned n=bvec.bv_len;
-        if(n>PAGE_SIZE||(n&511)||(bvec.bv_offset&511))goto fail;
-        if(call(op==REQ_OP_READ?GD_READ:GD_WRITE,disk,offset,page_to_phys(bvec.bv_page)+bvec.bv_offset,n).error)goto fail;
-        offset+=n;
+        void *page;
+        if(n>PAGE_SIZE||(n&511)||(bvec.bv_offset&511)||bvec.bv_offset>PAGE_SIZE-n||n>size-at)goto fail;
+        if(op==REQ_OP_WRITE) {
+            page=kmap_local_page(bvec.bv_page);
+            memcpy(disk_buffer+at,page+bvec.bv_offset,n);
+            kunmap_local(page);
+        }
+        at+=n;
+    }
+    if(at!=size||call(op==REQ_OP_READ?GD_READ:GD_WRITE,disk,offset,__pa(disk_buffer),size).error)goto fail;
+    if(op==REQ_OP_READ) {
+        at=0;
+        bio_for_each_segment(bvec,bio,iter) {
+            void *page=kmap_local_page(bvec.bv_page);
+            memcpy(page+bvec.bv_offset,disk_buffer+at,bvec.bv_len);
+            kunmap_local(page);at+=bvec.bv_len;
+        }
     }
     if((bio->bi_opf&REQ_FUA)&&call(GD_SYNC,disk,0,0,0).error)goto fail;
-    bio_endio(bio);return;
-fail:bio_io_error(bio);
+done:spin_unlock_irqrestore(&disk_lock,flags);bio_endio(bio);return;
+fail:spin_unlock_irqrestore(&disk_lock,flags);bio_io_error(bio);
 }
 static const struct block_device_operations disk_ops={.owner=THIS_MODULE,.submit_bio=disk_submit};
-static int disks_init(void)
+static int disks_init(unsigned features)
 {
     int major=register_blkdev(0,"mnos");unsigned i;
     if(major<0)return major;
+    disk_io_max=(features&128)?128*1024:4096;
+    disk_buffer=(void *)__get_free_pages(GFP_KERNEL|__GFP_ZERO,get_order(disk_io_max));
+    if(!disk_buffer){unregister_blkdev(major,"mnos");return -ENOMEM;}
     for(i=0;i<2;i++) {
         struct queue_limits lim={.logical_block_size=512,.physical_block_size=4096,
-            .max_hw_sectors=8,.max_segment_size=4096,.features=BLK_FEAT_SYNCHRONOUS};
+            .max_hw_sectors=disk_io_max/512,.max_segment_size=PAGE_SIZE,
+            .max_segments=disk_io_max/PAGE_SIZE,.features=BLK_FEAT_SYNCHRONOUS};
         struct sbiret size=call(GD_SIZE,i,0,0,0);struct gendisk *disk;int error;
         if(size.error||!size.value)continue;
         disk=blk_alloc_disk(&lim,NUMA_NO_NODE);if(IS_ERR(disk))return PTR_ERR(disk);
@@ -55,6 +84,7 @@ static int disks_init(void)
         if(!i)set_disk_ro(disk,true);
         error=add_disk(disk);if(error){put_disk(disk);return error;}
     }
+    pr_info("mnOS disks: maximum synchronous transfer %u KiB\n",disk_io_max/1024);
     return 0;
 }
 static struct net_device *nic;
@@ -138,7 +168,7 @@ static int __init mnos_init(void)
 {
     struct sbiret features=call(GD_INFO,0,0,0,0),now;int error;
     if(features.error)return -ENODEV;
-    error=disks_init();if(error)return error;
+    error=disks_init(features.value);if(error)return error;
     if(features.value&2){error=net_init();if(error)pr_err("mnos network: %d\n",error);}
     if(features.value&8){entropy_buffer=(void *)get_zeroed_page(GFP_KERNEL);if(entropy_buffer){error=hwrng_register(&rng);if(error)pr_err("mnos rng: %d\n",error);}}
     now=call(GD_TIME,0,0,0,0);

@@ -14,22 +14,23 @@ int64_t guest_device_call(struct guest *g,unsigned fn,const uint64_t *a,uint64_t
     struct guest_devices *d=g->opaque;uint8_t bytes[4096];*value=0;
     if(!d)return -2;
     switch(fn) {
-    case GD_INFO:*value=1|4|32|(d->receive&&d->transmit?2:0)|(d->random?8:0)|(d->clock?16:0)|(d->disk_read&&d->disk_write?64:0);return 0;
+    case GD_INFO:*value=1|4|32|GD_FEATURE_BULK_DISK|(d->receive&&d->transmit?2:0)|(d->random?8:0)|(d->clock?16:0)|(d->disk_read&&d->disk_write?64:0);return 0;
     case GD_SIZE:
         if(a[0]>1)return -3;
         *value=a[0]?(d->disk_read?GUEST_DISK_BYTES/512:0):(d->root_size+511)/512;return 0;
     case GD_READ:case GD_WRITE: {
+        uint8_t *block=d->block_buffer;
         uint64_t disk=a[0],offset=a[1],p=a[2],n=a[3];
         uint64_t size=disk?GUEST_DISK_BYTES:((uint64_t)d->root_size+511)&~UINT64_C(511);
-        if(disk>1||!n||n>sizeof bytes||(offset&511)||(n&511)||offset>size||n>size-offset||!extent(g,p,n))return -3;
+        if(disk>1||!n||n>sizeof d->block_buffer||(offset&511)||(n&511)||offset>size||n>size-offset||!extent(g,p,n))return -3;
         if(fn==GD_READ) {
-            if(!disk){memset(bytes,0,(size_t)n);if(offset<d->root_size){size_t count=d->root_size-offset;if(count>n)count=n;memcpy(bytes,d->root+offset,count);}}
-            else if(!d->disk_read||!d->disk_read(d->context,offset,bytes,(size_t)n))return -1;
-            return guest_copy(g,p,bytes,(size_t)n)?0:-5;
+            if(!disk){memset(block,0,(size_t)n);if(offset<d->root_size){size_t count=d->root_size-offset;if(count>n)count=n;memcpy(block,d->root+offset,count);}}
+            else if(!d->disk_read||!d->disk_read(d->context,offset,block,(size_t)n))return -1;
+            return guest_copy(g,p,block,(size_t)n)?0:-5;
         }
         if(!disk)return -4;
-        if(!guest_read(g,p,bytes,(size_t)n))return -5;
-        return d->disk_write&&d->disk_write(d->context,offset,bytes,(size_t)n)?0:-1;
+        if(!guest_read(g,p,block,(size_t)n))return -5;
+        return d->disk_write&&d->disk_write(d->context,offset,block,(size_t)n)?0:-1;
     }
     case GD_SYNC:return a[0]>1?-3:!a[0]?0:d->disk_sync&&d->disk_sync(d->context)?0:-1;
     case GD_RX:case GD_TX:case GD_RANDOM: {

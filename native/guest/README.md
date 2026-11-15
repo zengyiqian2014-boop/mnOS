@@ -83,6 +83,11 @@ RAM and does not add CPUs. There is one interpreted CPU.
 ## Device boundary
 
 `guest_devices.c` validates guest physical buffers, sizes and disk offsets.
+The host advertises a 128 KiB maximum disk request. The Linux driver gathers
+each bio into a bounded contiguous buffer, so one host transaction persists the
+request instead of committing every 4 KiB page separately. Older hosts retain
+the 4 KiB fallback. This is synchronous batching: a successful write still
+finishes the MNFS transaction before returning, and PREFLUSH/FUA are preserved.
 Supervisor-only SBI extension `0x09004d4e` provides:
 
 - Read-only bundled SquashFS and the private writable data file, never a raw host disk.

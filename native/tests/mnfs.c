@@ -9,7 +9,7 @@
 struct disk {
     unsigned char *data, *stable;
     uint16_t dirty[BLOCKS];
-    unsigned operations, fail_at;
+    unsigned operations, fail_at, flushes;
     bool torn;
 };
 static bool read_block(void *ctx, uint64_t n, void *out) {
@@ -37,6 +37,7 @@ static void persist(struct disk *d, unsigned parity) {
 }
 static bool flush(void *ctx) {
     struct disk *d = ctx; bool success = ++d->operations != d->fail_at;
+    ++d->flushes;
     persist(d, success ? 2 : 0); return success;
 }
 static struct mnfs_io io(struct disk *d) {
@@ -50,34 +51,55 @@ static void expect(struct mnfs *f, const char *name, uint64_t offset, const void
 static bool count(void *context, const char *name, const struct mnfs_stat *st) {
     assert(name[0] && st->inode); ++*(unsigned *)context; return true;
 }
-static void crash_tests(bool cached) {
+static void crash_tests(bool cached, size_t size) {
     struct disk d = {.data = calloc(1, BYTES), .stable = cached ? calloc(1, BYTES) : NULL};
     struct mnfs_io device = io(&d); struct mnfs f;
+    unsigned char *replacement = malloc(size), *out = malloc(size);
+    assert(replacement && out && size >= 6);
+    for(size_t i=0;i<size;i++)replacement[i]=(uint8_t)(i*19+7);
     ok(mnfs_format(&f, &device)); ok(mnfs_create(&f, "/file", false));
     ok(mnfs_write(&f, "/file", 0, "before", 6)); mnfs_close(&f);
     unsigned char *baseline = malloc(BYTES); memcpy(baseline, d.data, BYTES);
     ok(mnfs_mount(&f, &device, true)); d.operations = 0;
-    ok(mnfs_write(&f, "/file", 0, "after!", 6));
+    ok(mnfs_write(&f, "/file", 0, replacement, size));
     unsigned steps = d.operations; mnfs_close(&f);
     for (unsigned torn = 0; torn < 2; ++torn) for (unsigned fail = 1; fail <= steps; ++fail) {
         memcpy(d.data, baseline, BYTES); d.fail_at = 0;
         if (cached) memcpy(d.stable, baseline, BYTES);
         memset(d.dirty, 0, sizeof d.dirty);
         ok(mnfs_mount(&f, &device, true)); d.operations = 0; d.fail_at = fail; d.torn = torn;
-        assert(mnfs_write(&f, "/file", 0, "after!", 6) == MN_IO); mnfs_close(&f);
+        assert(mnfs_write(&f, "/file", 0, replacement, size) == MN_IO); mnfs_close(&f);
         if (cached) {
             persist(&d, fail % 2); /* Some queued blocks can reach disk before power is lost. */
             memcpy(d.data, d.stable, BYTES);
             memset(d.dirty, 0, sizeof d.dirty);
         }
         d.fail_at = 0; ok(mnfs_mount(&f, &device, false));
-        char out[6]; size_t n;
-        ok(mnfs_read(&f, "/file", 0, out, sizeof out, &n));
-        assert(n == 6 && (!memcmp(out, "before", 6) || !memcmp(out, "after!", 6)));
+        size_t n;
+        ok(mnfs_read(&f, "/file", 0, out, size, &n));
+        assert((n == 6 && !memcmp(out, "before", 6)) || (n == size && !memcmp(out, replacement, size)));
         mnfs_close(&f);
     }
-    free(baseline); free(d.data); free(d.stable);
-    printf("PASS MNFS: %u write/flush failure boundaries, torn writes, cache=%s\n", steps * 2, cached ? "reordered" : "write-through");
+    free(baseline); free(d.data); free(d.stable); free(replacement); free(out);
+    printf("PASS MNFS: %u write/flush failure boundaries, %zu-byte transaction, torn writes, cache=%s\n", steps * 2, size, cached ? "reordered" : "write-through");
+}
+static void bulk_write(void) {
+    struct disk d = {.data = calloc(1, BYTES)};
+    struct mnfs_io device = io(&d);struct mnfs f;
+    size_t size=128u*1024u;unsigned char *data=malloc(size);
+    assert(d.data&&data);
+    for(size_t i=0;i<size;i++)data[i]=(uint8_t)(i*29+(i>>9));
+    ok(mnfs_format(&f,&device));ok(mnfs_create(&f,"/file",false));
+    ok(mnfs_truncate(&f,"/file",size+1024));
+    unsigned before=d.flushes;
+    ok(mnfs_write(&f,"/file",512,data,size));
+    assert(d.flushes-before==2); // Data barrier, then durable checkpoint.
+    mnfs_close(&f);ok(mnfs_mount(&f,&device,false));
+    expect(&f,"/file",512,data,size);
+    unsigned char zero[512]={0};
+    expect(&f,"/file",0,zero,sizeof zero);expect(&f,"/file",size+512,zero,sizeof zero);
+    mnfs_close(&f);free(data);free(d.data);
+    puts("PASS MNFS: 128 KiB unaligned batch uses two durability barriers, remount preserves every byte and neighboring sectors");
 }
 static void space_and_corruption(void) {
     struct disk d = {.data = calloc(1, BYTES)};
@@ -175,6 +197,8 @@ int main(void) {
     }
     free(backup); free(d.data);
     puts("PASS MNFS: 4 GiB boundary, 32 TiB sparse offsets, B-tree splits, directories, rename, GC, snapshot and remount");
-    crash_tests(false); crash_tests(true); space_and_corruption(); checkpoint_recovery();
+    crash_tests(false,6); crash_tests(true,6);
+    crash_tests(false,2*MNFS_BLOCK+17); crash_tests(true,2*MNFS_BLOCK+17);
+    bulk_write(); space_and_corruption(); checkpoint_recovery();
     return 0;
 }
