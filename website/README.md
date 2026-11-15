@@ -5,6 +5,11 @@ Original product site, published from this repository at
 no frontend framework, external fonts, analytics or third-party player SDKs.
 The visual introduction starts automatically in place; it never scrolls the page.
 
+The prepared Cloudflare gateway for `mnos.micronull.cn` is in
+[`deploy/cloudflare`](../deploy/cloudflare/README.md), including the Worker,
+domain configuration and domain-administrator handoff. It retains this Pages
+address as its origin; do not enable a Pages custom-domain redirect for it.
+
 ```sh
 node --test website/scripts/catalog.test.mjs website/scripts/film-unit.test.mjs
 node website/scripts/serve.mjs
