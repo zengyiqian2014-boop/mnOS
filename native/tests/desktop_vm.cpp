@@ -190,7 +190,18 @@ struct VM {
     void wait(const std::string &s, size_t mark = 0, unsigned seconds = 0, bool host_stats = false) {
         auto end = Clock::now() + (seconds ? std::chrono::seconds(seconds) :
             std::getenv("MNOS_TEST_LINUX_GUEST") ? 900s : 150s), last = Clock::now(), stats = last;
-        while (output.find(s, mark) == std::string::npos) {
+        auto found=[&] {
+            if(output.find(s,mark)!=std::string::npos)return true;
+            // Native diagnostics use LF; Linux uses CRLF. A diagnostic line
+            // directly before a guest marker must not hide a successful step.
+            // Still require the complete marker line, never a command echo.
+            if(s.size()>4&&s.compare(0,2,"\r\n")==0&&s.compare(s.size()-2,2,"\r\n")==0) {
+                auto line=s.substr(2);size_t at=output.find(line,mark);
+                while(at!=std::string::npos){if(!at||output[at-1]=='\n')return true;at=output.find(line,at+1);}
+            }
+            return false;
+        };
+        while (!found()) {
             if (Clock::now() - last > 5s) {
                 qmp_command("{\"execute\":\"screendump\",\"arguments\":{\"filename\":\"" +
                             log.string() + ".ppm\"}}");
