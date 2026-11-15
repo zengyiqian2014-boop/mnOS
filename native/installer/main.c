@@ -74,7 +74,7 @@ static struct pointer *mouse;
 static struct absolute *tablet;
 static int mouse_x = 400, mouse_y = 300;
 static bool mouse_down, mouse_visible;
-static uint64_t data_blocks;
+static uint64_t data_blocks,data_start;
 static void decimal(char *p, uint64_t n) {
     char b[24];
     unsigned k = 0;
@@ -237,10 +237,10 @@ static bool flush(void *p) {
     return !b->flush(b);
 }
 static bool fs_read(void *p, uint64_t block, void *bytes) {
-    return block < data_blocks && raw_read(p, MN_DATA_START + block * 8, 8, bytes);
+    return block < data_blocks && raw_read(p, data_start + block * 8, 8, bytes);
 }
 static bool fs_write(void *p, uint64_t block, const void *bytes) {
-    return block < data_blocks && raw_write(p, MN_DATA_START + block * 8, 8, bytes);
+    return block < data_blocks && raw_write(p, data_start + block * 8, 8, bytes);
 }
 static void progress(unsigned n) {
     if (percent == n) return;
@@ -303,6 +303,8 @@ static void discover(void) {
     status (*handle)(void *, const struct guid *, void **) = (void *)bs->fn[16];
     struct loaded_image *loaded = NULL;
     count = chosen = 0;
+    struct disk_boot_plan plan;
+    if(!disk_plan_boot((size_t)(system_payload_end-system_payload),&plan))return;
     if (handle(self, &loaded_guid, (void **)&loaded) || !loaded)
         return;
     size_t n = 0;
@@ -315,7 +317,7 @@ static void discover(void) {
             continue;
         struct media *m = b->media;
         if (!m->present || m->readonly || m->logical || m->blocksize != 512 || m->align > 4096 ||
-            m->last < MN_DATA_START + 32768 || source_disk(loaded->device, list[i]) ||
+            m->last < plan.data_start + 32768 || source_disk(loaded->device, list[i]) ||
             !native_target(list[i]))
             continue;
         targets[count++] = (struct target){b, list[i]};
@@ -355,7 +357,10 @@ static void install(void) {
     ok = disk_install_boot(&raw, system_payload, (size_t)(system_payload_end - system_payload),
                            arm64, uuid, progress);
     struct mnfs fs = {0};
-    data_blocks = (b->media->last + 1 - 34 - MN_DATA_START) / 8;
+    struct disk_boot_plan plan;
+    if(!disk_plan_boot((size_t)(system_payload_end-system_payload),&plan))ok=false;
+    data_start=ok?plan.data_start:0;
+    data_blocks = ok?(b->media->last + 1 - 34 - data_start) / 8:0;
     struct mnfs_io io = {b, data_blocks, fs_read, fs_write, flush, allocate, release};
     if (ok)
         ok = mnfs_format(&fs, &io) == MN_OK;
@@ -371,15 +376,15 @@ static void install(void) {
         mnfs_close(&fs);
     uint64_t start = 0, length = 0;
     if (ok)
-        ok = flush(b) && disk_data_partition(&raw, &start, &length) && start == MN_DATA_START;
+        ok = flush(b) && disk_data_partition(&raw, &start, &length) && start == data_start;
     /* Verify every installed boot byte, not just a successful write return. */
-    uint8_t verify[8192];
+    static uint8_t verify[65536];
     size_t payload_size = system_payload_end - system_payload;
     for (size_t at = 0; ok && at < payload_size; at += sizeof verify) {
         size_t len = payload_size - at;
         if (len > sizeof verify)
             len = sizeof verify;
-        ok = raw_read(b, MN_ESP_START + 32 + 2048 + 3 + at / 512, (unsigned)((len + 511) / 512),
+        ok = raw_read(b, plan.payload_start + at / 512, (unsigned)((len + 511) / 512),
                       verify) &&
              !memcmp(verify, system_payload + at, len);
     }

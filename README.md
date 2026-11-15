@@ -21,15 +21,18 @@ command manages signed feature packages, updates and component-version rollback;
 selected components. Updates first verify the signed GitHub Raw version index.
 `mnos --uninstall PACKAGE` removes packages with a toolchain guard. See
 [resource details](live/update/RELEASE.md) and `help apt` / `help updates`.
-Native's BusyBox guest still lacks APT/network devices; Full/Lite packaging does
-not remove that compatibility gap. Native idle execution now yields until input
-or a scheduled guest timer, retaining guest RAM.
+The released USB preview is a small native-system installer; it does not include
+the new Linux application environment. The current development source adds a
+bundled Debian riscv64 filesystem, APT, X11, original VirtIO networking and private
+persistent guest storage. Its complete native installation tests are still in
+progress; no new integrated release is claimed here. See [build and test details](native/guest/README.md).
 
 **Current development: two distinct editions.** [Native Edition and Linux Edition](EDITIONS.md)
 have separate installers and honest runtime labels. The native GUI now has an
-original C software machine for a real Linux/BusyBox guest; Linux Edition keeps
+original C software machine for a real Linux/Debian guest; Linux Edition keeps
 Firefox, VS Code, the full CTF suite and a unified C system-management command.
-The guest initially supports RV64IMAC/LP64 console programs, not Linux GUI apps.
+The new guest uses RV64GC/LP64D binaries. AMD64/ARM64 DEBs, official VS Code,
+hardware virtualization and accelerated 3D are outside its present compatibility.
 See the edition guide for commands, permissions, build steps and limits.
 
 **Native Edition 0.6 Preview 1 is available:**

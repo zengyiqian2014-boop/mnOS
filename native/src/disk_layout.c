@@ -77,27 +77,38 @@ static void directory(uint8_t *p, const char name[11], uint8_t attr, uint32_t cl
     w16(p + 26, cluster);
     w32(p + 28, size);
 }
+bool disk_plan_boot(size_t bytes,struct disk_boot_plan *p) {
+    if(!bytes||bytes>(1u<<30))return false;
+    uint64_t sectors=MN_ESP_SECTORS,clusters=(bytes+511)/512;
+    while(clusters+3>sectors-32-2*(sectors/128))sectors*=2;
+    *p=(struct disk_boot_plan){sectors,MN_ESP_START+sectors,MN_ESP_START+32+2*(sectors/128)+3,(uint32_t)(sectors/128)};
+    return true;
+}
 bool disk_install_boot(const struct disk_io *io, const void *payload, size_t bytes, bool arm64,
                        const uint8_t guid[16], void (*progress)(unsigned)) {
     uint8_t sector[512], entries[16384], fat[4096];
-    if (!payload || !bytes || bytes > (32u << 20) || io->sectors < MN_DATA_START + 32768 ||
+    /* Installation is serialized. Keep the bulk buffer off the EFI stack and
+     * avoid tens of thousands of 4 KiB firmware transactions for a full image. */
+    static uint8_t transfer[65536];
+    struct disk_boot_plan plan;
+    if (!payload || !disk_plan_boot(bytes,&plan) || io->sectors < plan.data_start + 32768 ||
         io->sectors > UINT64_MAX / 512)
         return false;
     /* Write payload and FAT first. Publish GPT only after all data is flushed. */
-    const uint64_t first = MN_ESP_START + 32 + 2048;
+    const uint64_t first = plan.payload_start-3;
     unsigned clusters = (unsigned)((bytes + 511) / 512);
-    for (unsigned i = 0; i < clusters; i += 8) {
+    for (unsigned i = 0; i < clusters; i += sizeof transfer / 512) {
         size_t n = bytes - (size_t)i * 512;
-        if (n > sizeof fat)
-            n = sizeof fat;
-        memset(fat, 0, sizeof fat);
-        memcpy(fat, (const uint8_t *)payload + (size_t)i * 512, n);
-        if (!write(io, first + 3 + i, (unsigned)((n + 511) / 512), fat))
+        if (n > sizeof transfer)
+            n = sizeof transfer;
+        memset(transfer, 0, sizeof transfer);
+        memcpy(transfer, (const uint8_t *)payload + (size_t)i * 512, n);
+        if (!write(io, first + 3 + i, (unsigned)((n + 511) / 512), transfer))
             return false;
         if (progress && i % 256 == 0)
             progress(5 + i * 65 / clusters);
     }
-    for (unsigned s = 0; s < 1024; s += 8) {
+    for (unsigned s = 0; s < plan.fat_sectors; s += 8) {
         memset(fat, 0, sizeof fat);
         for (unsigned i = 0; i < 1024; i++) {
             unsigned c = s * 128 + i;
@@ -111,7 +122,7 @@ bool disk_install_boot(const struct disk_io *io, const void *payload, size_t byt
             w32(fat + i * 4, v);
         }
         if (!write(io, MN_ESP_START + 32 + s, 8, fat) ||
-            !write(io, MN_ESP_START + 1056 + s, 8, fat))
+            !write(io, MN_ESP_START + 32 + plan.fat_sectors + s, 8, fat))
             return false;
     }
     memset(sector, 0, 512);
@@ -148,8 +159,8 @@ bool disk_install_boot(const struct disk_io *io, const void *payload, size_t byt
     w16(sector + 24, 63);
     w16(sector + 26, 255);
     w32(sector + 28, MN_ESP_START);
-    w32(sector + 32, MN_ESP_SECTORS);
-    w32(sector + 36, 1024);
+    w32(sector + 32, (uint32_t)plan.esp_sectors);
+    w32(sector + 36, plan.fat_sectors);
     w32(sector + 44, 2);
     w16(sector + 48, 1);
     w16(sector + 50, 6);
@@ -176,8 +187,8 @@ bool disk_install_boot(const struct disk_io *io, const void *payload, size_t byt
         memcpy(e, i ? data_type : esp_type, 16);
         memcpy(e + 16, guid, 16);
         e[31] ^= (uint8_t)(i + 1);
-        w64(e + 32, i ? MN_DATA_START : MN_ESP_START);
-        w64(e + 40, i ? io->sectors - 34 : MN_DATA_START - 1);
+        w64(e + 32, i ? plan.data_start : MN_ESP_START);
+        w64(e + 40, i ? io->sectors - 34 : plan.data_start - 1);
         const char *label = i ? "mnOS data" : "mnOS boot";
         for (unsigned n = 0; label[n]; n++)
             w16(e + 56 + 2 * n, (uint16_t)label[n]);

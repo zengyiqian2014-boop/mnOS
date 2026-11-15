@@ -3,6 +3,7 @@
  * and settings, reboot again. MNOS_TEST_LINUX_GUEST also tests bundled Linux
  * inside the original host kernel; the harness uses C++, not Python. */
 #include <chrono>
+#include <algorithm>
 #include <csignal>
 #include <cstring>
 #include <filesystem>
@@ -27,6 +28,17 @@ static std::string firmware(const char *path) {
 static void require(bool ok, const std::string &why) {
     if (!ok)
         throw std::runtime_error(why);
+}
+static void require_guest_frame(const fs::path &path) {
+    std::ifstream image(path,std::ios::binary);std::string magic;unsigned w=0,h=0,max=0;
+    image>>magic>>w>>h>>max;
+    require(magic=="P6"&&w&&h&&w<=8192&&h<=8192&&max==255,"framebuffer PPM header");
+    image.get();size_t green=0;
+    for(size_t i=0;i<(size_t)w*h;i++) {
+        unsigned char rgb[3];image.read((char *)rgb,3);require((bool)image,"truncated framebuffer");
+        if(rgb[0]==0x24&&rgb[1]==0x8b&&rgb[2]==0x42)green++;
+    }
+    require(green>100,"Linux X11 background was not rendered in the native framebuffer");
 }
 static pid_t launch(const std::vector<std::string> &args) {
     pid_t p = fork();
@@ -119,7 +131,7 @@ struct VM {
                                                  "-smp",
                                                  "2",
                                                  "-m",
-                                                 "1024",
+                                                 std::getenv("MNOS_TEST_LINUX_GUEST") ? "4096" : "1024",
                                                  "-display",
                                                  "none",
                                                  "-nic",
@@ -132,6 +144,10 @@ struct VM {
                                                  "-serial",
                                                  "unix:" + socket.string() + ",server=on,wait=on"};
         a.insert(a.end(), common.begin(), common.end());
+        if (std::getenv("MNOS_TEST_LINUX_GUEST")) {
+            a.insert(a.end(), {"-netdev", "user,id=guestnet", "-device",
+                arch=="arm64" ? "virtio-net-device,netdev=guestnet" : "virtio-net-pci,disable-legacy=on,netdev=guestnet"});
+        }
         a.insert(a.end(), extra.begin(), extra.end());
         pid = launch(a);
         serial = connect_socket(socket);
@@ -161,7 +177,7 @@ struct VM {
         require(output.find("PANIC") == std::string::npos, output);
     }
     void wait(const std::string &s, size_t mark = 0) {
-        auto end = Clock::now() + 150s, last = Clock::now();
+        auto end = Clock::now() + (std::getenv("MNOS_TEST_LINUX_GUEST") ? 900s : 150s), last = Clock::now();
         while (output.find(s, mark) == std::string::npos) {
             if (Clock::now() - last > 5s) {
                 qmp_command("{\"execute\":\"screendump\",\"arguments\":{\"filename\":\"" +
@@ -271,7 +287,7 @@ int main(int argc, char **argv) {
         require(mkdtemp(tmp), "mkdtemp");
         fs::path work = tmp;
         std::ofstream(work / "disk.img").close();
-        fs::resize_file(work / "disk.img", 256ULL << 20);
+        fs::resize_file(work / "disk.img", std::getenv("MNOS_TEST_LINUX_GUEST") ? (16ULL << 30) : (256ULL << 20));
         {
             VM vm(build, work, arch, 0);
             vm.wait("INSTALLER READY");
@@ -283,8 +299,8 @@ int main(int argc, char **argv) {
             std::ifstream empty(work / "disk.img", std::ios::binary);
             char block[65536];
             while (empty.read(block, sizeof block) || empty.gcount()) {
-                for (std::streamsize i = 0; i < empty.gcount(); i++)
-                    require(block[i] == 0, "cancelled install modified disk");
+                require(std::all_of(block,block+empty.gcount(),[](char c){return c==0;}),
+                        "cancelled install modified disk");
             }
             m = vm.send("\r");
             vm.wait("INSTALL CONFIRM", m);
@@ -377,56 +393,66 @@ int main(int argc, char **argv) {
                 vm.wait("LINUX SIMULATION: cancelled",request);
                 require(vm.output.find("LINUX GUEST: start")==std::string::npos,"cancel booted a guest");
                 vm.page_key("f5",4);
-                vm.command("linux memory 256","Guest RAM limit set.");
+                vm.command("linux memory 1024","Guest RAM limit set.");
                 vm.command("linux open system","LINUX SIMULATION: confirmation requested");
                 auto enabled=vm.output.size();
-                vm.click_at((screen_width-650)/2+150,(screen_height-280)/2+227);
+                vm.key("ret");
                 vm.wait("LINUX GUEST: start",enabled);
+                vm.wait("Linux Ethernet device ready",enabled);
                 vm.wait("LINUX SIMULATION: app sent to guest shell",enabled);
-                vm.wait("Linux mnos-linux-guest",enabled);
                 vm.wait("Swap:",enabled);
                 vm.wait("linux-guest# ",vm.output.find("Swap:",enabled));
-                vm.page_key("f5",4);
-                auto opened=vm.send("linux open files\n");
-                vm.wait("LINUX SIMULATION: app sent to guest shell",opened);
-                vm.wait("linux-guest# ",vm.output.find("LINUX SIMULATION: app sent to guest shell",opened));
-                require(vm.output.find("LINUX SIMULATION: confirmation requested",opened)==std::string::npos,"enabled guest asked again");
                 vm.command("uname -s", "\r\nLinux\r\n");
-                vm.command("awk '/MemTotal:/ {if ($2 > 131072) print \"RAM_OVER_128_MIB\"}' /proc/meminfo", "\r\nRAM_OVER_128_MIB\r\n");
+                vm.command("dpkg --print-architecture", "\r\nriscv64\r\n");
                 vm.command("printf abc | sha256sum", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  -");
-                vm.command("awk 'BEGIN { print 6*7 }'", "\r\n42\r\n");
-                vm.command("echo guest-private > /tmp/note; cat /tmp/note", "\r\nguest-private\r\n");
                 vm.command("test ! -e /disk && printf '%s%s\\n' NO_HOST_ DISK", "\r\nNO_HOST_DISK\r\n");
-                vm.command("busybox --list | wc -l", "\r\n402\r\n");
-                vm.screenshot(build/(arch+"-linux-guest.ppm"));
-                vm.command("help -cn", "F1–F7 切换宿主窗口");
-                vm.screenshot(build/(arch+"-linux-guest-help.ppm"));
-                vm.send(std::string(1,(char)0x85));
+                if(const char *proxy=std::getenv("MNOS_TEST_PROXY")) {
+                    std::string p=proxy;
+                    require(p.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:/.-")==std::string::npos,"test proxy URL");
+                    vm.command("export http_proxy="+p,"linux-guest# ");
+                }
+                vm.command("export DEBIAN_FRONTEND=noninteractive; apt-get -q -o APT::Update::Error-Mode=any update && echo MNOS_APT_UPDATE_PASS", "\r\nMNOS_APT_UPDATE_PASS\r\n");
+                vm.wait("linux-guest# ", vm.output.rfind("MNOS_APT_UPDATE_PASS"));
+                vm.command("apt-get -q install -y x11-utils && echo MNOS_APT_INSTALL_PASS", "\r\nMNOS_APT_INSTALL_PASS\r\n");
+                vm.wait("linux-guest# ", vm.output.rfind("MNOS_APT_INSTALL_PASS"));
+                vm.command("printf '%s\\n' PERSISTED > /root/native-test; echo saved", "\r\nsaved\r\n");
+                vm.page_key("f5",4);
+                auto desktop=vm.output.size();
+                vm.command("linux open desktop","UI: page 7");
+                vm.wait("LINUX SIMULATION: app sent to guest shell",desktop);
+                vm.wait("linux-guest# ", vm.output.find("LINUX SIMULATION: app sent to guest shell",desktop));
+                vm.page_key("f5",4);
+                vm.command("linux send for i in $(seq 1 120); do DISPLAY=:0 xdpyinfo > /root/x11-info 2>/dev/null && { echo MNOS_X11_PASS; break; }; sleep 1; done","\r\nMNOS_X11_PASS\r\n");
+                vm.command("linux send DISPLAY=:0 xsetroot -solid '#248b42'; echo MNOS_FRAME_READY", "\r\nMNOS_FRAME_READY\r\n");
+                vm.command("linux resume","UI: page 7");
+                // Move into the xterm client, then deliver real host keys through
+                // mnOS -> SBI evdev -> Xorg -> the guest shell.
+                int ww=screen_width>1100?900:screen_width-176;
+                int wh=screen_height>740?590:screen_height-104;
+                int area=wh-207,dw=ww-40,dh=dw*768/1024;
+                if(dh>area){dh=area;dw=dh*1024/768;}
+                int sx=(screen_width>1100?(screen_width-ww)/2:144)+12+20+(ww-40-dw)/2;
+                int sy=74+52+115+(area-dh)/2;
+                vm.click_at(sx+dw/2,sy+dh/3);
+                for(const char *key:{"t","o","u","c","h","spc","slash","r","o","o","t","slash","g","u","i","i","n","p","u","t","ret"})vm.key(key);
+                vm.screenshot(build/(arch+"-linux-guest-gui.ppm"));
+                require_guest_frame(build/(arch+"-linux-guest-gui.ppm"));
+                vm.page_key("f5",4);
+                vm.command("linux send test -f /root/guiinput && echo MNOS_GUI_INPUT_PASS","\r\nMNOS_GUI_INPUT_PASS\r\n");
                 vm.command("linux pause","Paused / guest RAM retained");
                 vm.command("system memory","Free physical pages");
                 vm.command("linux resume","UI: page 7");
-                vm.command("cat /tmp/note", "\r\nguest-private\r\n");
                 vm.page_key("f5",4);
-                vm.command("linux pause","Paused / guest RAM retained");
-                vm.page_key("f7",6);
-                vm.screenshot(build/(arch+"-linux-guest-settings-on.ppm"));
-                auto disabled=vm.output.size();
-                vm.click_at((screen_width>1100?(screen_width-900)/2:144)+100,58+52+358);
-                vm.wait("LINUX SIMULATION: disabled",disabled);
-                vm.screenshot(build/(arch+"-linux-guest-settings-off.ppm"));
-                vm.page_key("f5",4);
-                vm.command("linux status","Stopped / guest RAM cleared");
-                vm.command("linux memory 128","Guest RAM limit set.");
-                auto restart=vm.send("linux start\n");
-                vm.wait("LINUX SIMULATION: confirmation requested",restart);
+                vm.command("linux send poweroff","LINUX GUEST: stopped");
+                vm.command("linux start","LINUX SIMULATION: confirmation requested");
                 vm.key("ret");
-                vm.wait("LINUX GUEST: start",restart);
-                vm.wait("linux-guest# ",restart);
-                vm.command("awk '/MemTotal:/ {if ($2 > 65536 && $2 < 131072) print \"RAM_128_MIB\"}' /proc/meminfo", "\r\nRAM_128_MIB\r\n");
-                vm.command("test ! -e /tmp/note && printf '%s%s\\n' RAM_ CLEARED", "\r\nRAM_CLEARED\r\n");
-                vm.send(std::string(1,(char)0x85));
-                vm.command("linux stop","Stopped / guest RAM cleared");
-                std::cout << "NATIVE LINUX GUEST PASS " << arch << ": consent/cancel, actual app launch, settings disable, actual Linux, 256/128 MiB RAM, checksums, text, files, pause/resume and RAM reset\n";
+                auto reboot=vm.output.size();vm.wait("linux-guest# ",reboot);
+                vm.command("cat /root/native-test; dpkg-query -W x11-utils", "\r\nPERSISTED\r\n");
+                vm.wait("x11-utils",vm.output.rfind("PERSISTED"));
+                vm.command("test -f /root/guiinput && echo MNOS_PERSISTENCE_PASS","\r\nMNOS_PERSISTENCE_PASS\r\n");
+                vm.command("poweroff","LINUX GUEST: stopped");
+                vm.page_key("f5",4);
+                std::cout << "NATIVE LINUX GUEST PASS " << arch << ": actual Linux/LP64D, signed APT update/install via native VirtIO Ethernet, X11 GUI, real keyboard/pointer, private disk persistence, consent and pause/resume\n";
             }
             vm.command("kernel su", "Root password:");
             vm.command("rootadmintest785", "Root session:");

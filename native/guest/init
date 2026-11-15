@@ -7,6 +7,37 @@ mount -t proc proc /proc
 mount -t sysfs sysfs /sys
 mount -t devpts devpts /dev/pts
 mount -t tmpfs tmpfs /tmp
+if [ -b /dev/mnos0 ]; then
+    mkdir -p /base /state /newroot
+    mount -t squashfs -o ro /dev/mnos0 /base || exec /bin/sh
+    if [ -b /dev/mnos1 ]; then
+        if ! blkid /dev/mnos1 | grep -q 'TYPE="ext4"'; then
+            # Initialize only a blank private virtual disk. A damaged existing
+            # filesystem must never be silently reformatted.
+            if [ "$(dd if=/dev/mnos1 bs=4096 count=1 2>/dev/null | tr -d '\000' | wc -c)" -ne 0 ]; then
+                echo 'Linux data disk is not blank and is not recognized as ext4. Recovery required.'
+                exec /bin/sh
+            fi
+            mount --bind /dev /base/dev
+            chroot /base /sbin/mke2fs -t ext4 -O ^metadata_csum_seed -E lazy_itable_init=1,lazy_journal_init=1,nodiscard /dev/mnos1 || exec /bin/sh
+            umount /base/dev
+        fi
+        mount -t ext4 /dev/mnos1 /state || exec /bin/sh
+    else
+        mount -t tmpfs tmpfs /state
+        echo 'No installed user disk: Linux changes last until this guest stops.'
+    fi
+    mkdir -p /state/upper /state/work
+    mount -t overlay overlay -o lowerdir=/base,upperdir=/state/upper,workdir=/state/work /newroot || exec /bin/sh
+    mount -t tmpfs tmpfs /newroot/run
+    mkdir -p /newroot/run/mnos-base /newroot/run/mnos-state
+    mount --move /base /newroot/run/mnos-base
+    mount --move /state /newroot/run/mnos-state
+    mount --move /proc /newroot/proc
+    mount --move /sys /newroot/sys
+    mount --move /dev /newroot/dev
+    exec switch_root /newroot /sbin/mnos-init
+fi
 hostname mnos-linux-guest
 printf '\nmnOS Linux guest / RV64IMAC / isolated temporary RAM\n'
 printf 'Linux runs INSIDE the original mnOS C interpreter. Guest root is not host root.\n'

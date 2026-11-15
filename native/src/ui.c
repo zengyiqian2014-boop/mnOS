@@ -269,8 +269,8 @@ static void tools_help(const char *cmd) {
         add_line("linux start: boot the bundled software Linux guest in this desktop.");
         add_line("Firefox and VS Code require the separate Linux Edition. See tools linux.");
     } else if (streq(cmd,"tools linux")) {
-        add_line("Native guest: linux start; then help, help -cn, busybox --list.");
-        add_line("Real RV64IMAC Linux shell programs; temporary files; no network/GPU.");
+        add_line("Native guest: linux open desktop; then apt update; apt install PACKAGE.");
+        add_line("Debian riscv64, X11, private persistent disk and VirtIO Ethernet.");
         add_line("The separate Linux Edition includes Firefox ESR and official VS Code.");
         add_line("In Linux Edition, as an ordinary user:");
         add_line("  firefox-esr     code .     nano file.txt");
@@ -916,15 +916,23 @@ static void window_content(unsigned app) {
         button(x+112,y,102,"暂停",false);
         button(x+224,y,102,"继续",false);
         button(x+336,y,102,"关闭",false);
-        const char *labels[]={"终端","文件列表","进程","系统信息","命令目录"};
+        const char *labels[]={"终端","图形桌面","进程","APT 软件包","命令目录"};
         for(unsigned i=0;i<5;i++)button(x+(int)i*122,y+42,112,labels[i],false);
         text_fit(x,y+81,linux_guest_status(),16,ACCENT,w);
         rounded(x,y+115,w,v->h-207,0x0c1720);
+        if(linux_guest_graphical()) {
+            int dw=w,dh=w*768/1024,area=v->h-207;
+            if(dh>area){dh=area;dw=dh*1024/768;}
+            uint32_t pixels[1024];
+            for(int row=0;row<dh;row++)if(linux_guest_pixels((unsigned)row*768/(unsigned)dh,pixels,1024))
+                for(int col=0;col<dw;col++)pixel(x+(w-dw)/2+col,y+115+(area-dh)/2+row,pixels[(unsigned)col*1024/(unsigned)dw]&0xffffff);
+        } else {
         unsigned rows=(unsigned)(v->h-222)/23,count=linux_guest_lines();
         unsigned first=count>rows?count-rows:0;
         for(unsigned i=first;i<count;i++)
             text_fit(x+12,y+120+(int)(i-first)*23,linux_guest_line(i),FONT_MONO18,FG,w-24);
-        text_fit(x,v->y+v->h-32,"关闭会清除临时文件 / RV64 Linux 命令行程序 / F5 返回宿主",16,MUTED,w);
+        }
+        text_fit(x,v->y+v->h-32,"Debian riscv64 · APT / X11 · F5 返回宿主 · 软件渲染",16,MUTED,w);
     } else {
         text(x, y, "System settings", 28, FG);
         text(x+242, y+10, "系统设置", 18, MUTED);
@@ -1230,6 +1238,7 @@ void ui_key(char key) {
         }
         return;
     }
+    if(page==7&&linux_guest_graphical()&&key==27){linux_guest_key(27);return;}
     if (key == 27) {
         page = -1;
         for (unsigned i = 0; i < APP_COUNT; i++)
@@ -1383,6 +1392,16 @@ void ui_pointer(int x, int y, bool pressed) {
         }
         left_down=pressed;return;
     }
+    if(page==7&&!menu_open&&!dragging&&!power_dialog&&!dialog&&linux_guest_graphical()) {
+        struct window *v=&windows[7];int w=v->w-40,area=v->h-207,dw=w,dh=w*768/1024;
+        if(dh>area){dh=area;dw=dh*1024/768;}
+        int sx=v->x+20+(w-dw)/2,sy=v->y+52+115+(area-dh)/2;
+        if(inside(x,y,sx,sy,dw,dh)){
+            linux_guest_pointer((unsigned)(x-sx)*1024/(unsigned)dw,(unsigned)(y-sy)*768/(unsigned)dh,pressed);
+            left_down=pressed;return;
+        }
+        if(!pressed&&left_down)linux_guest_pointer(0,0,false);
+    }
     if (dragging) {
         if (!pressed)
             dragging = false;
@@ -1493,7 +1512,7 @@ void ui_pointer(int x, int y, bool pressed) {
                         const char *action=xx<102?"linux start":xx<214?"linux pause":xx<326?"linux resume":xx<438?"linux stop":NULL;
                         if(action)linux_guest_command(action,add_line);
                     } else if(yy>=42&&yy<74&&xx>=0) {
-                        const char *apps[]={"terminal","files","processes","system","commands"};
+                        const char *apps[]={"terminal","desktop","processes","packages","commands"};
                         unsigned app=(unsigned)xx/122;
                         if(app<5&&(unsigned)xx%122<112)linux_guest_open(apps[app],add_line);
                     }

@@ -16,7 +16,7 @@ build/flavor-config: FORCE_FLAVOR
 	@printf '%s\n' '$(FLAVOR)' > $@.tmp
 	@cmp -s $@.tmp $@ || cp $@.tmp $@
 SOURCES = src/core.c src/string.c src/phys.c src/memory.c src/smp.c src/interrupts.c src/devices.c src/rng.c src/block.c src/mnfs.c src/files.c src/password.c src/auth.c src/ui.c src/exec.c assets/font.c
-SOURCES += src/process.c src/usercopy.c src/file_api.c src/disk_layout.c src/text.c src/commands.c assets/icons.c src/guest.c src/guest_memory.c src/guest_dtb.c src/linux_guest.c
+SOURCES += src/process.c src/usercopy.c src/file_api.c src/disk_layout.c src/text.c src/commands.c assets/icons.c src/guest.c src/guest_float.c src/guest_devices.c src/net.c src/guest_memory.c src/guest_dtb.c src/linux_guest.c
 SOURCES += src/factor.c src/clock.c src/rtc.c vendor/monocypher/monocypher.c
 SOURCES += vendor/qrcodegen/qrcodegen.c
 SOURCES += src/uvc.c src/usb_platform.c src/usb_xhci.c
@@ -34,7 +34,7 @@ build/guest-config: FORCE_GUEST
 	@cmp -s $@.tmp $@ || cp $@.tmp $@
 OBJECTS = $(patsubst %.c,build/%.o,$(SOURCES)) build/boot.o build/ap.o build/interrupts.o build/user.o build/exec-image.o
 OBJECTS += build/guest-image-$(GUEST).o
-build/guest-image-$(GUEST).o: src/guest-image.S $(if $(filter 1,$(GUEST)),build/guest/Image build/guest/machine.dtb)
+build/guest-image-$(GUEST).o: src/guest-image.S $(if $(filter 1,$(GUEST)),build/guest/Image build/guest/machine.dtb build/guest/rootfs.squashfs)
 	mkdir -p build
 	$(CC) -m64 -DMNOS_LINUX_GUEST=$(GUEST) -c $< -o $@
 
@@ -61,11 +61,15 @@ build/mnfs: tools/mnfs.c src/mnfs.c include/mnfs.h
 
 host-tests: uvc-tests
 	mkdir -p build
-	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude tests/guest.c src/guest.c -o build/guest-test
+	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -frounding-math -fno-fast-math -fsanitize=address,undefined -Iinclude tests/guest_float.c src/guest_float.c -lm -o build/guest-float-test
+	./build/guest-float-test
+	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude tests/guest.c src/guest.c src/guest_float.c -o build/guest-test
 	./build/guest-test
-	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude tests/guest_memory.c tests/linux_guest_image.S src/guest_memory.c src/guest_dtb.c src/guest.c -o build/guest-memory-test
+	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude tests/guest_devices.c src/guest_devices.c src/guest.c src/guest_float.c -o build/guest-devices-test
+	./build/guest-devices-test
+	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude tests/guest_memory.c tests/linux_guest_image.S src/guest_memory.c src/guest_dtb.c src/guest.c src/guest_float.c -o build/guest-memory-test
 	./build/guest-memory-test
-	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -DMNOS_HOST_PROCESS_TEST -Iinclude tests/linux_guest.c tests/linux_guest_image.S src/linux_guest.c src/guest_memory.c src/guest_dtb.c -o build/linux-guest-test
+	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -DMNOS_HOST_PROCESS_TEST -Iinclude tests/linux_guest.c tests/linux_guest_image.S src/linux_guest.c src/guest_memory.c src/guest_dtb.c src/guest_devices.c -o build/linux-guest-test
 	./build/linux-guest-test
 	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -Iinclude tests/commands.c src/commands.c -o build/commands-test
 	./build/commands-test
@@ -93,7 +97,7 @@ host-tests: uvc-tests
 build/mnos.elf: $(OBJECTS) linker.ld build/guest-config
 	$(LD) -nostdlib -z max-page-size=0x1000 -T linker.ld -o $@ $(OBJECTS)
 
-build/%.o: %.c build/flavor-config include/kernel.h include/boot_layout.h include/phys.h include/mnfs.h include/block.h include/auth.h include/factor.h include/clock.h include/exec.h include/process.h include/file_api.h include/usercopy.h include/font.h include/icons.h include/commands.h include/guest.h include/guest_memory.h include/linux_guest.h include/uvc.h include/usb.h include/usb_platform.h
+build/%.o: %.c build/flavor-config include/kernel.h include/boot_layout.h include/phys.h include/mnfs.h include/block.h include/auth.h include/factor.h include/clock.h include/exec.h include/process.h include/file_api.h include/usercopy.h include/font.h include/icons.h include/commands.h include/guest.h include/guest_float.h include/guest_devices.h include/net.h include/guest_memory.h include/linux_guest.h include/uvc.h include/usb.h include/usb_platform.h
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 

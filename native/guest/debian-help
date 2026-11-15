@@ -1,0 +1,48 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+if [ "${1:-}" = -cn ]; then
+cat <<'EOF'
+mnOS Linux 环境（Debian riscv64）
+  apt update                 更新签名的软件目录，需要网络。
+  apt search 关键词          搜索软件包。
+  apt install 包名           下载并安装软件及其依赖。
+  apt remove 包名            卸载软件，保留配置。
+  apt list --installed       查看已安装的软件包。
+  dpkg -i 文件.deb           安装 riscv64 或 all 架构的 DEB；缺依赖时用 apt -f install。
+  startx                     启动 X11 桌面。宿主选择“图形桌面”查看画面。
+  xterm / xclock / xeyes     在图形终端里运行窗口程序。
+  poweroff                   同步文件并关闭 Linux 客体，保留已安装软件。
+
+普通 Linux 命令直接在本终端执行，例如 ls、cp、mv、cat、ps、ip、df。
+程序的完整参数请用 程序 --help；APT 帮助用 apt --help。
+这里的 root 只管理客体。宿主原生内核没有替换成 Linux。
+安装后的系统把修改保存到当前宿主用户的 linux-data.img；未安装的试用
+环境可能只有临时存储。强制关闭相当于断电，请优先使用 poweroff。
+当前 CPU 是软件解释的 RV64GC，非硬件虚拟化；单 CPU、软件图形、无 3D。
+下载 DEB 时选择 riscv64 或 all。官方 AMD64/ARM64 VS Code 包不能直接执行。
+联网需要宿主支持的 VirtIO 网卡；QEMU/UTM 可使用 NAT/DHCP。
+EOF
+else
+cat <<'EOF'
+mnOS Linux environment (Debian riscv64)
+  apt update                 Refresh signed package indexes; requires a network.
+  apt search WORD            Search packages.
+  apt install PACKAGE        Download a package and its dependencies.
+  apt remove PACKAGE         Uninstall a package, keeping its configuration.
+  apt list --installed       List installed packages.
+  dpkg -i FILE.deb           Install a riscv64/all DEB; apt -f install repairs dependencies.
+  startx                     Start X11; select Desktop in the host Linux window.
+  xterm / xclock / xeyes     Run windowed programs from an X terminal.
+  poweroff                   Sync files and shut down the Linux guest.
+
+Linux commands run directly here: ls, cp, mv, cat, ps, ip, df, etc.
+Use PROGRAM --help or apt --help for each program's full usage.
+Guest root is not host root; the original mnOS kernel remains the host.
+Installed systems keep changes in the current host user's linux-data.img.
+A trial without a writable installed disk is temporary. Forced stop is a power
+cut: use poweroff first. This is an interpreted RV64GC CPU, not hardware
+virtualization: one CPU, software graphics, no 3D acceleration.
+Choose riscv64/all packages. Official AMD64/ARM64 VS Code DEBs do not run here.
+Networking requires a supported VirtIO device; QEMU/UTM NAT provides DHCP.
+EOF
+fi

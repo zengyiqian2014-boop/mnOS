@@ -8,7 +8,7 @@ on:
       release_tag:
         description: Native edition preview tag matching the built filenames
         required: true
-        default: v0.6-native-preview.1
+        default: v0.9-native-preview.1
       authentication_run:
         description: Successful authentication run at the same source commit
         required: true
@@ -60,6 +60,10 @@ jobs:
           tar -xf release/native-installation-validation.tar.gz -C evidence
           tar -xf release/linux-guest-upstream-sources.tar -C upstream
           (cd upstream && sha256sum -c ../release/SOURCES.sha256)
+          mkdir debian-sources
+          tar -xf release/debian-corresponding-sources.tar -C debian-sources
+          (cd debian-sources && sha256sum -c SHA256SUMS)
+          test -s release/DEBIAN-PACKAGES.tsv
           version=${TAG#v}
           version=${version/-native/}
           for arch in amd64 arm64; do
@@ -69,29 +73,28 @@ jobs:
             if [ "${images[0]}" != "$new" ]; then mv "${images[0]}" "$new"; fi
             grep -q "NATIVE LINUX GUEST PASS $arch" "evidence/guest-validation-$arch.log"
             grep -q "DESKTOP PASS $arch" "evidence/guest-validation-$arch.log"
-            test -s "evidence/$arch-linux-guest.ppm"
-            test -s "evidence/$arch-linux-guest-help.ppm"
+            test -s "evidence/$arch-linux-guest-gui.ppm"
             test -s "evidence/$arch-linux-guest-consent.ppm"
-            test -s "evidence/$arch-linux-guest-settings-on.ppm"
-            test -s "evidence/$arch-linux-guest-settings-off.ppm"
           done
           printf 'Authentication: https://github.com/%s/actions/runs/%s\n' "$GH_REPO" "$AUTH_RUN" >> release/PROVENANCE.txt
           cp AUTHENTICATION.md release/
-          (cd release && sha256sum *.iso *.tar *.tar.gz *.config *.txt *.md SOURCES.sha256 > SHA256SUMS && sha256sum -c SHA256SUMS)
+          (cd release && sha256sum *.iso *.tar *.tar.gz *.config *.txt *.md *.tsv SOURCES.sha256 > SHA256SUMS && sha256sum -c SHA256SUMS)
           cat > /tmp/native-notes.md <<EOF
           自研 C / 汇编内核和原生 GUI，AMD64 / ARM64 图形安装 ISO。
 
-          Linux 客体内存改为按需分配：自动模式依据宿主空闲内存设定上限（至多 1 GiB），停止时可用 linux memory MIB 调整。实际启动检查可用内存，始终为宿主保留空间；停止或退出会擦除并回收客体页。
+          离线 ISO 内含原生系统、Linux 6.12、Debian riscv64、APT、Xorg、Xterm、twm 和基础命令。安装和启动随附桌面无需下载；使用 APT 添加软件需要网络。
 
-          系统设置加入 Support / H，终端提供 support 与 support -cn。Bug 与硬件兼容性问题可反馈至 report.mnos@proton.me。help 为英文，help -cn 为中文。
+          Linux 客体内存按需分配，自动上限至多 1 GiB。停止时可用 linux memory MIB 调整。APT 和图形桌面建议至少 768 MiB 客体内存、4 GiB 宿主内存；停止或退出会擦除并回收客体页。
+
+          系统设置提供 Support / H，终端提供 support 与 support -cn。反馈邮箱：report.mnos@proton.me、wrmfwv@163.com。help 为英文，help -cn 为中文。
 
           保留可选的密码 + 验证器登录、本机二维码 / 手动密钥、一次性恢复码、加密保存和重放拒绝。首次配置可跳过，之后在设置或 2fa 命令中管理。
 
-          默认关闭的 Linux 模拟环境继续运行真实 Linux / BusyBox。客体等待输入时暂停解释执行，输入和定时器唤醒；显式 pause / resume 保留内存，stop 清空临时状态。
+          Linux 模拟默认关闭，启动前确认。原生 VirtIO PCI/MMIO 驱动连接客体网络，图形窗口接收键盘和鼠标。每位用户有独立的 8 GiB 稀疏数据文件，安装的软件和文件在正常关机后保存。先在 Linux 中执行 poweroff，再关闭模拟。pause / resume 保留内存；空闲时让出 CPU，定时器仍正常唤醒。
 
-          当前客体仍无 APT、网络和 Linux 图形应用兼容；Firefox、VS Code 和完整 CTF 应用请使用 Linux Edition。普通摄像头解锁也未完成。这里不宣称完成了所有硬件支持或日常使用稳定性认证。
+          这是单核 RV64GC 软件解释器，没有硬件虚拟化或 3D 加速。APT 支持 riscv64 / all 软件包，不能直接运行 AMD64 / ARM64 的 DEB。官方 VS Code、Firefox 和完整 CTF 工作台仍请使用独立的 Linux Edition；本包不包含它们，也不宣称高性能生产服务器、全部硬件兼容或普通摄像头安全解锁已完成。
 
-          两种架构均通过真实安装、移除 ISO 后启动、桌面和 Linux 客体执行测试；同一源码的验证器测试通过。校验和、源码、上游许可证及截图日志见附件。
+          两种架构均通过真实安装、移除 ISO 后启动、APT 更新及安装、X11 窗口、键盘鼠标和持久化测试；同一源码的验证器测试通过。实际文件大小、校验和、完整包清单、对应源码及截图日志见附件。旧 USB 驱动预览 ISO 不含本次 Linux 应用环境。
 
           [安装与客体测试](https://github.com/$GH_REPO/actions/runs/$SOURCE_RUN) · [认证测试](https://github.com/$GH_REPO/actions/runs/$AUTH_RUN)
           EOF

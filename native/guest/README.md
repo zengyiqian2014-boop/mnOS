@@ -1,63 +1,117 @@
-# Original software Linux machine
+# Linux guest on the original mnOS kernel
 
-See [edition boundaries and management](../../EDITIONS.md). The CPU/MMU/SBI
-implementation is `src/guest.c`, shared unchanged between the hosted test
-harness and both native hosts. This directory contains the **guest** build recipe,
-not a second implementation of the Linux kernel.
+The host remains the original C/assembly mnOS kernel. Its own RV64GC/Sv39
+interpreter runs Linux 6.12 and Debian riscv64; neither QEMU nor a hidden Linux
+host executes guest instructions in the installed system. QEMU and libslirp
+are used only by build/test tools. This is software interpretation, not hardware
+virtualization. See [edition boundaries](../../EDITIONS.md).
 
-Build dependencies are installed by `native/Builder.Dockerfile`. Run:
+The guest includes APT, glibc, a dynamic linker, Xorg/fbdev, Xterm, twm,
+standard file/process/network commands and nano. Software must have a riscv64
+or architecture-independent build. An AMD64 or ARM64 DEB is not translated into
+another architecture by unpacking it. Official VS Code AMD64/ARM64 packages
+therefore remain a Linux Edition feature; arbitrary applications and 3D/GPU
+acceleration are not promised.
+
+## Build
+
+Use the dependencies in `native/Builder.Dockerfile`. Inside a disposable root
+builder with a registered `qemu-riscv64` binfmt handler and permission to mount
+`/proc`:
 
 ```sh
 cd native
 guest/build.sh
-cc -O2 -Iinclude tools/guest-run.c src/guest.c -o build/guest-run
-build/guest-run build/guest/Image build/guest/machine.dtb
+bash guest/build-debian.sh
+make host-tests
 GUEST=1 installer/build.sh
 ```
 
-The build pins Linux 6.12.114, BusyBox 1.37.0 and musl 1.2.5 by archive hash.
-The LP64 soft-float GCC multilib is used intentionally; an LP64D libc/runtime is
-not ABI-compatible. Guest instructions are RV64IMAC, even on AMD64/ARM64 hosts.
-The guest rootfs contains no Python or Java. It uses upstream BusyBox applets,
-not placeholder mnOS commands. Obtain the real list with `busybox --list`.
+`build.sh` pins the Linux, BusyBox and musl source archives by SHA256. The tiny
+bootstrap is static LP64/musl. The mounted Debian filesystem uses the normal
+LP64D/glibc ABI; the original interpreter implements F and D without host floating
+point. Debian packages are authenticated by Debian's archive keys. Package
+versions are recorded in `build/guest/DEBIAN-PACKAGES.tsv`; builds use the current
+Debian 13 repositories and are not bit-for-bit reproducible across repository
+updates. No Python or Java is authored or installed in this base guest.
 
-Linux is GPL-2.0-only; BusyBox is GPL-2.0-only; musl is MIT; GCC runtime components
-use GPLv3 with the GCC Runtime Library Exception. Preserve the archive hashes,
-kernel and BusyBox configs and complete matching source archives when publishing
-the bundled binary. Native/interpreter changes are GPL-3.0-or-later.
+`prepare-debian.sh` produces `rootfs.squashfs`. The native installer embeds this
+file together with Linux, so booting the guest and opening its included desktop
+does not require a download. Installing additional packages with APT requires
+network access. An integrated installer is larger than the separate USB driver
+preview; compare filenames, checksums and package manifests, not size alone.
 
-Before startup, `linux memory auto` selects up to 1 GiB from available host RAM.
-`linux memory MIB` accepts an explicit limit from 128 MiB to 512 GiB; startup
-rejects limits above free host memory minus a 32 MiB reserve. The host uses a
-sparse page map instead of reserving a contiguous 64 MiB buffer. Pages are zeroed
-on allocation, and wiped and freed on stop. The device tree advertises the
-selected size to Linux. These controls expand RAM, not the supported devices or ISA.
+## Use and persistence
 
-Guest RAM is bounded and every guest memory access is translated and range
-checked. A guest address never becomes a host pointer. No filesystem/syscall
-passthrough or host shell execution exists. Guest root is an isolated guest
-identity, not host root. The interpreter is nevertheless kernel-resident and
-experimental; it has not received an independent security audit.
+On the host, `linux open desktop` asks to enable simulation, then starts X11.
+`linux start` opens the line console. F5 returns to the host. In the Linux window:
 
-Linux simulation is disabled by default and after every host session boundary.
-The native launcher and `linux open APP` request a GUI confirmation before any
-guest RAM allocation or execution. Settings (F7, Linux 模拟 / L) can disable it
-immediately; this stops the interpreter and wipes private RAM and queued input.
-Closing the window only hides it. No enable flag is persisted.
+```sh
+apt update
+apt install x11-utils
+apt list --installed
+# In Xterm, applications open real windows:
+xmessage 'Hello from Debian'
+nano /root/example.txt
+poweroff
+```
 
-When Linux executes WFI, the native host yields the interpreter instead of
-executing its full instruction budget. Input and the next guest timer wake it;
-sleeping jobs still progress. `linux pause` remains an explicit indefinite pause.
-RAM is retained while idle; `linux stop` wipes it. This is CPU idle scheduling,
-not removal of every Linux process: Linux always retains init/kernel workers.
+Use `help` / `help -cn` in either environment. Guest root has no host account
+privileges. The host's authenticated user owns a private sparse 8 GiB
+`linux-data.img` in their MNFS home directory. Linux mounts the bundled SquashFS
+read-only and an ext4 upper layer from this file. Packages and files survive a
+clean shutdown. A run without an installed disk uses temporary storage. A locked
+or invalid existing data disk prevents startup instead of silently replacing it.
 
-APT, a Debian userspace, virtual networking and general desktop applications are
-still missing from this RV64 guest. APT is a required compatibility milestone,
-not something the BusyBox command inventory currently implements. The Linux
-Full/Lite editions already ship real APT; see `help apt` / `help -cn apt` there.
+Power off inside Linux before `linux stop`, logging out or powering off the host.
+Forced stop is equivalent to a power failure: unflushed work can be lost. Stopping
+wipes RAM, not the persistent data file. Closing the window leaves jobs running.
+The guest defaults off after every host login. `linux pause` freezes execution;
+`linux resume` continues it. Ordinary idle waits yield the CPU without stopping
+scheduled jobs. Time follows the host's monotonic timer, not instruction count.
 
-`make host-tests` exercises consent, cancellation, failed starts, queued apps,
-pause/resume, disable, logout and account changes under ASan/UBSan. Set
-`MNOS_TEST_LINUX_GUEST=1` when running `build/desktop-vm` to test actual Linux
-execution through the native GUI on AMD64 and ARM64, including consent buttons,
-the Settings switch and clearing guest files across disable/re-enable.
+RAM defaults to half the available host memory, up to 1 GiB. `linux memory MIB`
+changes the limit while stopped (128 MiB..512 GiB, bounded by available host RAM).
+The host reserves 32 MiB and allocates private pages on demand. For APT/X11, use
+at least 768 MiB guest RAM and a 4 GiB host. A larger limit is not extra physical
+RAM and does not add CPUs. There is one interpreted CPU.
+
+## Device boundary
+
+`guest_devices.c` validates guest physical buffers, sizes and disk offsets.
+Supervisor-only SBI extension `0x09004d4e` provides:
+
+- Read-only bundled SquashFS and the private writable data file, never a raw host disk.
+- Ethernet frames through the original VirtIO 1.0 PCI/MMIO driver. Linux handles
+  TCP/IP and obtains its address through DHCP. Only one guest owns this NIC.
+- Keyboard and absolute pointer events, host CSPRNG entropy and initial time.
+
+Xorg renders to a reserved 1024x768 XRGB framebuffer that the original GUI reads.
+There is no host filesystem passthrough or accelerated 3D. Physical Wi-Fi,
+non-VirtIO NICs and universal hardware compatibility are not implemented here.
+The interpreter is a bounded kernel component, not yet a separately isolated
+native user process; this is not a security certification.
+
+## Validation
+
+`make host-tests` covers integer-only floating point, ISA/MMU/privilege checks,
+SBI buffer boundaries, disk bounds, consent, session changes and RAM wiping under
+ASan/UBSan. `tools/guest-desktop.c` runs the same interpreter/device implementation
+on a development host, using libslirp only as the test NIC. It supports
+`MNOS_GUEST_COMMANDS`, `MNOS_GUEST_INPUT` and `MNOS_GUEST_EVENTS` FIFOs.
+
+Hosted execution is not evidence of a native boot. The release gate is
+`MNOS_TEST_LINUX_GUEST=1 build/desktop-vm build/desktop amd64` and `arm64`:
+install to a new disk, remove the ISO, boot the original kernel, authenticate,
+run signed APT update/install over native VirtIO, open X11, deliver real input,
+shut down and verify package/file persistence. `MNOS_TEST_PROXY` can set a test
+network proxy; no development proxy is baked into the image.
+
+## Sources and licenses
+
+Linux and `mnos_devices.c` use GPL-2.0-only; BusyBox uses GPL-2.0-only; musl uses
+MIT. Native interpreter/device/UI code uses GPL-3.0-or-later. Debian components
+retain `/usr/share/doc/*/copyright`. Preserve source hashes, kernel/BusyBox
+configs, package versions and complete corresponding upstream sources when
+publishing binary releases. The Debian rootfs is upstream software, not a claim
+that the Linux kernel or desktop programs were authored by mnOS.

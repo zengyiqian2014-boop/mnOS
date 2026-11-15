@@ -61,6 +61,8 @@ printf 'root:x:0:\n' > "$SYS/etc/group"
 printf 'mnOS Linux guest\n' > "$SYS/etc/issue"
 (cd "$SYS"; find . -print0 | LC_ALL=C sort -z | cpio --null --reproducible -o -H newc > "$OUT/rootfs.cpio")
 K=$WORK/linux-6.12.114
+install -m644 "$ROOT/guest/mnos_devices.c" "$K/drivers/mnos_devices.c"
+if ! grep -q 'mnos_devices.o' "$K/drivers/Makefile"; then printf '\nobj-y += mnos_devices.o\n' >> "$K/drivers/Makefile"; fi
 # Generate device records without mknod privileges on the build host.
 gcc -std=gnu11 -O2 "$K/usr/gen_init_cpio.c" -o "$WORK/gen-init-cpio"
 printf 'nod /dev/console 0600 0 0 c 5 1\nnod /dev/null 0666 0 0 c 1 3\n' > "$WORK/devices.list"
@@ -72,8 +74,14 @@ for name in 64BIT MMU NONPORTABLE RISCV_SBI RISCV_SBI_V01 SOC_VIRT RISCV_ISA_C \
     PRINTK TTY HVC_RISCV_SBI SERIAL_EARLYCON_RISCV_SBI BLK_DEV_INITRD \
     BINFMT_ELF BINFMT_SCRIPT PROC_FS SYSFS TMPFS DEVTMPFS UNIX NET INET \
     FUTEX EPOLL EVENTFD SIGNALFD TIMERFD POSIX_TIMERS MULTIUSER \
-    SYSVIPC SYSCTL FILE_LOCKING COREDUMP STRICT_KERNEL_RWX STRICT_MODULE_RWX; do cfg+=(-e "$name"); done
-for name in SMP FPU VECTOR RISCV_ISA_V RANDOMIZE_BASE STACKPROTECTOR STRIP_ASM_SYMS; do cfg+=(-d "$name"); done
+    SYSVIPC SYSCTL FILE_LOCKING COREDUMP STRICT_KERNEL_RWX STRICT_MODULE_RWX \
+    FPU BLOCK MISC_FILESYSTEMS EXT4_FS SQUASHFS SQUASHFS_LZ4 OVERLAY_FS TMPFS_XATTR \
+    INOTIFY_USER DNOTIFY NETDEVICES ETHERNET PACKET UNIX98_PTYS \
+    INPUT INPUT_EVDEV VT VT_CONSOLE VT_HW_CONSOLE_BINDING HW_RANDOM \
+    FB FB_SIMPLE FB_DEVICE FRAMEBUFFER_CONSOLE FONT_8x16 FONT_8x8 \
+    CRYPTO CRYPTO_USER_API_HASH CRYPTO_SHA256 CRYPTO_SHA512 \
+    BPF_SYSCALL SECCOMP SECCOMP_FILTER CGROUPS NAMESPACES UTS_NS IPC_NS PID_NS NET_NS; do cfg+=(-e "$name"); done
+for name in SMP VECTOR RISCV_ISA_V RANDOMIZE_BASE STACKPROTECTOR STRIP_ASM_SYMS; do cfg+=(-d "$name"); done
 "$K/scripts/config" "${cfg[@]}" --set-str INITRAMFS_SOURCE "$OUT/rootfs.cpio" --set-val INITRAMFS_ROOT_UID 0 --set-val INITRAMFS_ROOT_GID 0
 make -C "$K" O="$KB" ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- olddefconfig
 make -C "$K" O="$KB" ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- -j"$JOBS" Image

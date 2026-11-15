@@ -6,18 +6,29 @@ permissions:
 jobs:
   native:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
+      - name: Register the build-only RISC-V userspace emulator
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static binfmt-support
+          sudo update-binfmts --enable qemu-riscv64
+          grep -q '^enabled' /proc/sys/fs/binfmt_misc/qemu-riscv64
       - name: Build original host and pinned Linux guest
         run: |
           docker build -t mnos-native-builder -f native/Builder.Dockerfile .
-          docker run --rm -v "$PWD/native:/native" -w /native mnos-native-builder bash -ec '
+          docker run --rm --privileged -v "$PWD/native:/native" -w /native mnos-native-builder bash -ec '
             mkdir -p build
             if ! guest/build.sh > build/guest-source-build.log 2>&1; then
               tail -100 build/guest-source-build.log
               exit 1
             fi
+            if ! bash guest/build-debian.sh > build/debian-rootfs-build.log 2>&1; then
+              tail -100 build/debian-rootfs-build.log
+              exit 1
+            fi
+            bash guest/fetch-debian-sources.sh > build/debian-sources.log 2>&1
             make host-tests
             bash tests/guest_build.sh
             GUEST=1 installer/build.sh
@@ -27,7 +38,7 @@ jobs:
           set -euo pipefail
           devices=()
           if [ -c /dev/kvm ]; then devices+=(--device /dev/kvm); fi
-          docker run --rm --network none "${devices[@]}" -e MNOS_TEST_LINUX_GUEST=1 \
+          docker run --rm "${devices[@]}" -e MNOS_TEST_LINUX_GUEST=1 \
             -v "$PWD/native:/native" -w /native mnos-native-builder bash -ec '
             set -o pipefail
             for arch in amd64 arm64; do
@@ -40,17 +51,19 @@ jobs:
           for arch in amd64 arm64; do
             grep -q "NATIVE LINUX GUEST PASS $arch" "native/build/desktop/guest-validation-$arch.log"
             grep -q "DESKTOP PASS $arch" "native/build/desktop/guest-validation-$arch.log"
-            cp "native/build/desktop/mnOS-0.4-desktop-installer-$arch.iso" "release/mnOS-native-0.5-preview.2-$arch.iso"
+            cp "native/build/desktop/mnOS-0.4-desktop-installer-$arch.iso" "release/mnOS-native-linux-apps-preview-$arch.iso"
           done
           cp native/build/guest/{SOURCES.sha256,linux.config,busybox.config} release/
+          cp native/build/guest/DEBIAN-PACKAGES.tsv release/
           cp native/guest/README.md release/GUEST_BUILD.md
           cp EDITIONS.md EDITIONS.zh.md release/
           printf '%s\n' "$GITHUB_SHA" > release/SOURCE_COMMIT.txt
           printf 'Validation: https://github.com/%s/actions/runs/%s\n' "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > release/PROVENANCE.txt
           tar -C native/build/guest-source -cf release/linux-guest-upstream-sources.tar linux-6.12.114.tar.xz busybox-1.37.0.tar.bz2 musl-1.2.5.tar.gz
+          tar -C native/build/debian-sources -cf release/debian-corresponding-sources.tar .
           git archive --format=tar.gz -o release/mnos-native-source.tar.gz HEAD native EDITIONS.md EDITIONS.zh.md LICENSE .github/workflows/native-linux-guest.yml
           (cd native/build/desktop && tar -czf ../../../release/native-installation-validation.tar.gz -- *.log *-linux-guest*.ppm *-support.ppm)
-          (cd release && sha256sum *.iso *.tar *.tar.gz *.config *.txt *.md SOURCES.sha256 > SHA256SUMS && sha256sum -c SHA256SUMS)
+          (cd release && sha256sum *.iso *.tar *.tar.gz *.config *.txt *.md *.tsv SOURCES.sha256 > SHA256SUMS && sha256sum -c SHA256SUMS)
       - uses: actions/upload-artifact@v4
         if: always()
         with:

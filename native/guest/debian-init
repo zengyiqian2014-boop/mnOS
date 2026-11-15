@@ -1,0 +1,22 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# This init belongs to the isolated Linux guest. Host login gates all access.
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin TERM=dumb HOME=/root
+B=/usr/local/lib/mnos/busybox
+$B mount -t tmpfs -o mode=1777,nosuid,nodev tmpfs /tmp
+mkdir -p /run/lock /run/dbus /dev/pts /root
+$B mount -t devpts devpts /dev/pts 2>/dev/null || true
+$B hostname mnos-linux-guest
+if [ ! -s /etc/machine-id ]; then dbus-uuidgen > /etc/machine-id; fi
+dbus-daemon --system --fork
+ip link set lo up
+if [ -d /sys/class/net/eth0 ]; then
+    ip link set eth0 up
+    $B udhcpc -i eth0 -s /usr/local/lib/mnos-dhcp -b -R > /run/mnos-dhcp.log 2>&1 &
+fi
+printf '\nmnOS Linux guest / Debian riscv64 / APT / X11\n'
+printf 'apt update; apt install PACKAGE; startx\n'
+printf 'Guest root has no host root privileges. Use poweroff before disabling.\n'
+printf 'Linux applications use interpreted RV64GC; AMD64/ARM64 DEBs are different architectures.\n\n'
+export PS1='linux-guest# '
+while :; do $B setsid $B cttyhack /bin/bash --noprofile --rcfile /etc/mnos-shellrc; done

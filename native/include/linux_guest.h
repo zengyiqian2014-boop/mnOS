@@ -16,4 +16,7 @@ const char *linux_guest_status(void);
 const char *linux_guest_line(unsigned);
 unsigned linux_guest_lines(void);
 uint64_t linux_guest_instructions(void);
+bool linux_guest_graphical(void);
+bool linux_guest_pixels(unsigned row,uint32_t *pixels,unsigned width);
+void linux_guest_pointer(unsigned x,unsigned y,bool pressed);
 #endif

@@ -22,6 +22,8 @@ int main(void) {
     for(unsigned i=0;i<32;i++)assert(ram[GUEST_RAM+i]==0xa5);
     reset(&g,ram);g.x[1]=GUEST_BASE+1;ins(&g,0x0000b103);guest_run(&g,1);assert(g.cause==4);
     reset(&g,ram);g.privilege=0;ins(&g,0x18002173);guest_run(&g,1);assert(g.cause==2); /* U-mode satp read */
+    reset(&g,ram);g.privilege=0;ins(&g,0xc0102773);guest_run(&g,1);assert(g.x[14]==g.time&&!g.stopped); /* vDSO rdtime */
+    g.counteren=0;ins(&g,0xc0102773);guest_run(&g,1);assert(g.cause==2); /* S-mode may revoke access */
     /* Sv39: map virtual 0x400000 to a user RX page. The hardware-set A bit
      * must appear; a store through it must fault even after a fetch TLB hit. */
     reset(&g,ram);
@@ -37,6 +39,30 @@ int main(void) {
     reset(&g,ram);g.ie=32;g.deadline=2;ins(&g,0x10500073);
     unsigned char wake[]={0x93,0x00,0x70,0x00};assert(guest_copy(&g,g.pc+4,wake,4));
     guest_run(&g,2);assert(!g.waiting&&g.x[1]==7); /* WFI wake even with SIE=0 */
+    /* A slower interpreter must not slow wall time or advance it on input. */
+    reset(&g,ram);g.external_time=1;g.yield_on_idle=1;g.time=100;g.ie=32;g.deadline=110;
+    ins(&g,0x10500073);assert(guest_copy(&g,g.pc+4,wake,4));guest_run(&g,10);
+    assert(g.waiting&&g.time==100&&g.retired==1);
+    guest_run(&g,10);assert(g.waiting&&g.time==100&&g.retired==1);
+    g.time=110;guest_run(&g,1);assert(!g.waiting&&g.time==110&&g.x[1]==7);
+    /* Real F/D encodings, NaN boxing, CSR state and compressed stack forms. */
+    reset(&g,ram);g.status=1u<<13;g.f[1]=0x3ff8000000000000ULL;g.f[2]=0x4004000000000000ULL;
+    ins(&g,(1u<<25)|(2u<<20)|(1u<<15)|(3u<<7)|0x53);guest_run(&g,1);
+    assert(g.f[3]==0x4010000000000000ULL&&((g.status>>13)&3)==3&&(g.status>>63)); /* 1.5+2.5 */
+    ins(&g,(0x61u<<25)|(2u<<20)|(3u<<15)|(4u<<7)|0x53);guest_run(&g,1);assert(g.x[4]==4); /* fcvt.l.d */
+    g.x[5]=GUEST_BASE+0x5000;put64(ram+0x5000,0x4024000000000000ULL);
+    ins(&g,(5u<<15)|(3u<<12)|(6u<<7)|7);guest_run(&g,1);assert(g.f[6]==0x4024000000000000ULL);
+    ins(&g,(6u<<20)|(5u<<15)|(3u<<12)|0x27);guest_run(&g,1); /* fsd */
+    g.f[1]=0x3f800000;g.f[2]=0xffffffff3f800000ULL;
+    ins(&g,(2u<<20)|(1u<<15)|(3u<<7)|0x53);guest_run(&g,1);
+    assert(g.f[3]==0xffffffff7fc00000ULL); /* unboxed binary32 is canonical NaN */
+    g.x[1]=3;ins(&g,(2u<<20)|(1u<<15)|(1u<<12)|0x73);guest_run(&g,1);assert(g.fcsr==96); /* frm */
+    g.f[1]=0x3ff0000000000000ULL;g.f[2]=0;
+    ins(&g,(0x0du<<25)|(2u<<20)|(1u<<15)|(3u<<7)|0x53);guest_run(&g,1);assert((g.fcsr&31)==8);
+    g.x[2]=GUEST_BASE+0x5000;
+    unsigned char fldsp[]={0x82,0x23}; /* c.fldsp f7,0(sp) */
+    assert(guest_copy(&g,g.pc,fldsp,2));guest_run(&g,1);assert(g.f[7]==0x4024000000000000ULL);
+    g.status=0;ins(&g,(1u<<25)|(2u<<20)|(1u<<15)|(3u<<7)|0x53);guest_run(&g,1);assert(g.cause==2);
     /* Deterministic malformed instructions stay inside the checked machine. */
     uint32_t r=0x496e7374;
     for(unsigned k=0;k<10000;k++) {

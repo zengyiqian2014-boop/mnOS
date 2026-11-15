@@ -3,7 +3,9 @@
 .macro be32 value
 .byte ((\value) >> 24)&255, ((\value) >> 16)&255, ((\value) >> 8)&255, (\value)&255
 .endm
-.global linux_image_start, linux_image_end, linux_dtb_start, linux_dtb_end
+.global linux_image_start, linux_image_end, linux_dtb_start, linux_dtb_end, linux_root_start, linux_root_end
+linux_root_start:
+linux_root_end:
 linux_image_start:
 .byte 1,2,3,4,5,6,7,8
 linux_image_end:

@@ -5,10 +5,9 @@ cd "$(dirname "$0")/.."
 FLAVOR=${FLAVOR:-full}
 export FLAVOR
 case "$FLAVOR" in full) suffix='' ;; lite) suffix='-lite' ;; *) exit 2 ;; esac
-make -j4 GUEST="${GUEST:-0}" all
-make -f arch/arm64/Makefile -j4 GUEST="${GUEST:-0}" all
+make -j4 GUEST="${GUEST:-0}" build/desktop/kernel-x86_64.elf
+make -f arch/arm64/Makefile -j4 GUEST="${GUEST:-0}" build/arm64/BOOTAA64.EFI
 mkdir -p build/desktop/amd64 build/desktop/arm64
-make GUEST="${GUEST:-0}" build/desktop/kernel-x86_64.elf
 flags='-O2 -ffreestanding -fno-builtin -fno-stack-protector -mno-stack-arg-probe -fshort-wchar -mgeneral-regs-only -Wall -Wextra -Werror -Wno-misleading-indentation -Iarch/arm64/freestanding -Iinclude'
 clang-19 --target=x86_64-unknown-windows $flags -c arch/x86_64/efi.c -o build/desktop/amd64/loader.obj
 clang-19 --target=x86_64-unknown-windows $flags -c src/string.c -o build/desktop/amd64/string.obj
@@ -26,23 +25,28 @@ for arch in amd64 arm64; do
     clang-19 --target="$target" -DPAYLOAD="\"build/desktop/$arch/$efi\"" -c installer/payload.S -o "build/desktop/$arch/payload.obj"
     lld-link-19 /subsystem:efi_application /entry:efi_main /nodefaultlib /machine:$machine "/out:build/desktop/$arch/INSTALL.EFI" $objects "build/desktop/$arch/payload.obj"
     work=$(mktemp -d)
-    mkdir -p "$work/iso/EFI/BOOT"
+    mkdir -p "$work/iso/boot"
     mkdir -p "$work/iso/licenses"
     cp vendor/README.md "$work/iso/licenses/THIRD_PARTY.md"
     cp vendor/monocypher/LICENCE.md "$work/iso/licenses/Monocypher-LICENCE.md"
     cp vendor/qrcodegen/qrcodegen.h "$work/iso/licenses/QR-Code-Generator-NOTICE.h"
     cp assets/*LICENSE.txt "$work/iso/licenses/"
-    cp "build/desktop/$arch/INSTALL.EFI" "$work/iso/EFI/BOOT/$efi"
     # The native edition embeds its Linux guest. Size the ISO's boot partition
     # from the actual installer payload instead of silently exceeding 16 MiB.
     bytes=$(wc -c < "build/desktop/$arch/INSTALL.EFI")
     size=$(( (bytes + 8 * 1024 * 1024 + 1048575) / 1048576 ))
-    truncate -s "${size}M" "$work/esp.img"
-    mkfs.vfat "$work/esp.img" >/dev/null
-    mmd -i "$work/esp.img" ::EFI ::EFI/BOOT
-    mcopy -i "$work/esp.img" "build/desktop/$arch/INSTALL.EFI" "::EFI/BOOT/$efi"
+    esp="$work/iso/boot/efi.img"
+    truncate -s "${size}M" "$esp"
+    mkfs.vfat "$esp" >/dev/null
+    mmd -i "$esp" ::EFI ::EFI/BOOT
+    mcopy -i "$esp" "build/desktop/$arch/INSTALL.EFI" "::EFI/BOOT/$efi"
     printf '%s\n' "$FLAVOR" > "$work/iso/FLAVOR.txt"
-    xorriso -as mkisofs -quiet -R -J -V MNOS_DESKTOP -append_partition 2 0xef "$work/esp.img" -appended_part_as_gpt -e '--interval:appended_partition_2:all::' -no-emul-boot -o "build/desktop/mnOS-0.4-desktop-installer$suffix-$arch.iso" "$work/iso"
+    # Large EFI images have an El Torito sector count of zero. EDK2 then
+    # derives their extent from the ISO volume size. An appended partition is
+    # outside that extent and appears empty. Keep the ESP *inside* the ISO,
+    # and point its GPT entry at the same bytes for USB/disk boot as well.
+    xorriso -as mkisofs -quiet -R -J -V MNOS_DESKTOP -e boot/efi.img -no-emul-boot -efi-boot-part --efi-boot-image --protective-msdos-label -o "build/desktop/mnOS-0.4-desktop-installer$suffix-$arch.iso" "$work/iso"
     rm -r "$work"
+    rm -f "build/desktop/$arch/payload.obj"
 done
 (cd build/desktop && sha256sum mnOS-*.iso > SHA256SUMS)

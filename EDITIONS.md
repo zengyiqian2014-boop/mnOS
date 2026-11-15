@@ -1,93 +1,56 @@
-# Two mnOS editions
+# mnOS editions
 
-[中文说明](EDITIONS.zh.md)
+[中文](EDITIONS.zh.md)
 
 | | Native Edition | Linux Edition |
 | --- | --- | --- |
-| Host kernel | Original freestanding C/assembly mnOS | Debian's maintained Linux kernel |
-| Desktop | Original framebuffer windows, launcher, files, editor, terminal and settings | Xfce with mnOS C/C++ tool and management centers |
-| Installation | Graphical UEFI installer, MNFS; AMD64 and ARM64 media | Offline installer, ext4; AMD64 and ARM64 media |
-| Linux applications | Bundled Linux 6.12 guest inside the original C RV64IMAC/Sv39 interpreter | Native Linux binaries for the machine architecture |
-| Commands | Native kernel/account/file/process commands plus the guest's BusyBox utilities | GNU/Linux commands, package manager, development and CTF tools |
-| Management | `system`, `kernel`, `linux`, original Settings/Monitor windows | `mnos-admin`, `kernel`, management center and existing system managers |
+| Host kernel | Original C/assembly mnOS | Debian Linux |
+| Desktop | Original framebuffer GUI | Xfce with mnOS C/C++ management tools |
+| Installer | UEFI, MNFS; AMD64 and ARM64 | Offline Linux installer, ext4; AMD64 and ARM64 |
+| Linux apps | Optional Debian riscv64 guest in the original interpreter | Programs built for the physical CPU architecture |
+| Packages | APT and riscv64/all DEBs inside the guest | APT and native AMD64/ARM64 DEBs |
 
-The Native Edition **boots the original mnOS kernel**. Its Linux window executes
-a separate Linux guest kernel and actual Linux user programs; it neither boots
-the host into Linux nor forwards commands to a hidden Linux host. Its interpreter,
-virtual memory translation, instruction decoder, SBI interface and desktop
-integration are original C code. Linux, BusyBox, musl and compiler runtime inside
-the guest are upstream components with their own licenses.
+The native host is not Linux. Its optional compatibility environment contains a
+real Linux kernel and Debian applications, executed by the original RV64GC/Sv39
+software CPU. It supports X11 framebuffer applications, keyboard/pointer input,
+VirtIO Ethernet and a private persistent disk. This implementation is in the
+current source; old USB-only preview ISOs do not acquire it automatically.
+See the exact release manifest and [guest build/use guide](native/guest/README.md).
 
-The guest has one emulated RV64IMAC CPU with Sv39 and S/U modes. RAM defaults
-to half the available host memory, capped at 1 GiB, with a 32 MiB host reserve.
-`linux memory MIB` selects a different limit before startup (128 MiB to 512 GiB,
-subject to available host RAM); `linux memory auto` restores automatic selection.
-Private pages are allocated as used, and wiped and returned to the host on stop.
-Its Linux ABI is RV64IMAC/LP64; arbitrary AMD64/ARM64 Linux binaries, floating-point
-ISA, vectors and graphical Linux applications are **not supported**. BusyBox's
-compiled command inventory includes commands whose devices/services are absent;
-the inventory is not a claim that every operation works. Files, text pipelines,
-process queries, checksums and shell applications are the initial tested scope.
-There is no network adapter, GPU, host filesystem, disk or device passthrough.
-Guest files are temporary and disappear on restart/stop or host account changes.
-The emulator runs as a bounded, cooperatively serviced native kernel component;
-it is not yet isolated in a separate native user process. This is an experimental
-execution boundary, not a security certification.
+Linux simulation is off by default. `linux open desktop` requests permission and
+opens X11; `linux start` requests the console. F5 returns to the host terminal.
+`linux apps` lists launchers, `linux status` shows the real state and RAM use.
+Use `apt update`, `apt install PACKAGE` and `apt list --installed` inside Linux.
+Use a graphical Xterm for full-screen programs such as nano. The host serial
+console is line-oriented. `help` is English and `help -cn` is Chinese.
 
-Firefox, official VS Code, Wireshark, GHex, SQLite Browser, Nmap, GDB, Pwntools,
-SQLmap and other full desktop/CTF tools are in **Linux Edition**. They do not run
-inside the initial native Linux guest. Python is present only where third-party
-tools need it. Our new implementation is C/C++/assembly with shell build scripts.
+The installed host saves each user's Linux packages/files in a private sparse
+8 GiB data file. Run `poweroff` in the guest before disabling it; forced stop is
+like a power cut. `linux stop` wipes RAM but retains that disk. `linux pause` and
+`linux resume` retain the running state. Closing a window leaves jobs running;
+logout disables simulation. No host directory or raw block device is shared.
+The interpreter currently runs as a bounded native kernel component, not a
+separate native user process; it is not a certified security boundary.
 
-Both editions target their documented VM and firmware/device configurations,
-not every physical computer. Native device support remains narrower than Linux.
-ARM64 QEMU `virt`/UEFI is the test target; Apple Virtualization.framework and
-arbitrary Apple Silicon boards are not claimed supported.
+There is one interpreted CPU, no hardware virtualization, vector ISA or 3D
+acceleration. RAM is configurable before startup with `linux memory MIB` or
+`linux memory auto`, subject to available host memory. For APT/X11 use at least
+768 MiB guest RAM and a 4 GiB host. Software interpretation has substantial
+CPU overhead; this is not yet a high-performance production server system.
 
-## Native operation
+A DEB's architecture still matters: official AMD64/ARM64 VS Code packages cannot
+run in a riscv64 guest. Linux Edition contains official VS Code, Firefox and the
+broader CTF workbench for its CPU architecture. Those applications are not
+claimed compatible with the native guest until individually tested. Third-party
+Python dependencies remain only where their tools require them; mnOS code is
+C/C++/assembly with shell build scripts.
 
-**Linux simulation is off by default.** Open **Linux 模拟** from the launcher,
-or run `linux open system` in the host Terminal. The dialog **是否开启 Linux 模拟？**
-asks for consent: Enter enables and opens the selected application; Esc cancels
-without starting the guest. While enabled, opening another supported Linux
-application does not ask again. Approval applies only to the current login.
+Tested device configurations are documented per release. ARM64 QEMU virt/UEFI is
+not equivalent to Apple Virtualization.framework or all ARM boards. Physical
+Wi-Fi/NIC/GPU support remains narrower in the original native kernel than Linux.
 
-F7 opens Settings. Click **Linux 模拟 / L**, or press L, to turn it off immediately
-and clear its RAM and temporary files. Logging out, switching host accounts or
-rebooting also leaves simulation off. Closing its window only hides it.
-`linux apps` lists console launchers: `terminal`, `files`, `processes`, `system`,
-`commands`. `linux open APP` waits for the real guest shell before running the
-selected program. `linux start`/`enable` request the terminal, `status` queries
-state, `pause`/`resume` preserve RAM, `stop`/`disable` clear it, and `restart`
-discards it. Starting or resuming an off guest always asks permission.
-F5 returns to the host Terminal; `help linux` and `help -cn linux` explain the controls.
-The guest window is a UTF-8 line console (`TERM=dumb`), not a full ANSI terminal.
-Use line-oriented commands and batch output (for example `top -b -n 1`);
-interactive full-screen editors and cursor-addressed applications are not yet
-supported by this display. Native Edition's own editor remains available.
-`system status`, `system processes`, `system storage`, `system guest` report
-the real host services. `help` is English; `help -cn` is Chinese. The guest has
-its own `help`, `help -cn`, `busybox --list` and `COMMAND --help`.
-
-## Linux operation
-
-Open **mnOS System Management** for services, accounts, disks, network, logs,
-updates, security, kernel settings and tools. `mnos-admin help` and
-`mnos-admin help -cn` describe the CLI. `mnos-center --list-commands` exports the
-actual installed command index. Queries use the current account; root-required
-changes request or require normal authentication. No directory-name convention
-or wrapper grants implicit root.
-
-## Build and evidence
-
-Native guest source archives have pinned SHA256 hashes in `native/guest/build.sh`.
-Build with the native builder, run that script, then run
-`GUEST=1 native/installer/build.sh`. `MNOS_TEST_LINUX_GUEST=1` enables actual
-Linux-in-native tests in `native/tests/desktop_vm.cpp`. Host ASan/UBSan tests
-cover emulator bounds, malformed instructions, Sv39 permissions, privilege
-checks and interrupts; VM tests must additionally execute real guest commands.
-The guest licenses/configs/source checksums accompany its release.
-
-Linux builds default to `EDITION=linux ./live/build.sh installer amd64` (or
-`arm64` on an ARM64 runner). The old combined boot layout is only available with
-explicit `EDITION=combined`; it is not the native guest runtime.
+Linux Edition's management center and `mnos-admin help` / `help -cn` cover
+services, accounts, storage, network, logs and updates. Queries use ordinary
+permissions; changes that require root explicitly authenticate. Native commands
+use real host services through `system`, `kernel` and Settings. `support` lists
+report.mnos@proton.me and wrmfwv@163.com; reports are never sent automatically.

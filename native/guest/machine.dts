@@ -5,11 +5,22 @@
     model = "mnOS original software Linux machine";
     chosen { bootargs = "console=hvc0 earlycon=sbi rdinit=/init loglevel=5 nokaslr"; };
     memory@80000000 { device_type = "memory"; reg = <0 0x80000000 0 0x4000000>; };
+    reserved-memory {
+        #address-cells = <2>; #size-cells = <2>; ranges;
+        framebuffer@84000000 { reg = <0 0x84000000 0 0x300000>; no-map; };
+    };
+    framebuffer@84000000 {
+        compatible = "simple-framebuffer"; reg = <0 0x84000000 0 0x300000>;
+        width = <1024>; height = <768>; stride = <4096>; format = "x8r8g8b8";
+        status = "okay";
+    };
     cpus {
         #address-cells = <1>; #size-cells = <0>; timebase-frequency = <10000000>;
         cpu@0 {
             device_type = "cpu"; reg = <0>; status = "okay";
-            compatible = "riscv"; riscv,isa = "rv64imac"; mmu-type = "riscv,sv39";
+            compatible = "riscv"; riscv,isa = "rv64imafdc_zicsr_zifencei"; mmu-type = "riscv,sv39";
+            riscv,isa-base = "rv64i";
+            riscv,isa-extensions = "i", "m", "a", "f", "d", "c", "zicsr", "zifencei", "zicntr";
             interrupt-controller { #interrupt-cells = <1>; interrupt-controller; compatible = "riscv,cpu-intc"; };
         };
     };

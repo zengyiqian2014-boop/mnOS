@@ -71,6 +71,22 @@ int main(void) {
     fail_write = false;
     assert(disk_install_boot(&io, payload, sizeof payload, true, guid, NULL));
     assert(!memcmp(data + 2 * 512 + 64, "BOOTAA64EFI", 11));
+    /* A bundled distribution exceeds the old 32 MiB limit. Verify the actual
+     * FAT chain, data partition and every payload byte after ESP growth. */
+    size_t large_size=80u*1024u*1024u+31;uint8_t *large=malloc(large_size);assert(large);
+    for(size_t i=0;i<large_size;i++)large[i]=(uint8_t)(i*37+(i>>20));
+    struct disk_boot_plan plan;assert(disk_plan_boot(large_size,&plan));
+    assert(plan.esp_sectors==256u*1024u&&plan.fat_sectors==2048);
+    assert(disk_install_boot(&io,large,large_size,false,guid,NULL));
+    assert(disk_data_partition(&io,&start,&len)&&start==plan.data_start);
+    assert(!memcmp(disk+plan.payload_start*512,large,large_size));
+    assert(u32(esp+32)==plan.esp_sectors&&u32(esp+36)==plan.fat_sectors);
+    assert(!memcmp(fat,fat+plan.fat_sectors*512,plan.fat_sectors*512));
+    unsigned last=(unsigned)((large_size+511)/512)+4;
+    assert(u32(fat+last*4)==0x0fffffff&&u32(fat+(last-1)*4)==last);
+    before=writes;io.sectors=plan.data_start+32767;
+    assert(!disk_install_boot(&io,large,large_size,false,guid,NULL)&&writes==before);
+    assert(!disk_plan_boot(0,&plan)&&!disk_plan_boot((size_t)(1u<<30)+1,&plan));free(large);
     free(disk);
     puts("disk layout: GPT CRC/bounds, duplicate FATs, payload, architecture path and write "
          "failure passed");

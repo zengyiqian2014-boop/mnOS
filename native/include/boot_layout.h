@@ -2,6 +2,6 @@
 #ifndef MNOS_BOOT_LAYOUT_H
 #define MNOS_BOOT_LAYOUT_H
 /* Loader validation and initial 4 KiB W^X mappings must cover the SAME range.
- * The bundled guest pushes the UEFI-linked image beyond the old 64 MiB end. */
-#define MNOS_BOOT_LIMIT (128ULL * 1024 * 1024)
+ * The bundled Debian filesystem requires space beyond the old 128 MiB end. */
+#define MNOS_BOOT_LIMIT (1024ULL * 1024 * 1024)
 #endif

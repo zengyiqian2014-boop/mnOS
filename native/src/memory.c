@@ -5,9 +5,11 @@
 #define NX (1ULL << 63)
 #define ADDRESS 0x000ffffffffff000ULL
 #define DIRECT 0xffff800000000000ULL
+#define MMIO_START 0xffffe10000000000ULL
+#define MMIO_END 0xffffe20000000000ULL
 static struct phys_allocator physical;
 static bool direct_ready, huge_gigabyte;
-static uint64_t mmio_next=0xffffe10000000000ULL;
+static uint64_t mmio_next=MMIO_START;
 static unsigned physical_bits;
 static unsigned physical_lock, virtual_lock;
 static uint64_t kernel_pdpt, virtual_next = 0xffffc00000000000ULL;
@@ -114,11 +116,11 @@ void *kernel_alloc(size_t bytes) {
     spin_unlock(&virtual_lock, flags);
     return (void *)start;
 }
-/* Created during single-CPU device initialization, before task roots clone
- * the kernel mapping. MMIO is uncached, supervisor-only and non-executable. */
+/* Task roots share the MMIO subtree established by memory_init. New devices
+ * may be opened after login; leaves remain supervisor-only, uncached and NX. */
 void *memory_map_device(uint64_t address,size_t bytes) {
     if(address<PAGE||!bytes||bytes>(256ULL<<20)||address>=physical.limit||bytes>physical.limit-address)return NULL;
-    uint64_t offset=address&(PAGE-1),start=mmio_next;
+    uint64_t offset=address&(PAGE-1);
     bytes=(bytes+offset+PAGE-1)&~(PAGE-1);address&=~(PAGE-1);
     if(bytes>physical.limit-address)return NULL;
     if(address<(uint64_t)kernel_end)return NULL;
@@ -132,9 +134,11 @@ void *memory_map_device(uint64_t address,size_t bytes) {
     for(size_t i=0;i<physical.count;++i)
         if(address<physical.ranges[i].end&&address+bytes>physical.ranges[i].start)return NULL;
     uint64_t length=bytes;
-    if(length>(1ULL<<32)||mmio_next>0xffffe20000000000ULL-length)return NULL;
+    if(length>(1ULL<<32))return NULL;
+    uint64_t flags=spin_lock(&virtual_lock),start=mmio_next;
+    if(mmio_next>MMIO_END-length-PAGE){spin_unlock(&virtual_lock,flags);return NULL;}
     for(uint64_t n=0;n<length;n+=PAGE)map_leaf(start+n,(address&~(PAGE-1))+n,PAGE,3|NX|0x18);
-    mmio_next+=length+PAGE;return (void *)(start+offset);
+    mmio_next+=length+PAGE;spin_unlock(&virtual_lock,flags);return (void *)(start+offset);
 }
 void memory_protect_low(uint64_t address, bool executable) {
     if (address % PAGE || address >= MNOS_BOOT_LIMIT) panic("invalid bootstrap page protection");
@@ -218,6 +222,10 @@ void memory_init(void) {
     kernel_pml4 = page_alloc();
     kernel_pdpt = page_alloc();
     table(kernel_pml4)[0] = kernel_pdpt | 3;
+    /* Copying an empty PML4 slot into a task would hide later device mappings
+     * from that task. Establish shared parents before any task root exists. */
+    for(uint64_t at=MMIO_START;at<MMIO_END;at+=1ULL<<39)
+        (void)child(table(kernel_pml4),(at>>39)&511);
     for (unsigned gig = 0; gig < 4; ++gig) {
         uint64_t pd = page_alloc();
         table(kernel_pdpt)[gig] = pd | 3;

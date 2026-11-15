@@ -2,6 +2,7 @@
 /* mnOS software machine, implemented against the RISC-V unprivileged ISA,
  * privileged ISA (Sv39/S-mode) and SBI specifications. No borrowed emulator. */
 #include "guest.h"
+#include "guest_float.h"
 #include <string.h>
 #define BIT(n) (UINT64_C(1) << (n))
 #define SIE BIT(1)
@@ -9,6 +10,8 @@
 #define SPP BIT(8)
 #define SUM BIT(18)
 #define MXR BIT(19)
+#define FS (BIT(13)|BIT(14))
+static void float_dirty(struct guest *g) { g->status|=FS|BIT(63); }
 static uint64_t sx(uint64_t x, unsigned bits) {
     uint64_t sign = BIT(bits - 1);
     return (x ^ sign) - sign;
@@ -18,6 +21,9 @@ void guest_flush(struct guest *g) { memset(g->tlb, 0, sizeof g->tlb); }
 void guest_init(struct guest *g, uint8_t *ram, size_t size) {
     memset(g, 0, sizeof *g); g->ram = ram; g->ram_size = size;
     g->pc = GUEST_BASE + GUEST_LOAD; g->privilege = 1;
+    /* Firmware handoff permits cycle/time/instret in U-mode. Linux's vDSO
+     * reads time directly; S-mode can subsequently restrict these CSRs. */
+    g->counteren=7;
     g->deadline = UINT64_MAX; g->reservation = UINT64_MAX;
     /* The boot blob lives at a fixed address below 64 MiB even when RAM is
      * enlarged. A larger limit must not move a1 away from the loaded DTB. */
@@ -42,11 +48,31 @@ bool guest_copy(struct guest *g, uint64_t p, const void *src, size_t n) {
     }
     return true;
 }
+bool guest_read(struct guest *g,uint64_t p,void *destination,size_t n) {
+    if(p<GUEST_BASE||p-GUEST_BASE>g->ram_size||n>g->ram_size-(p-GUEST_BASE))return false;
+    uint8_t *out=destination;
+    while(n){size_t count=4096-(p&4095);if(count>n)count=n;
+        uint8_t *source=physical(g,p,count);if(!source)return false;
+        memcpy(out,source,count);p+=count;out+=count;n-=count;}
+    return true;
+}
 static uint64_t le(const uint8_t *p, unsigned n) {
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    /* Guest alignment and bounds were checked before this load. Explicit
+     * builtins also inline in a freestanding -fno-builtin host kernel. */
+    if(n==8){uint64_t v;__builtin_memcpy(&v,p,8);return v;}
+    if(n==4){uint32_t v;__builtin_memcpy(&v,p,4);return v;}
+    if(n==2){uint16_t v;__builtin_memcpy(&v,p,2);return v;}
+#endif
     uint64_t v = 0; for (unsigned i = 0; i < n; i++) v |= (uint64_t)p[i] << (8*i);
     return v;
 }
 static void put(uint8_t *p, unsigned n, uint64_t v) {
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    if(n==8){__builtin_memcpy(p,&v,8);return;}
+    if(n==4){uint32_t word=(uint32_t)v;__builtin_memcpy(p,&word,4);return;}
+    if(n==2){uint16_t half=(uint16_t)v;__builtin_memcpy(p,&half,2);return;}
+#endif
     for (unsigned i = 0; i < n; i++) p[i] = (uint8_t)(v >> (8*i));
 }
 static void trap(struct guest *g, uint64_t cause, uint64_t value) {
@@ -69,7 +95,9 @@ static bool translate(struct guest *g, uint64_t va, unsigned access, uint64_t *p
     if (!mode) { *pa = va; return true; }
     if (mode != 8 || sx(va & (BIT(39)-1), 39) != va) goto fault;
     uint64_t tag = (va >> 12) * 4 + access;
-    struct guest_tlb *t = &g->tlb[(va >> 12) & 255];
+    /* Reads and writes of one page must not evict each other. Keep distinct
+     * access tags so a cached read can never grant write/execute permission. */
+    struct guest_tlb *t = &g->tlb[((va >> 12)*3+access) & 255];
     if (t->valid && t->tag == tag) { *pa = t->physical | (va & 4095); return true; }
     uint64_t table = (g->satp & (BIT(44)-1)) << 12;
     for (int level = 2; level >= 0; level--) {
@@ -88,6 +116,10 @@ static bool translate(struct guest *g, uint64_t va, unsigned access, uint64_t *p
             put(entry, 8, pte | 64 | (access == 2 ? 128 : 0));
             *pa = (ppn << 12) | (va & (BIT(12+9*level)-1));
             t->valid = 1; t->tag = tag; t->physical = *pa & ~UINT64_C(4095);
+            /* Private RAM pages are stable until guest teardown. Cache only a
+             * bounds-checked page pointer, with the same access/privilege tag.
+             * This avoids three sparse-map lookups on every instruction. */
+            t->pointer=physical(g,t->physical,4096);
             return true;
         }
         if (pte & (16 | 64 | 128)) goto fault;
@@ -100,10 +132,28 @@ static bool memory(struct guest *g, uint64_t addr, unsigned n, unsigned access, 
     if (addr & (n-1)) { trap(g, access == 0 ? 0 : access == 1 ? 4 : 6, addr); return false; }
     uint64_t pa;
     if (!translate(g, addr, access, &pa)) return false;
-    uint8_t *p = physical(g, pa, n);
+    uint8_t *p;
+    if((g->satp>>60)==8){struct guest_tlb *t=&g->tlb[((addr>>12)*3+access)&255];p=t->pointer?t->pointer+(pa&4095):NULL;}
+    else p=physical(g,pa,n);
     if (!p) { trap(g, access == 0 ? 1 : access == 1 ? 5 : 7, addr); return false; }
     if (access == 2) { put(p, n, *value); g->reservation = UINT64_MAX; }
     else *value = le(p, n);
+    return true;
+}
+static bool instruction(struct guest *g,uint32_t *raw,unsigned *size) {
+    uint64_t pa;if(g->pc&1){trap(g,0,g->pc);return false;}
+    if(!translate(g,g->pc,0,&pa))return false;
+    uint8_t *p;
+    if((g->satp>>60)==8){struct guest_tlb *t=&g->tlb[((g->pc>>12)*3)&255];p=t->pointer?t->pointer+(pa&4095):NULL;}
+    else p=physical(g,pa,2);
+    if(!p){trap(g,1,g->pc);return false;}
+    *raw=(uint32_t)le(p,2);*size=2;
+    if((*raw&3)==3){
+        uint64_t high;
+        if((pa&4095)<=4092&&g->ram_size>=4&&pa>=GUEST_BASE&&pa-GUEST_BASE<=g->ram_size-4)high=le(p+2,2);
+        else if(!memory(g,g->pc+2,2,0,&high))return false;
+        *raw|=(uint32_t)high<<16;*size=4;
+    }
     return true;
 }
 static uint64_t mulhi(uint64_t a, uint64_t b) {
@@ -114,6 +164,13 @@ static uint64_t mulhi(uint64_t a, uint64_t b) {
 }
 static bool csr(struct guest *g, unsigned id, uint64_t *v, bool write) {
     if (((id >> 8) & 3) > g->privilege || (write && (id >> 10) == 3)) return false;
+    if(id>=1&&id<=3) {
+        if(!(g->status&FS))return false;
+        unsigned mask=id==1?31:id==2?7:255,shift=id==2?5:0;
+        if(write){g->fcsr=(g->fcsr&~(mask<<shift))|(((unsigned)*v&mask)<<shift);float_dirty(g);}
+        else *v=(g->fcsr>>shift)&mask;
+        return true;
+    }
     uint64_t *p = NULL;
     switch (id) {
     case 0x100: p=&g->status; break; case 0x104: p=&g->ie; break;
@@ -127,7 +184,8 @@ static bool csr(struct guest *g, unsigned id, uint64_t *v, bool write) {
     default: return false;
     }
     if (!write) { *v = *p; return true; }
-    if (id == 0x100) { *p = (*v & (SIE|SPIE|SPP|SUM|MXR)) | (UINT64_C(2) << 32); guest_flush(g); }
+    if (id == 0x100) { *p = (*v & (SIE|SPIE|SPP|SUM|MXR|FS)) | (UINT64_C(2) << 32);
+        if((*p&FS)==FS)*p|=BIT(63);guest_flush(g); }
     else if (id == 0x180) { if ((*v >> 60) == 0 || (*v >> 60) == 8) *p = *v; guest_flush(g); }
     else if (id == 0x144) *p = (*p & BIT(5)) | (*v & BIT(1));
     else if (id == 0x104) *p = *v & (BIT(1)|BIT(5)|BIT(9));
@@ -148,10 +206,11 @@ static void sbi(struct guest *g) {
         if(fn==0)value=0x02000000;
         else if(fn==1)value=0x4d4e;
         else if(fn==2)value=1;
-        else if(fn==3)value=(a<=8 || a==0x10 || a==0x54494d45 || a==0x53525354);
+        else if(fn==3)value=(a<=8 || a==0x10 || a==0x54494d45 || a==0x53525354 || (a==0x09004d4e && g->device));
         else if(fn>=4 && fn<=6)value=0;
         else error=-2;
-    } else if (ext >= 3 && ext <= 7) { if(ext>=5)guest_flush(g); }
+    } else if(ext==0x09004d4e && g->device)error=g->device(g,(unsigned)fn,&g->x[10],&value);
+    else if (ext >= 3 && ext <= 7) { if(ext>=5)guest_flush(g); }
     else error=-2;
     g->x[10]=(uint64_t)error;
     if(ext>8)g->x[11]=value;
@@ -165,8 +224,7 @@ static uint32_t r_ins(unsigned op,unsigned rd,unsigned f,unsigned a,unsigned b,u
 static uint32_t s_ins(unsigned f,unsigned a,unsigned b,unsigned imm) {
     return ((imm>>5)<<25)|(b<<20)|(a<<15)|(f<<12)|((imm&31)<<7)|0x23;
 }
-/* Decompress RV64C to the same checked 32-bit execution path. Zero means an
- * illegal/reserved encoding; floating point compressed forms are unsupported. */
+/* Decompress RV64C to the same checked 32-bit execution path. */
 static uint32_t compressed(uint16_t c) {
     unsigned q=c&3,f=c>>13,rd=(c>>7)&31,rs=(c>>2)&31,a=8+((c>>7)&7),b=8+((c>>2)&7);
     uint32_t imm=(uint32_t)sx(((c>>2)&31)|((c>>7)&32),6);
@@ -176,6 +234,8 @@ static uint32_t compressed(uint16_t c) {
         unsigned n=((c>>10)&7)*8+(f==2||f==6?((c>>6)&1)*4+((c>>5)&1)*64:((c>>5)&3)*64);
         if(f==2||f==3)return i_ins(3,b,f, a,n);
         if(f==6||f==7)return s_ins(f-4,a,b,n);
+        if(f==1)return i_ins(7,b,3,a,n);
+        if(f==5)return s_ins(3,a,b,n)|4;
     } else if(q==1) {
         if(f==0)return i_ins(0x13,rd,0,rd,imm);
         if(f==1)return rd?i_ins(0x1b,rd,0,rd,imm):0;
@@ -206,10 +266,10 @@ static uint32_t compressed(uint16_t c) {
         }
     } else if(q==2) {
         if(f==0)return i_ins(0x13,rd,1,rd,imm&63);
-        if(f==2||f==3) {
+        if(f==1||f==2||f==3) {
             unsigned n=f==2?((c>>12)&1)*32+((c>>4)&7)*4+((c>>2)&3)*64:
                 ((c>>12)&1)*32+((c>>5)&3)*8+((c>>2)&7)*64;
-            return rd?i_ins(3,rd,f,2,n):0;
+            return f==1?i_ins(7,rd,3,2,n):rd?i_ins(3,rd,f,2,n):0;
         }
         if(f==4) {
             if(!(c&4096))return rs?r_ins(0x33,rd,0,0,rs,0):rd?i_ins(0x67,0,0,rd,0):0;
@@ -218,16 +278,88 @@ static uint32_t compressed(uint16_t c) {
         }
         if(f==6)return s_ins(2,2,rs,((c>>9)&15)*4+((c>>7)&3)*64);
         if(f==7)return s_ins(3,2,rs,((c>>10)&7)*8+((c>>7)&7)*64);
+        if(f==5)return s_ins(3,2,rs,((c>>10)&7)*8+((c>>7)&7)*64)|4;
     }
     return 0;
 }
+static uint64_t float_source(const struct guest *g,unsigned reg,unsigned bits) {
+    uint64_t value=g->f[reg];
+    if(bits==32)return (value>>32)==UINT32_MAX?(uint32_t)value:UINT64_C(0x7fc00000);
+    return value;
+}
+static void float_result(struct guest *g,unsigned rd,unsigned bits,struct guest_float value) {
+    g->f[rd]=bits==32?(UINT64_C(0xffffffff00000000)|(uint32_t)value.bits):value.bits;
+    g->fcsr|=value.flags;float_dirty(g);
+}
+static bool float_operation(struct guest *g,uint32_t ins,uint64_t *integer,bool *write) {
+    if(!(g->status&FS))return false;
+    unsigned op=ins&127,rd=(ins>>7)&31,fun=(ins>>12)&7,rs1=(ins>>15)&31,rs2=(ins>>20)&31;
+    unsigned format=(ins>>25)&3,bits=(format&1)?64:32,mode=fun==7?(g->fcsr>>5)&7:fun;
+    uint64_t a=float_source(g,rs1,bits),b=float_source(g,rs2,bits),s=BIT(bits-1);
+    struct guest_float result={0};*write=false;
+    if(op!=0x53) {
+        if(format>1||mode>4)return false;
+        uint64_t c=float_source(g,ins>>27,bits);
+        if(op==0x47||op==0x4f)c^=s;
+        if(op==0x4b||op==0x4f)a^=s;
+        result=guest_float_fma(a,b,c,bits,mode);
+    } else {
+        unsigned top=ins>>25,group=top&~1u;
+        bool rounding=group==0||group==4||group==8||group==12||group==44||group==32||group==96||group==104;
+        if(rounding&&mode>4)return false;
+        if(group==0)result=guest_float_add(a,b,bits,mode);
+        else if(group==4)result=guest_float_add(a,b^s,bits,mode);
+        else if(group==8)result=guest_float_mul(a,b,bits,mode);
+        else if(group==12)result=guest_float_div(a,b,bits,mode);
+        else if(group==44){if(rs2)return false;result=guest_float_sqrt(a,bits,mode);}
+        else if(group==16) {
+            if(fun>2)return false;
+            result.bits=(a&~s)|((fun==0?b:fun==1?~b:a^b)&s);
+        } else if(group==20) {
+            if(fun>1)return false;
+            unsigned ac=guest_float_class(a,bits),bc=guest_float_class(b,bits);
+            result.flags=(ac|bc)&256?GF_NV:0;
+            if((ac&768)&&(bc&768))result.bits=bits==32?0x7fc00000:UINT64_C(0x7ff8000000000000);
+            else if(ac&768)result.bits=b;else if(bc&768)result.bits=a;
+            else if(!(a&~s)&&!(b&~s))result.bits=fun?(a&b):(a|b);
+            else {bool less=guest_float_less(a,b,bits);result.bits=fun?(less?b:a):(less?a:b);}
+        } else if(group==32) {
+            if(rs2!=(bits==32?1u:0u))return false;
+            unsigned from=bits==32?64:32;
+            result=guest_float_convert(float_source(g,rs1,from),from,bits,mode);
+        } else if(group==80) {
+            if(fun>2)return false;
+            unsigned ac=guest_float_class(a,bits),bc=guest_float_class(b,bits);
+            bool nan=(ac|bc)&768;
+            if(nan)g->fcsr|=(fun!=2||((ac|bc)&256))?GF_NV:0;
+            bool equal=a==b||(!(a&~s)&&!(b&~s));
+            *integer=!nan&&(fun==2?equal:guest_float_less(a,b,bits)||(fun==0&&equal));
+            *write=true;float_dirty(g);return true;
+        } else if(group==96) {
+            if(rs2>3)return false;
+            result=guest_float_to_int(a,(rs2&1)!=0,rs2<2?32:64,bits,mode);
+            *integer=result.bits;g->fcsr|=result.flags;*write=true;float_dirty(g);return true;
+        } else if(group==104) {
+            if(rs2>3)return false;
+            result=guest_float_from_int(g->x[rs1],(rs2&1)!=0,rs2<2?32:64,bits,mode);
+        } else if(group==112) {
+            if(rs2||fun>1)return false;
+            *integer=fun?guest_float_class(a,bits):(bits==32?word(g->f[rs1]):g->f[rs1]);
+            *write=true;return true;
+        } else if(group==120) {
+            if(rs2||fun)return false;result.bits=g->x[rs1];
+        } else return false;
+    }
+    float_result(g,rd,bits,result);return true;
+}
+
 void guest_run(struct guest *g, unsigned budget) {
     while (budget-- && !g->stopped) {
         /* Native hosts schedule the next timer/input event instead of burning
          * a full interpreter budget while the guest CPU executes WFI. Hosted
          * deterministic harnesses may retain accelerated virtual time. */
         if(g->yield_on_idle&&g->waiting&&!(g->ie&g->ip)&&g->time<g->deadline)break;
-        g->time++; g->retired++;
+        if(!g->external_time)g->time++;g->retired++;
         if(g->time>=g->deadline)g->ip|=BIT(5);
         if((g->ie&g->ip&BIT(5)) && (!g->privilege || (g->status&SIE))) {trap(g,BIT(63)|5,0);continue;}
         if(g->waiting) {
@@ -238,13 +370,9 @@ void guest_run(struct guest *g, unsigned budget) {
             else {if(g->yield_on_idle)break;
                 if(g->deadline!=UINT64_MAX && g->time<g->deadline)g->time=g->deadline;continue;}
         }
-        uint64_t raw=0;
-        if(!memory(g,g->pc,2,0,&raw))continue;
-        unsigned size=2; uint32_t ins;
-        if((raw&3)==3) {
-            uint64_t high=0; if(!memory(g,g->pc+2,2,0,&high))continue;
-            ins=(uint32_t)(raw|(high<<16));size=4;
-        } else ins=compressed((uint16_t)raw);
+        uint32_t raw=0;unsigned size;
+        if(!instruction(g,&raw,&size))continue;
+        uint32_t ins=size==4?raw:compressed((uint16_t)raw);
         uint64_t next=g->pc+size, result=0, a=g->x[(ins>>15)&31], b=g->x[(ins>>20)&31];
         unsigned op=ins&127,rd=(ins>>7)&31,f=(ins>>12)&7,top=ins>>25;
         uint64_t imm=sx(ins>>20,12);bool write=true, bad=false;
@@ -270,6 +398,18 @@ void guest_run(struct guest *g, unsigned budget) {
             uint64_t value=b,addr=a+sx(((ins>>20)&0xfe0)|((ins>>7)&31),12);
             if(!memory(g,addr,1u<<f,2,&value))continue;break;
         }
+        case 0x07: {
+            write=false;if(!(g->status&FS)||(f!=2&&f!=3)){bad=true;break;}
+            if(!memory(g,a+imm,1u<<f,1,&result))continue;
+            float_result(g,rd,f==2?32:64,(struct guest_float){result,0});break;
+        }
+        case 0x27: {
+            write=false;if(!(g->status&FS)||(f!=2&&f!=3)){bad=true;break;}
+            uint64_t value=g->f[(ins>>20)&31],addr=a+sx(((ins>>20)&0xfe0)|((ins>>7)&31),12);
+            if(!memory(g,addr,1u<<f,2,&value))continue;break;
+        }
+        case 0x43: case 0x47: case 0x4b: case 0x4f: case 0x53:
+            bad=!float_operation(g,ins,&result,&write);break;
         case 0x13: case 0x1b: {
             unsigned sh=(ins>>20)&(op==0x1b?31:63);
             if(f==0)result=a+imm;

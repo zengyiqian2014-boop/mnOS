@@ -5,6 +5,8 @@
 #include "auth.h"
 #include "guest.h"
 #include "linux_guest.h"
+#include "guest_devices.h"
+#include "mnfs.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,6 +26,23 @@ struct cpu *cpu_this(void){return &host_cpu;}
 static bool idle_next, exhaust_host;
 
 bool auth_logged_in(void){return signed_in;}
+bool auth_admin(void){return false;}
+const char *auth_name(void){return "test";}
+bool auth_path(const char *p,bool write){(void)p;(void)write;return true;}
+bool arch_random(uint8_t *p,size_t n){memset(p,0x41,n);return true;}
+bool arch_time(uint64_t *out){*out=1794730000;return true;}
+struct mnfs *files_volume(const char **p){(void)p;return NULL;}
+int mnfs_stat(struct mnfs *f,const char *p,struct mnfs_stat *s){(void)f;(void)p;(void)s;return MN_NOENT;}
+int mnfs_create(struct mnfs *f,const char *p,bool d){(void)f;(void)p;(void)d;return MN_IO;}
+int mnfs_truncate(struct mnfs *f,const char *p,uint64_t n){(void)f;(void)p;(void)n;return MN_IO;}
+int mnfs_read(struct mnfs *f,const char *p,uint64_t o,void *b,size_t n,size_t *got){(void)f;(void)p;(void)o;(void)b;(void)n;(void)got;return MN_IO;}
+int mnfs_write(struct mnfs *f,const char *p,uint64_t o,const void *b,size_t n){(void)f;(void)p;(void)o;(void)b;(void)n;return MN_IO;}
+bool net_start(uint8_t mac[6]){(void)mac;return false;}
+uint64_t usb_millis(void){return ticks*1000/PIT_HZ;}
+void net_stop(void){}
+int net_receive(void *p,size_t n){(void)p;(void)n;return -1;}
+int net_transmit(const void *p,size_t n){(void)p;(void)n;return -1;}
+bool guest_read(struct guest *g,uint64_t p,void *b,size_t n){(void)g;(void)p;memset(b,0,n);return true;}
 uint32_t auth_uid(void){return uid;}
 void auth_wipe(void *p,size_t n){memset(p,0,n);}
 void log_write(const char *s){(void)s;}
@@ -120,7 +139,10 @@ int main(void){
     idle_next=true;linux_guest_tick();before=runs;
     uint64_t retired=linux_guest_instructions();pump_guest();
     assert(runs==before&&linux_guest_instructions()==retired&&strstr(linux_guest_status(),"Idle"));
-    linux_guest_key('x');pump_guest();assert(runs>before&&strchr(received,'x'));
+    /* Input must not fast-forward the clock. Polling devices consume it at
+     * the next scheduled timer, as they do on the real guest. */
+    linux_guest_key('x');pump_guest();assert(runs==before);
+    host_cpu.clock_ticks+=PIT_HZ;linux_guest_tick();assert(runs>before&&strchr(received,'x'));
     idle_next=true;linux_guest_tick();before=runs;
     host_cpu.clock_ticks+=PIT_HZ+1;linux_guest_tick();assert(runs>before);
 

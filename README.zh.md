@@ -14,12 +14,15 @@
 `mnos list` 查看[统一资源目录](https://github.com/zengyiqian2014-boop/mnOS/tree/resources)，
 `mnos packages` 列出本机软件包，`mnos full --without 包名…` 排除本次不装的组件。
 更新会先校验 GitHub Raw 的签名版本索引，再下载对应组件。
-`mnos --uninstall 包名` 用于卸载，支持工具链保护。自研版的 BusyBox 客体仍缺 APT 和虚拟网卡，不能把
-打包工作当作已经完成兼容；其空闲 CPU 会暂停解释执行，由输入或定时器唤醒。
+`mnos --uninstall 包名` 用于卸载，支持工具链保护。已发布的小型 USB 预览包是原生系统安装器，
+不包含新的 Linux 应用环境。当前开发源码新增 Debian riscv64、APT、X11、自写 VirtIO 网卡驱动
+及客体持久存储；完整原生安装测试仍在进行，这里不表示新版集成 ISO 已发布。
+详见[构建、使用与测试范围](native/guest/README.md)。
 
 **当前开发分成两版：[自研版与 Linux 版](EDITIONS.zh.md)。** 自研版运行原生 C/汇编内核和 GUI，
-新增自研 C 模拟器中的真实 Linux/BusyBox 客体；Linux 版提供 Firefox、VS Code、完整 CTF 工具
-以及统一系统管理入口。初期客体支持 RV64IMAC/LP64 控制台程序，尚不支持 Linux 图形软件。
+自写 C 模拟器运行真实 Linux/Debian 客体；Linux 版提供 Firefox、VS Code、完整 CTF 工具
+以及统一系统管理入口。新客体运行 RV64GC/LP64D 程序，暂不支持 AMD64/ARM64 DEB、
+官方 VS Code、硬件虚拟化和加速 3D。
 构建、权限、命令和兼容范围见版本说明。
 
 **自研版 0.6 Preview 1 已发布：**
