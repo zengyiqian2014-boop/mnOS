@@ -447,10 +447,10 @@ int main(int argc, char **argv) {
                 vm.key("ret");
                 vm.wait("LINUX GUEST: start",enabled);
                 vm.wait("Linux Ethernet device ready",enabled);
-                vm.wait("mnOS disks: maximum synchronous transfer 128 KiB",enabled);
                 vm.wait("LINUX SIMULATION: app sent to guest shell",enabled);
                 vm.wait("Swap:",enabled);
                 vm.wait("linux-guest# ",vm.output.find("Swap:",enabled));
+                vm.guest_command("test \"$(cat /sys/block/mnos1/queue/max_hw_sectors_kb)\" = 128 && echo MNOS_BULK_IO_PASS", "\r\nMNOS_BULK_IO_PASS\r\n");
                 std::cout<<"LINUX BOOT PASS "<<arch<<": private disk mounted, 128 KiB transport negotiated"<<std::endl;
                 vm.guest_command("uname -s", "\r\nLinux\r\n");
                 vm.guest_command("dpkg --print-architecture", "\r\nriscv64\r\n");
