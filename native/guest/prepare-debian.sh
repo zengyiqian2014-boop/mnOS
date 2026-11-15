@@ -62,5 +62,13 @@ rm -f "$SYS/var/lib/dbus/machine-id"
 find "$SYS/var/cache/apt/archives" -maxdepth 1 -type f -name '*.deb' -delete
 find "$SYS/var/log" -type f -exec truncate -s 0 {} +
 mkdir -p "$ROOT/build/guest"
+# SquashFS stores directory timestamps at whole-second precision. Fontconfig
+# cache v9 also checks nanoseconds; caching before this normalization makes the
+# image rebuild every font cache on its first interpreted desktop launch.
+# Both supported builders and the riscv64 guest use the same le64 cache format.
+while IFS= read -r -d '' font_dir; do
+    touch -m -d "@$(stat -c %Y "$font_dir")" "$font_dir"
+done < <(find "$SYS/usr/share/fonts" -type d -print0)
+fc-cache --sysroot "$SYS" -s -f
 mksquashfs "$SYS" "$ROOT/build/guest/rootfs.squashfs" -noappend -comp lz4 -Xhc -processors "${JOBS:-4}"
 sha256sum "$ROOT/build/guest/rootfs.squashfs"

@@ -41,6 +41,10 @@ does not require a download. Installing additional packages with APT requires
 network access. An integrated installer is larger than the separate USB driver
 preview; compare filenames, checksums and package manifests, not size alone.
 
+The Debian builder precomputes Fontconfig's le64 caches after rounding font
+directory timestamps to SquashFS's second precision. This avoids invalidating
+the caches and rescanning all fonts during the first interpreted X11 launch.
+
 ## Use and persistence
 
 On the host, `linux open desktop` asks to enable simulation, then starts X11.
