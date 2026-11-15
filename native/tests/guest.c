@@ -7,6 +7,16 @@
 static void put64(unsigned char *p,uint64_t n){for(unsigned i=0;i<8;i++)p[i]=(unsigned char)(n>>(i*8));}
 static void ins(struct guest *g,uint32_t n){unsigned char b[4];for(unsigned i=0;i<4;i++)b[i]=(unsigned char)(n>>(i*8));assert(guest_copy(g,g->pc,b,4));}
 static void reset(struct guest *g,unsigned char *ram){memset(ram,0,GUEST_RAM);guest_init(g,ram,GUEST_RAM);}
+static void permission_map(struct guest *g,unsigned char *ram,unsigned code,unsigned data) {
+    reset(g,ram);
+    put64(ram,((GUEST_BASE+4096)>>12)<<10|1);
+    put64(ram+4096+2*8,((GUEST_BASE+8192)>>12)<<10|1);
+    put64(ram+8192,((GUEST_BASE+GUEST_LOAD)>>12)<<10|code);
+    put64(ram+8200,((GUEST_BASE+0x5000)>>12)<<10|data);
+    ins(g,0x0005b503); /* ld a0,0(a1) */
+    put64(ram+0x5000,0x12345678);g->x[11]=0x401000;
+    g->satp=(UINT64_C(8)<<60)|(GUEST_BASE>>12);g->pc=0x400000;
+}
 int main(void) {
     unsigned char *ram=malloc(GUEST_RAM+32);assert(ram);struct guest g;
     memset(ram+GUEST_RAM,0xa5,32);
@@ -17,6 +27,11 @@ int main(void) {
     g.x[2]=0;ins(&g,0x0220c1b3);guest_run(&g,1);assert(g.x[3]==UINT64_MAX);
     /* Compressed C.LI x1,-1 and C.ADDI x1,1, no borrowed decode helper. */
     unsigned char code[]={0xfd,0x50,0x85,0x00};assert(guest_copy(&g,g.pc,code,4));guest_run(&g,2);assert(g.x[1]==0);
+    /* A cached decode must follow new instruction bytes at the same PC. */
+    reset(&g,ram);uint64_t changed_pc=g.pc;
+    ins(&g,0x0505);guest_run(&g,1);assert(g.x[10]==1);
+    g.pc=changed_pc;ins(&g,0x0509);guest_run(&g,1);assert(g.x[10]==3);
+    g.pc=changed_pc;ins(&g,0x0505);guest_run(&g,1);assert(g.x[10]==4);
     reset(&g,ram);g.x[1]=GUEST_BASE+GUEST_RAM;ins(&g,0x0000b023);guest_run(&g,1);
     assert(g.stopped==2&&g.cause==7&&g.tval==GUEST_BASE+GUEST_RAM);
     for(unsigned i=0;i<32;i++)assert(ram[GUEST_RAM+i]==0xa5);
@@ -34,6 +49,26 @@ int main(void) {
     guest_run(&g,1);assert(g.x[1]==1&&g.pc==0x400004);assert(ram[8192]&64);
     unsigned char store[]={0x23,0xb0,0x00,0x00};assert(guest_copy(&g,GUEST_BASE+GUEST_LOAD+4,store,4));
     g.x[1]=0x400000;guest_run(&g,1);assert(g.cause==15&&g.tval==0x400000);
+    /* Revoke SUM/MXR or change privilege without flushing the warm TLB. */
+    permission_map(&g,ram,0x0b,0x13);g.status=1u<<18;
+    guest_run(&g,1);assert(g.x[10]==0x12345678);
+    g.pc=0x400000;g.status=0;guest_run(&g,1);assert(g.cause==13&&g.tval==0x401000);
+    permission_map(&g,ram,0x0b,0x09);g.status=1u<<19;
+    guest_run(&g,1);assert(g.x[10]==0x12345678);
+    g.pc=0x400000;g.status=0;guest_run(&g,1);assert(g.cause==13&&g.tval==0x401000);
+    permission_map(&g,ram,0x0b,0x03);guest_run(&g,1);assert(g.x[10]==0x12345678);
+    g.pc=0x400000;g.privilege=0;guest_run(&g,1);assert(g.cause==12&&g.tval==0x400000);
+    permission_map(&g,ram,0x1b,0x13);g.privilege=0;guest_run(&g,1);assert(g.x[10]==0x12345678);
+    g.pc=0x400000;g.privilege=1;g.status=1u<<18;guest_run(&g,1);assert(g.cause==12&&g.tval==0x400000);
+    /* Both explicit fences and satp writes invalidate changed page tables. */
+    const uint32_t fences[]={0x12000073,0x18029073};
+    for(unsigned i=0;i<2;i++) {
+        permission_map(&g,ram,0x0b,0x03);guest_run(&g,1);assert(g.x[10]==0x12345678);
+        g.x[5]=g.satp;put64(ram+8200,0);
+        assert(guest_copy(&g,GUEST_BASE+GUEST_LOAD+4,&fences[i],4));
+        uint32_t load=0x0005b503;assert(guest_copy(&g,GUEST_BASE+GUEST_LOAD+8,&load,4));
+        guest_run(&g,2);assert(g.cause==13&&g.tval==0x401000);
+    }
     reset(&g,ram);ins(&g,0x0200006f);g.vector=GUEST_BASE+0x100;g.status=2;g.ie=32;g.deadline=0;
     guest_run(&g,1);assert(g.pc==g.vector&&g.cause==((UINT64_C(1)<<63)|5)&&g.epc==GUEST_BASE+GUEST_LOAD);
     reset(&g,ram);g.ie=32;g.deadline=2;ins(&g,0x10500073);
@@ -62,6 +97,9 @@ int main(void) {
     g.x[2]=GUEST_BASE+0x5000;
     unsigned char fldsp[]={0x82,0x23}; /* c.fldsp f7,0(sp) */
     assert(guest_copy(&g,g.pc,fldsp,2));guest_run(&g,1);assert(g.f[7]==0x4024000000000000ULL);
+    /* Decode caching must not cache authorization to use FP registers. */
+    g.status=0;assert(guest_copy(&g,g.pc,fldsp,2));guest_run(&g,1);assert(g.cause==2);
+    reset(&g,ram);
     g.status=0;ins(&g,(1u<<25)|(2u<<20)|(1u<<15)|(3u<<7)|0x53);guest_run(&g,1);assert(g.cause==2);
     /* Deterministic malformed instructions stay inside the checked machine. */
     uint32_t r=0x496e7374;

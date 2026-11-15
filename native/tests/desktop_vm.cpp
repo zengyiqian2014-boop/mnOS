@@ -124,10 +124,15 @@ struct VM {
             a.push_back("-boot");
             a.push_back("order=d");
         }
+        // Accelerate the development VM when available. This executes the
+        // original mnOS host on a CPU; its RV64 Linux guest still uses our
+        // software interpreter. ARM-on-x86 and forced TCG remain emulated.
+        bool kvm=arch=="amd64"&&!std::getenv("MNOS_TEST_TCG")&&access("/dev/kvm",R_OK|W_OK)==0;
+        std::cout<<"OUTER QEMU "<<arch<<" phase "<<phase<<" accelerator "<<(kvm?"KVM":"TCG")<<std::endl;
         const std::vector<std::string> common = {"-accel",
-                                                 "tcg",
+                                                 kvm?"kvm":"tcg",
                                                  "-cpu",
-                                                 "max",
+                                                 kvm?"host":"max",
                                                  "-smp",
                                                  "2",
                                                  "-m",
@@ -176,8 +181,9 @@ struct VM {
         std::ofstream(log, std::ios::app).write(buf, n);
         require(output.find("PANIC") == std::string::npos, output);
     }
-    void wait(const std::string &s, size_t mark = 0) {
-        auto end = Clock::now() + (std::getenv("MNOS_TEST_LINUX_GUEST") ? 900s : 150s), last = Clock::now();
+    void wait(const std::string &s, size_t mark = 0, unsigned seconds = 0) {
+        auto end = Clock::now() + (seconds ? std::chrono::seconds(seconds) :
+            std::getenv("MNOS_TEST_LINUX_GUEST") ? 900s : 150s), last = Clock::now();
         while (output.find(s, mark) == std::string::npos) {
             if (Clock::now() - last > 5s) {
                 qmp_command("{\"execute\":\"screendump\",\"arguments\":{\"filename\":\"" +
@@ -196,9 +202,9 @@ struct VM {
         }
         return m;
     }
-    void command(const std::string &s, const std::string &wanted) {
+    void command(const std::string &s, const std::string &wanted, unsigned seconds = 0) {
         auto m = send(s + "\n");
-        wait(wanted, m);
+        wait(wanted, m, seconds);
     }
     void guest_command(const std::string &s,const std::string &wanted) {
         auto mark=send(s+"\n");wait(wanted,mark);
@@ -415,10 +421,6 @@ int main(int argc, char **argv) {
                     require(p.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:/.-")==std::string::npos,"test proxy URL");
                     vm.command("export http_proxy="+p,"linux-guest# ");
                 }
-                vm.command("export DEBIAN_FRONTEND=noninteractive; apt-get -q -o APT::Update::Error-Mode=any update && echo MNOS_APT_UPDATE_PASS", "\r\nMNOS_APT_UPDATE_PASS\r\n");
-                vm.wait("linux-guest# ", vm.output.rfind("MNOS_APT_UPDATE_PASS"));
-                vm.command("apt-get -q install -y x11-utils && echo MNOS_APT_INSTALL_PASS", "\r\nMNOS_APT_INSTALL_PASS\r\n");
-                vm.wait("linux-guest# ", vm.output.rfind("MNOS_APT_INSTALL_PASS"));
                 vm.command("printf '%s\\n' PERSISTED > /root/native-test; echo saved", "\r\nsaved\r\n");
                 vm.page_key("f5",4);
                 auto desktop=vm.output.size();
@@ -426,7 +428,7 @@ int main(int argc, char **argv) {
                 vm.wait("LINUX SIMULATION: app sent to guest shell",desktop);
                 vm.wait("linux-guest# ", vm.output.find("LINUX SIMULATION: app sent to guest shell",desktop));
                 vm.page_key("f5",4);
-                vm.command("linux send for i in $(seq 1 120); do DISPLAY=:0 xdpyinfo > /root/x11-info 2>/dev/null && { echo MNOS_X11_PASS; break; }; sleep 1; done","\r\nMNOS_X11_PASS\r\n");
+                vm.command("linux send for i in $(seq 1 120); do DISPLAY=:0 xsetroot -solid '#248b42' 2>/dev/null && { echo MNOS_X11_PASS; break; }; sleep 1; done","\r\nMNOS_X11_PASS\r\n");
                 vm.command("linux send DISPLAY=:0 xsetroot -solid '#248b42'; echo MNOS_FRAME_READY", "\r\nMNOS_FRAME_READY\r\n");
                 vm.command("linux resume","UI: page 7");
                 // Move into the xterm client, then deliver real host keys through
@@ -443,6 +445,21 @@ int main(int argc, char **argv) {
                 require_guest_frame(build/(arch+"-linux-guest-gui.ppm"));
                 vm.page_key("f5",4);
                 vm.command("linux send test -f /root/guiinput && echo MNOS_GUI_INPUT_PASS","\r\nMNOS_GUI_INPUT_PASS\r\n");
+                // Check the bundled offline GUI before the network-dependent
+                // package test. Full Debian index parsing takes billions of
+                // interpreted instructions under an outer QEMU TCG instance.
+                // Keep a bounded longer deadline only for these two steps;
+                // record the elapsed time rather than treating it as fast.
+                auto apt_started=Clock::now();
+                vm.command("linux send export DEBIAN_FRONTEND=noninteractive; apt-get -q -o APT::Update::Error-Mode=any update && echo MNOS_APT_UPDATE_PASS", "\r\nMNOS_APT_UPDATE_PASS\r\n",3600);
+                vm.wait("linux-guest# ", vm.output.rfind("MNOS_APT_UPDATE_PASS"));
+                std::cout<<"APT update elapsed seconds "<<std::chrono::duration_cast<std::chrono::seconds>(Clock::now()-apt_started).count()<<std::endl;
+                apt_started=Clock::now();
+                vm.command("linux send apt-get -q install -y x11-utils && echo MNOS_APT_INSTALL_PASS", "\r\nMNOS_APT_INSTALL_PASS\r\n",3600);
+                vm.wait("linux-guest# ", vm.output.rfind("MNOS_APT_INSTALL_PASS"));
+                std::cout<<"APT install elapsed seconds "<<std::chrono::duration_cast<std::chrono::seconds>(Clock::now()-apt_started).count()<<std::endl;
+                vm.command("linux send DISPLAY=:0 xdpyinfo > /root/x11-info && echo MNOS_INSTALLED_X11_PASS","\r\nMNOS_INSTALLED_X11_PASS\r\n");
+                vm.command("linux stats","Counters cover this guest session");
                 vm.command("linux pause","Paused / guest RAM retained");
                 vm.command("system memory","Free physical pages");
                 vm.command("linux resume","UI: page 7");

@@ -68,6 +68,8 @@ bool arch_time(uint64_t *);
 #ifndef __aarch64__
 void rng_pci_probe(unsigned, unsigned, unsigned, uint16_t, uint16_t);
 bool virtio_random(uint8_t *, size_t);
+void rng_firmware_seed(const uint8_t [32],unsigned);
+bool rng_firmware_random(uint8_t *,size_t);
 #endif
 void *memset(void *, int, size_t);
 void *memcpy(void *, const void *, size_t);

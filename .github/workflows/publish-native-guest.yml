@@ -64,6 +64,8 @@ jobs:
           tar -xf release/debian-corresponding-sources.tar -C debian-sources
           (cd debian-sources && sha256sum -c SHA256SUMS)
           test -s release/DEBIAN-PACKAGES.tsv
+          grep -q 'FIRMWARE RNG BOOT PASS: CPU RNG and VirtIO RNG absent, TPM allows enrollment' evidence/firmware-validation.log
+          grep -q 'FIRMWARE RNG BOOT PASS: CPU RNG and VirtIO RNG absent, TPM missing fails closed' evidence/firmware-validation.log
           version=${TAG#v}
           version=${version/-native/}
           for arch in amd64 arm64; do
@@ -89,6 +91,8 @@ jobs:
           系统设置提供 Support / H，终端提供 support 与 support -cn。反馈邮箱：report.mnos@proton.me、wrmfwv@163.com。help 为英文，help -cn 为中文。
 
           保留可选的密码 + 验证器登录、本机二维码 / 手动密钥、一次性恢复码、加密保存和重放拒绝。首次配置可跳过，之后在设置或 2fa 命令中管理。
+
+          UEFI 启动支持从固件 RNG、TPM 2.0 或 TPM 1.2 获取启动随机种子，再由 ChaCha20 生成器提供随机数。已在关闭 CPU RNG、没有 VirtIO RNG 的 OVMF + TPM 2.0 环境中验证账号创建；无安全随机数源时仍拒绝创建。实体机需要主板实际提供并启用相应固件服务，TPM 1.2 目前通过协议单元测试，未完成实体硬件验证。
 
           Linux 模拟默认关闭，启动前确认。原生 VirtIO PCI/MMIO 驱动连接客体网络，图形窗口接收键盘和鼠标。每位用户有独立的 8 GiB 稀疏数据文件，安装的软件和文件在正常关机后保存。先在 Linux 中执行 poweroff，再关闭模拟。pause / resume 保留内存；空闲时让出 CPU，定时器仍正常唤醒。
 

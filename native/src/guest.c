@@ -83,18 +83,20 @@ static void trap(struct guest *g, uint64_t cause, uint64_t value) {
     g->pc = g->vector & ~UINT64_C(3);
     if ((cause >> 63) && (g->vector & 3) == 1) g->pc += 4*(cause & 63);
     g->waiting = 0; g->reservation = UINT64_MAX;
-    guest_flush(g);
     /* A fault before the guest installs its vector must stop, never execute
      * host address zero or spin forever in an invalid trap-vector loop. */
     if (!g->pc) g->stopped = 2;
 }
-/* Access: 0 instruction, 1 read, 2 write. Sv39 leaf permissions and canonical
- * addresses are checked before caching; SUM/MXR/privilege changes flush it. */
+/* Access: 0 instruction, 1 read, 2 write. Permission context belongs in the
+ * tag, so trap entry/return need not destroy every valid translation. satp
+ * writes and SFENCE still flush; cached permission never crosses U/S/SUM/MXR. */
 static bool translate(struct guest *g, uint64_t va, unsigned access, uint64_t *pa) {
     unsigned mode = g->satp >> 60;
     if (!mode) { *pa = va; return true; }
     if (mode != 8 || sx(va & (BIT(39)-1), 39) != va) goto fault;
-    uint64_t tag = (va >> 12) * 4 + access;
+    uint64_t tag = ((va & (BIT(39)-1)) >> 12) * 32 + access +
+                   (g->privilege ? 4 : 0) + ((g->status & SUM) ? 8 : 0) +
+                   ((g->status & MXR) ? 16 : 0);
     /* Reads and writes of one page must not evict each other. Keep distinct
      * access tags so a cached read can never grant write/execute permission. */
     struct guest_tlb *t = &g->tlb[((va >> 12)*3+access) & 255];
@@ -185,7 +187,7 @@ static bool csr(struct guest *g, unsigned id, uint64_t *v, bool write) {
     }
     if (!write) { *v = *p; return true; }
     if (id == 0x100) { *p = (*v & (SIE|SPIE|SPP|SUM|MXR|FS)) | (UINT64_C(2) << 32);
-        if((*p&FS)==FS)*p|=BIT(63);guest_flush(g); }
+        if((*p&FS)==FS)*p|=BIT(63); }
     else if (id == 0x180) { if ((*v >> 60) == 0 || (*v >> 60) == 8) *p = *v; guest_flush(g); }
     else if (id == 0x144) *p = (*p & BIT(5)) | (*v & BIT(1));
     else if (id == 0x104) *p = *v & (BIT(1)|BIT(5)|BIT(9));
@@ -372,7 +374,11 @@ void guest_run(struct guest *g, unsigned budget) {
         }
         uint32_t raw=0;unsigned size;
         if(!instruction(g,&raw,&size))continue;
-        uint32_t ins=size==4?raw:compressed((uint16_t)raw);
+        uint32_t ins=raw;
+        if(size==2) {
+            ins=g->compressed[raw];
+            if(!ins){ins=compressed((uint16_t)raw);g->compressed[raw]=ins;}
+        }
         uint64_t next=g->pc+size, result=0, a=g->x[(ins>>15)&31], b=g->x[(ins>>20)&31];
         unsigned op=ins&127,rd=(ins>>7)&31,f=(ins>>12)&7,top=ins>>25;
         uint64_t imm=sx(ins>>20,12);bool write=true, bad=false;
@@ -483,7 +489,7 @@ void guest_run(struct guest *g, unsigned budget) {
                 if(ins==0x73){if(g->privilege){sbi(g);}else{trap(g,8,0);continue;}}
                 else if(ins==0x00100073){trap(g,3,g->pc);continue;}
                 else if(ins==0x10200073&&g->privilege){next=g->epc;g->privilege=(g->status&SPP)?1:0;
-                    g->status=(g->status&~(SIE|SPP))|((g->status&SPIE)?SIE:0)|SPIE;guest_flush(g);}
+                    g->status=(g->status&~(SIE|SPP))|((g->status&SPIE)?SIE:0)|SPIE;}
                 else if(ins==0x10500073&&g->privilege)g->waiting=1;
                 else if((ins&0xfe007fff)==0x12000073&&g->privilege)guest_flush(g);
                 else bad=true;

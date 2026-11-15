@@ -107,6 +107,14 @@ run signed APT update/install over native VirtIO, open X11, deliver real input,
 shut down and verify package/file persistence. `MNOS_TEST_PROXY` can set a test
 network proxy; no development proxy is baked into the image.
 
+The native-boot test checks the bundled GUI before downloading packages. Its two
+APT steps each have a one-hour ceiling and report elapsed time: parsing the full
+Debian catalog under an outer QEMU software CPU can take billions of interpreted
+instructions. When `/dev/kvm` is available, the AMD64 **test host** can use it;
+`MNOS_TEST_TCG=1` forces TCG. This does not add hardware acceleration to the
+installed RV64 guest. The tests also boot without CPU/VirtIO random devices to
+exercise the UEFI TPM entropy fallback and refusal when all trusted sources are absent.
+
 ## Sources and licenses
 
 Linux and `mnos_devices.c` use GPL-2.0-only; BusyBox uses GPL-2.0-only; musl uses
@@ -115,3 +123,8 @@ retain `/usr/share/doc/*/copyright`. Preserve source hashes, kernel/BusyBox
 configs, package versions and complete corresponding upstream sources when
 publishing binary releases. The Debian rootfs is upstream software, not a claim
 that the Linux kernel or desktop programs were authored by mnOS.
+
+`linux stats` reports the current guest's retired instructions, interpreter time,
+private-disk I/O time, calls, transferred bytes and errors. Times have millisecond
+resolution; disk time is included in interpreter time. Counters reset when the
+guest stops and are available only to its signed-in host owner.

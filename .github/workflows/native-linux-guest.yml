@@ -6,7 +6,7 @@ permissions:
 jobs:
   native:
     runs-on: ubuntu-24.04
-    timeout-minutes: 240
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
       - name: Register the build-only RISC-V userspace emulator
@@ -32,7 +32,13 @@ jobs:
             make host-tests
             bash tests/guest_build.sh
             GUEST=1 installer/build.sh
-            c++ -std=c++17 -O2 -Wall -Wextra -Werror tests/desktop_vm.cpp -o build/desktop-vm'
+            c++ -std=c++17 -O2 -Wall -Wextra -Werror tests/desktop_vm.cpp -o build/desktop-vm
+            c++ -std=c++17 -O2 -Wall -Wextra -Werror tests/firmware_vm.cpp -o build/firmware-vm'
+      - name: Boot firmware TPM fallback without CPU or VirtIO random devices
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$PWD/native:/native" -w /native mnos-native-builder \
+            build/firmware-vm build/desktop build/desktop 2>&1 | tee native/build/desktop/firmware-validation.log
       - name: Install and execute guest Linux in both native desktops
         run: |
           set -euo pipefail
@@ -48,6 +54,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir release
+          grep -q 'FIRMWARE RNG BOOT PASS: CPU RNG and VirtIO RNG absent, TPM allows enrollment' native/build/desktop/firmware-validation.log
+          grep -q 'FIRMWARE RNG BOOT PASS: CPU RNG and VirtIO RNG absent, TPM missing fails closed' native/build/desktop/firmware-validation.log
           for arch in amd64 arm64; do
             grep -q "NATIVE LINUX GUEST PASS $arch" "native/build/desktop/guest-validation-$arch.log"
             grep -q "DESKTOP PASS $arch" "native/build/desktop/guest-validation-$arch.log"

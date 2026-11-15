@@ -3,6 +3,7 @@
  * map, leaves firmware services, enters our 64-bit kernel trampoline. */
 #include "../../installer/efi.h"
 #include "boot_layout.h"
+#include "efi_entropy.h"
 extern const uint8_t kernel_payload[], kernel_payload_end[];
 struct elf {
     uint8_t ident[16];
@@ -66,6 +67,13 @@ status efi_main(void *handle, struct system_table *s) {
     uint8_t *mb = (void *)(uintptr_t)address;
     memset(mb, 0, 1 << 20);
     size_t prefix = 8;
+    uint8_t seed[32];unsigned source=efi_entropy_seed((mnos_efi_locate)locate,seed);
+    if(source) {
+        uint32_t entropy_tag[4]={MNOS_ENTROPY_TAG,MNOS_ENTROPY_TAG_SIZE,1,source};
+        memcpy(mb+prefix,entropy_tag,16);memcpy(mb+prefix+16,seed,32);
+        prefix+=MNOS_ENTROPY_TAG_SIZE;
+    }
+    efi_entropy_wipe(seed,sizeof seed);
     struct gop *g = NULL;
     if (!locate(&gop_guid, NULL, (void **)&g) && g && g->mode) {
         for (uint32_t i = 0; i < g->mode->maximum; i++) {

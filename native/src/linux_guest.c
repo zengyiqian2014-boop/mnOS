@@ -13,6 +13,7 @@ extern const unsigned char linux_root_start[],linux_root_end[];
 static struct guest vm;
 static struct guest_devices devices;
 static struct {struct mnfs *volume;char path[96];} storage;
+static struct {uint64_t read_calls,write_calls,read_bytes,write_bytes,io_ms,run_ms,errors;} stats;
 static bool graphical;
 static bool pointer_pending,pointer_pressed;
 static unsigned pointer_x,pointer_y;
@@ -35,14 +36,21 @@ static const struct { const char *id, *name, *command; } apps[] = {
     {"packages", "APT 软件管理", "apt list --installed"}
 };
 static bool disk_read(void *context,uint64_t offset,void *out,size_t n) {
-    (void)context;size_t got=0;
-    return !mnfs_read(storage.volume,storage.path,offset,out,n,&got)&&got==n;
+    (void)context;size_t got=0;uint64_t before=usb_millis();
+    bool ok=!mnfs_read(storage.volume,storage.path,offset,out,n,&got)&&got==n;
+    stats.read_calls++;stats.read_bytes+=got;stats.io_ms+=usb_millis()-before;if(!ok)stats.errors++;
+    return ok;
 }
 static bool disk_write(void *context,uint64_t offset,const void *data,size_t n) {
-    (void)context;return !mnfs_write(storage.volume,storage.path,offset,data,n);
+    (void)context;uint64_t before=usb_millis();
+    bool ok=!mnfs_write(storage.volume,storage.path,offset,data,n);
+    stats.write_calls++;if(ok)stats.write_bytes+=n;stats.io_ms+=usb_millis()-before;if(!ok)stats.errors++;
+    return ok;
 }
 static bool disk_sync(void *context) {
-    (void)context;return storage.volume->io.flush(storage.volume->io.context);
+    (void)context;uint64_t before=usb_millis();
+    bool ok=storage.volume->io.flush(storage.volume->io.context);
+    stats.io_ms+=usb_millis()-before;if(!ok)stats.errors++;return ok;
 }
 static int receive(void *context,void *data,size_t n){(void)context;return net_receive(data,n);}
 static int transmit(void *context,const void *data,size_t n){(void)context;return net_transmit(data,n);}
@@ -173,6 +181,7 @@ void linux_guest_clear(void) {
     pointer_pending=pointer_pressed=false;pointer_x=pointer_y=0;
     guest_memory_clear(&memory);active_mib=0;
     memset(&vm,0,sizeof vm);state="Stopped / guest RAM cleared";
+    memset(&stats,0,sizeof stats);
 }
 static bool session(void) {
     if(memory_owner!=auth_uid()||!auth_logged_in()){requested_mib=0;memory_owner=UINT32_MAX;}
@@ -258,6 +267,12 @@ bool linux_guest_command(const char *cmd,void (*out)(const char *)) {
         out(storage.volume?"Persistent user-owned Linux data disk":"Temporary guest files: no writable installed user disk");
         out(devices.receive?"VirtIO Ethernet connected":"No supported Ethernet device");
         out("One interpreted CPU; no hardware acceleration or 3D GPU. AMD64/ARM64 DEBs need matching binaries.");}
+    else if(!strcmp(p,"stats")) {
+        const char *labels[]={"Retired guest instructions:","Interpreter time, including I/O (ms):","Private disk I/O time (ms):","Private disk read calls:","Private disk write calls:","Private disk bytes read:","Private disk bytes written:","Private disk errors:","Guest program counter:","Guest privilege (0=user, 1=supervisor):"};
+        uint64_t values[]={vm.retired,stats.run_ms,stats.io_ms,stats.read_calls,stats.write_calls,stats.read_bytes,stats.write_bytes,stats.errors,vm.pc,vm.privilege};
+        char amount[32];for(unsigned i=0;i<ARRAY_SIZE(values);i++){out(labels[i]);number(amount,values[i]);out(amount);}
+        out("Counters cover this guest session and reset on stop; timing has millisecond resolution.");
+    }
     else if(!strncmp(p,"memory ",7)){
         if(running||confirming){out("Stop or cancel the Linux guest before changing its RAM limit.");return true;}
         if(!strcmp(p+7,"auto")){requested_mib=0;memory_owner=auth_uid();out("Automatic RAM: up to 1 GiB, bounded by free host memory.");return true;}
@@ -278,7 +293,7 @@ bool linux_guest_command(const char *cmd,void (*out)(const char *)) {
         else if(queued_command)out("Wait for the queued Linux app before sending another command.");
         else if(strlen(p+5)+1>=sizeof keys-(key_write+sizeof keys-key_read)%sizeof keys)out("Linux input is too long; it was not sent.");
         else {for(p+=5;*p;p++)console_key((unsigned char)*p);console_key('\n');}}
-    else out("Usage: linux memory auto|MIB; linux apps|open APP|start|status|pause|resume|stop|restart|enable|disable|send COMMAND");
+    else out("Usage: linux memory auto|MIB; linux apps|open APP|start|status|stats|pause|resume|stop|restart|enable|disable|send COMMAND");
     return true;
 }
 void linux_guest_tick(void) {
@@ -302,12 +317,13 @@ void linux_guest_tick(void) {
     /* Keep host input responsive even when mnOS itself runs under a slow
      * emulator. A fixed 100k-instruction interrupt handler can hold off the
      * UART long enough to overflow its FIFO during a paste. Real hardware
-     * can still use the full budget; slow hosts yield after about 8 ms. */
+     * can still use the full budget; slow hosts yield after about 32 ms. */
     uint64_t slice=usb_millis();
     for(unsigned left=100000;left;) {
         unsigned batch=left>1024?1024:left;guest_run(&vm,batch);left-=batch;
-        if(vm.waiting||vm.stopped||memory.failed||usb_millis()-slice>=8)break;
+        if(vm.waiting||vm.stopped||memory.failed||usb_millis()-slice>=32)break;
     }
+    stats.run_ms+=usb_millis()-slice;
     if(memory.failed){linux_guest_clear();state="Guest memory exhausted / simulation stopped / host memory returned";log_write("LINUX GUEST: memory exhausted, stopped safely\n");return;}
     if(vm.stopped){
         bool fault=vm.stopped!=1;

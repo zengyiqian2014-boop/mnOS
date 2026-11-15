@@ -17,7 +17,7 @@ build/flavor-config: FORCE_FLAVOR
 	@cmp -s $@.tmp $@ || cp $@.tmp $@
 SOURCES = src/core.c src/string.c src/phys.c src/memory.c src/smp.c src/interrupts.c src/devices.c src/rng.c src/block.c src/mnfs.c src/files.c src/password.c src/auth.c src/ui.c src/exec.c assets/font.c
 SOURCES += src/process.c src/usercopy.c src/file_api.c src/disk_layout.c src/text.c src/commands.c assets/icons.c src/guest.c src/guest_float.c src/guest_devices.c src/net.c src/guest_memory.c src/guest_dtb.c src/linux_guest.c
-SOURCES += src/factor.c src/clock.c src/rtc.c vendor/monocypher/monocypher.c
+SOURCES += src/factor.c src/clock.c src/rtc.c src/csprng.c vendor/monocypher/monocypher.c
 SOURCES += vendor/qrcodegen/qrcodegen.c
 SOURCES += src/uvc.c src/usb_platform.c src/usb_xhci.c
 GUEST ?= 0
@@ -61,6 +61,8 @@ build/mnfs: tools/mnfs.c src/mnfs.c include/mnfs.h
 
 host-tests: uvc-tests
 	mkdir -p build
+	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -Iinclude tests/firmware_rng.c src/csprng.c vendor/monocypher/monocypher.c -lcrypto -o build/firmware-rng-test
+	./build/firmware-rng-test
 	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -frounding-math -fno-fast-math -fsanitize=address,undefined -Iinclude tests/guest_float.c src/guest_float.c -lm -o build/guest-float-test
 	./build/guest-float-test
 	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude tests/guest.c src/guest.c src/guest_float.c -o build/guest-test

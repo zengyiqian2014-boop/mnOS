@@ -3,6 +3,17 @@
  * Random data comes from the device/host CSPRNG, never a clock or fixed seed.
  */
 #include "kernel.h"
+#include "csprng.h"
+static struct csprng firmware_rng;
+static unsigned firmware_lock;
+void rng_firmware_seed(const uint8_t seed[32],unsigned source) {
+    if(source<1||source>3||!csprng_seed(&firmware_rng,seed))return;
+    log_write(source==1?"RNG: UEFI firmware seed ready\n":source==2?"RNG: TPM 2.0 firmware seed ready\n":"RNG: TPM 1.2 firmware seed ready\n");
+}
+bool rng_firmware_random(uint8_t *out,size_t n) {
+    uint64_t flags=spin_lock(&firmware_lock);bool ok=csprng_read(&firmware_rng,out,n);
+    spin_unlock(&firmware_lock,flags);return ok;
+}
 static uint8_t queue_memory[32768] __attribute__((aligned(4096)));
 static uint8_t random_buffer[4096] __attribute__((aligned(4096)));
 struct descriptor { uint64_t address; uint32_t length; uint16_t flags, next; };

@@ -4,6 +4,8 @@
  */
 #include "platform.h"
 #include "clock.h"
+#include "efi_entropy.h"
+#include "csprng.h"
 struct guid {
     uint32_t a;
     uint16_t b, c;
@@ -68,8 +70,8 @@ struct memory_descriptor {
 };
 static uint8_t memory_map[1u << 20] __attribute__((aligned(4096)));
 static size_t map_bytes, map_stride;
-static uint8_t entropy[4096];
-static size_t entropy_left;
+static struct csprng firmware_rng;
+static unsigned entropy_lock,entropy_source;
 static bool firmware_address(uint64_t address, size_t length) {
     if (!length || address > UINT64_MAX - length)
         return false;
@@ -85,17 +87,15 @@ static bool firmware_address(uint64_t address, size_t length) {
     return false;
 }
 bool arm_firmware_random(uint8_t *out, size_t n) {
-    if (n > entropy_left)
-        return false;
-    entropy_left -= n;
-    memcpy(out, entropy + entropy_left, n);
-    memset(entropy + entropy_left, 0, n);
-    return true;
+    uint64_t flags=spin_lock(&entropy_lock);
+    if(entropy_source) {
+        log_write(entropy_source==1?"RNG: UEFI firmware seed ready\n":entropy_source==2?"RNG: TPM 2.0 firmware seed ready\n":"RNG: TPM 1.2 firmware seed ready\n");
+        entropy_source=0;
+    }
+    bool ok=csprng_read(&firmware_rng,out,n);spin_unlock(&entropy_lock,flags);return ok;
 }
 static const struct guid acpi_guid = {
     0x8868e871, 0xe4f1, 0x11d3, {0xbc, 0x22, 0, 0x80, 0xc7, 0x3c, 0x88, 0x81}};
-static const struct guid rng_guid = {
-    0x3152bca5, 0xeade, 0x433d, {0x86, 0x2e, 0xc0, 0x1c, 0xdc, 0x29, 0x1f, 0x44}};
 static const struct guid fdt_guid = {
     0xb1b621d5, 0xf19c, 0x41a5, {0x83, 0x0b, 0xd9, 0x15, 0x2c, 0x69, 0xaa, 0xe0}};
 static const struct guid loaded_guid = {
@@ -227,14 +227,10 @@ uint64_t efi_main(void *image_handle, struct system_table *s) {
             }
         }
     }
-    struct rng_protocol {
-        void *info;
-        uint64_t (*get)(void *, const struct guid *, size_t, uint8_t *);
-    } *rng = NULL;
     uint64_t (*locate)(const struct guid *, void *, void **) = (void *)bs->fn[37];
-    if (!locate(&rng_guid, NULL, (void **)&rng) && rng &&
-        !rng->get(rng, NULL, sizeof entropy, entropy))
-        entropy_left = sizeof entropy;
+    uint8_t seed[32];entropy_source=efi_entropy_seed((mnos_efi_locate)locate,seed);
+    if(entropy_source&&!csprng_seed(&firmware_rng,seed))entropy_source=0;
+    efi_entropy_wipe(seed,sizeof seed);
     struct loaded_image *loaded = NULL;
     uint64_t (*handle)(void *, const struct guid *, void **) = (void *)bs->fn[16];
     if (handle(image_handle, &loaded_guid, (void **)&loaded) || !loaded || !image_layout(loaded))

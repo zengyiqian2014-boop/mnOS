@@ -25,6 +25,9 @@ struct guest {
     void *ram_context;
     unsigned privilege, stopped, waiting, yield_on_idle, external_time;
     struct guest_tlb tlb[256];
+    /* Compressed instructions are a pure mapping of their 16-bit encoding.
+     * Keying by the encoding (not PC) also handles self-modifying guest code. */
+    uint32_t compressed[65536];
     int (*input)(void *);
     void (*output)(void *, unsigned char);
     /* Supervisor-only vendor SBI transport; callback receives guest physical

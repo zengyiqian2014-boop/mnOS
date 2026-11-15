@@ -134,11 +134,20 @@ disk writes until root unlocks it. Preferences load after authentication.
 First boot asks for an ordinary username/password and a separate root password,
 then opens the ordinary session. There is no default password. Passwords use
 PBKDF2-HMAC-SHA256 with 600,000 iterations and a fresh 128-bit random salt.
-x86 uses RDRAND or the original VirtIO PCI entropy driver (modern/transitional);
-ARM64 uses VirtIO MMIO, a pre-boot UEFI RNG pool, or the optional RNDR instruction.
-Creation fails closed if none is available. For QEMU, attach `-device virtio-rng-pci`
-on x86; on ARM FDT guests use `-device virtio-rng-device` with modern MMIO enabled.
-The ARM UEFI/ACPI path can obtain entropy through the firmware RNG protocol.
+x86 uses RDRAND, UEFI firmware entropy or the original VirtIO PCI entropy driver
+(modern/transitional); ARM64 uses VirtIO MMIO, UEFI firmware entropy or RNDR.
+The UEFI loaders try the firmware RNG protocol, then TPM 2.0 / TPM 1.2 GetRandom.
+A fresh 256-bit seed initializes a rekeying ChaCha20 generator; the temporary
+seed is erased. This replaces the old finite ARM firmware random-byte pool.
+Only GetRandom is sent to a TPM; ownership, PCRs and stored keys are not changed.
+Creation fails closed if none is available. On physical machines without CPU RNG,
+boot in UEFI mode and check whether firmware exposes an enabled TPM/RNG service.
+Legacy BIOS/CSM boot does not use this UEFI fallback. For QEMU, attach
+`-device virtio-rng-pci` on x86; on ARM FDT guests use `-device virtio-rng-device`
+with modern MMIO enabled.
+`tests/firmware_vm.cpp` boots the release EFI image under OVMF with CPU RNG disabled
+and no VirtIO RNG, verifies enrollment through TPM 2.0, then verifies refusal
+without a TPM. TPM 1.2 has protocol tests, but has not been verified on real hardware.
 No timestamp, fixed seed or predictable fallback is used. Password input is masked,
 excluded from history/serial output and cleared from temporary buffers. Failed
 authentication imposes a delay; root sessions expire after five minutes.

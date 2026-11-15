@@ -548,14 +548,20 @@ int mnfs_write(struct mnfs *f, const char *name, uint64_t offset, const void *in
     while (count) {
         size_t in = offset % MNFS_BLOCK, n = MNFS_BLOCK - in;
         if (n > count) n = count;
-        e = data_read(f, st.inode, offset / MNFS_BLOCK, buffer); if (e) break;
+        /* A whole-block replacement needs no old data. Partial writes still
+         * verify and preserve every byte outside the caller's extent. */
+        if (in || n != MNFS_BLOCK) {
+            e = data_read(f, st.inode, offset / MNFS_BLOCK, buffer); if (e) break;
+        }
         memcpy(buffer + in, input, n);
         e = data_write(f, st.inode, offset / MNFS_BLOCK, buffer); if (e) break;
         input = (const uint8_t *)input + n; offset += n; count -= n;
     }
-    if (!e) {
+    /* The data-tree update already changed the root. Rewriting an unchanged
+     * inode for every sector of a pre-sized guest disk adds needless CoW I/O. */
+    if (!e && end > st.size) {
         struct value v; e = lookup(f, f->root, (struct key){st.inode, INODE, 0}, &v);
-        if (!e) { if (v.size < end) v.size = end; e = set(f, (struct key){st.inode, INODE, 0}, v); }
+        if (!e) { v.size = end; e = set(f, (struct key){st.inode, INODE, 0}, v); }
     }
     f->io.release(buffer); return finish(f, t, e);
 }

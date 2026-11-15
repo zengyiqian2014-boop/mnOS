@@ -20,11 +20,11 @@ using namespace std::chrono_literals;
 static void check(bool ok,const std::string &s) {if(!ok)throw std::runtime_error(s);}
 struct Guest {
     pid_t pid=-1; int serial=-1; std::string output; fs::path log, work;
-    Guest(std::vector<std::string> args,const fs::path &result):log(result) {
+    Guest(std::vector<std::string> args,const fs::path &result,unsigned memory_mib=512):log(result) {
         char temp[]="/tmp/mnos-rng.XXXXXX";check(mkdtemp(temp),"mkdtemp");work=temp;
         std::string path=(work/"serial").string();
         args.insert(args.end(),{"-serial","unix:"+path+",server=on,wait=on","-nic","none",
-            "-display","none","-monitor","none","-accel","tcg","-m","512","-smp","2","-no-reboot"});
+            "-display","none","-monitor","none","-accel","tcg","-m",std::to_string(memory_mib),"-smp","2","-no-reboot"});
         pid=fork();check(pid>=0,"fork");
         if(!pid) {std::vector<char*> a;for(auto &s:args)a.push_back(s.data());a.push_back(nullptr);execvp(a[0],a.data());_exit(127);}
         serial=socket(AF_UNIX,SOCK_STREAM,0);check(serial>=0,"socket");

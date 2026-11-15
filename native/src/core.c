@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "kernel.h"
+#include "boot_layout.h"
 #include "usb.h"
 struct boot_info boot;
 char cpu_brand[49];
@@ -79,6 +80,11 @@ static void parse_boot(uintptr_t address) {
             panic("invalid boot tag");
         if (tag->type == 0)
             break;
+        if(tag->type==MNOS_ENTROPY_TAG&&tag->size==MNOS_ENTROPY_TAG_SIZE) {
+            uint32_t *fields=(void *)p;
+            if(fields[2]==1)rng_firmware_seed((const uint8_t *)(p+16),fields[3]);
+            volatile uint8_t *seed=(void *)(p+16);for(unsigned i=0;i<32;i++)seed[i]=0;
+        }
         if (tag->type == 1 && tag->size > 8) {
             const char *cmd = (void *)(p + 8);
             bool end = false;
