@@ -29,6 +29,6 @@ int main(){
     auto detector=cv::FaceDetectorYN::create("/usr/share/mnos/face/yunet.onnx","",cv::Size(320,240),0.9f);
     cv::Mat black=cv::Mat::zeros(240,320,CV_8UC3),faces;detector->detect(black,faces);assert(faces.rows==0);
     auto recognizer=cv::FaceRecognizerSF::create("/usr/share/mnos/face/sface.onnx","");assert(recognizer);
-    if(access("/dev/video0",F_OK)){Capture capture(sensitive,true);capture.worker.join();assert(capture.done&&!capture.success);}
+    if(camera_inventory().devices.empty()){Capture capture(sensitive,true);capture.worker.join();assert(capture.done&&!capture.success);}
     puts("PASS face encryption, UID binding, tamper/wrong-key rejection, one-use recovery, pinned model inference, blank-image rejection, no-camera rejection. No physical-camera validation.");
 }

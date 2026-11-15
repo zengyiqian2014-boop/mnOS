@@ -40,6 +40,8 @@ c++ -std=c++17 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -I. ../
 /tmp/region-test
 c++ -std=c++17 -O2 -Wall -Wextra -Werror -I. ../tests/face-challenge.cpp -o /tmp/face-challenge-test
 /tmp/face-challenge-test
+c++ -std=c++17 -O2 -Wall -Wextra -Werror -I. ../tests/face-device.cpp -o /tmp/face-device-test
+/tmp/face-device-test
 if [ -f /source/live/build/face-models/yunet.onnx ]; then
     install -d /usr/share/mnos/face
     install -m 644 /source/live/build/face-models/* /usr/share/mnos/face/

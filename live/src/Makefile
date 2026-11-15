@@ -35,7 +35,7 @@ $(OUT)/mnos-face-preview: face-preview.cpp security-ui.hpp i18n.hpp mnos-locale.
 	$(CXX) $(CXXFLAGS) -Wno-misleading-indentation $(CPPFLAGS) $(SECURITY_INCLUDES) $< $(SECURITY_UI_OBJECTS) $(OUT)/security/face-protocol.o -o $@ $(LDFLAGS) $$(pkg-config --cflags --libs gtk+-3.0)
 $(OUT)/face-helper: face-helper.cpp face-record.hpp face-protocol.h $(SECURITY_OBJECTS)
 	$(CXX) $(CXXFLAGS) -Wno-misleading-indentation $(CPPFLAGS) $(SECURITY_INCLUDES) $< $(SECURITY_OBJECTS) -o $@ $(LDFLAGS) -lpam
-$(OUT)/face-camera: face-camera.cpp face-capture.hpp face-challenge.hpp face-protocol.h security-ui.hpp i18n.hpp mnos-locale.h $(SECURITY_UI_OBJECTS)
+$(OUT)/face-camera: face-camera.cpp face-capture.hpp face-challenge.hpp face-device.hpp face-protocol.h security-ui.hpp i18n.hpp mnos-locale.h $(SECURITY_UI_OBJECTS)
 	$(CXX) $(CXXFLAGS) -Wno-misleading-indentation $(CPPFLAGS) $(SECURITY_INCLUDES) $< $(SECURITY_UI_OBJECTS) -o $@ $(LDFLAGS) -pthread $$(pkg-config --cflags --libs gtk+-3.0 opencv4)
 $(OUT)/pam_mnos_face.so: pam-mnos-face.c mnos-locale.h $(OUT)/security/login-protocol.o $(OUT)/security/face-protocol.o
 	$(CC) $(SECURITY_CFLAGS) $(CPPFLAGS) -shared $< $(OUT)/security/login-protocol.o $(OUT)/security/face-protocol.o -o $@ -Wl,-z,relro,-z,now -lpam

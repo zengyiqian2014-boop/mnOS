@@ -45,10 +45,12 @@ recording. The previously substituted Cipher excerpt has been removed.
 Official song pages: [Kugou](https://www.kugou.com/song/cnygy2e.html) and
 [NetEase Music](https://music.163.com/#/song?id=409647388).
 The music-note button in the introduction and “站内试听” in the footer open an
-actual Apple Music embedded player for the original recording (song ID
-1165457668). Visitors press Play inside the official player; the tested signed-out
-player plays a 90-second preview. Its controls, attribution and Apple Music link
-remain visible. Closing the dialog removes the iframe and stops playback. No
+official SoundCloud player for Terror Jr's original upload (track 256591463).
+The tested signed-out player streams the full 175.95-second recording. Visitors
+can select Apple Music as an alternative (song ID 1165457668, tested 90-second
+preview). Switching providers removes the previous player to stop its audio.
+Visitors press Play inside the selected official player; its controls and
+attribution remain visible. Closing the dialog removes the iframe and stops playback. No
 music platform requests are made before the visitor opens the player. The
 Kugou page requests login. Mainland-China network performance has not been tested.
 

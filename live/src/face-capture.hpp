@@ -4,6 +4,7 @@
 #pragma once
 #include "security-ui.hpp"
 #include "face-challenge.hpp"
+#include "face-device.hpp"
 extern "C" {
 #include "monocypher.h"
 }
@@ -26,7 +27,8 @@ extern "C" {
 #include <unistd.h>
 using namespace mnos_face;
 using Steady=std::chrono::steady_clock;
-static void require(bool ok,const char *message) {if(!ok)throw std::runtime_error(message);}
+struct CaptureError:std::runtime_error {using std::runtime_error::runtime_error;};
+static void require(bool ok,const char *message) {if(!ok)throw CaptureError(message);}
 static bool random_bytes(uint8_t *p,size_t size) {
     while(size) {ssize_t n=getrandom(p,size,0);if(n<0&&errno==EINTR)continue;if(n<=0)return false;p+=n;size-=size_t(n);}return true;
 }
@@ -57,20 +59,37 @@ static bool estimate_yaw(const std::vector<cv::Point2d> &landmarks,int width,int
 }
 struct Capture {
     Sensitive &s;bool enroll;std::atomic<bool> stop{false},done{false};std::mutex mutex;
-    cv::Mat preview;std::string message=i18n::text("正在打开本机摄像头…");unsigned light=3;bool success=false;std::thread worker;
+    cv::Mat preview;std::string message=i18n::text("正在打开本机摄像头…"),device_name;unsigned light=3;bool success=false;std::thread worker;
     Capture(Sensitive &state,bool create):s(state),enroll(create),worker([this] {run();}) {}
     ~Capture() {stop=true;if(worker.joinable())worker.join();preview.setTo(0);}
     void run() {
         try {
+            require(access("/usr/share/mnos/face/yunet.onnx",R_OK)==0&&access("/usr/share/mnos/face/sface.onnx",R_OK)==0,i18n::text("缺少或无法读取人脸模型。请修复完整版认证组件。"));
             auto detector=cv::FaceDetectorYN::create("/usr/share/mnos/face/yunet.onnx","",cv::Size(640,480),0.9f);
             auto recognizer=cv::FaceRecognizerSF::create("/usr/share/mnos/face/sface.onnx","");
             cv::CascadeClassifier eyes;require(eyes.load("/usr/share/opencv4/haarcascades/haarcascade_eye_tree_eyeglasses.xml"),i18n::text("缺少眼部检测模型。"));
-            cv::VideoCapture camera(0,cv::CAP_V4L2);require(camera.isOpened(),i18n::text("未检测到可用摄像头。请连接或向虚拟机转发 USB 摄像头。"));
-            camera.set(cv::CAP_PROP_FRAME_WIDTH,640);camera.set(cv::CAP_PROP_FRAME_HEIGHT,480);camera.set(cv::CAP_PROP_BUFFERSIZE,1);
+            const auto inventory=camera_inventory();
+            require(!inventory.devices.empty(),inventory.denied?i18n::text("摄像头访问被拒绝。请检查 login-camera 账号的 video 组和设备权限。"):
+                inventory.busy?i18n::text("摄像头正被其他程序占用。请关闭占用相机的程序后重试。"):
+                i18n::text("未检测到可用摄像头。请连接或向虚拟机转发 USB 摄像头。"));
+            cv::VideoCapture camera;cv::Mat first;
+            const auto *device=select_camera(inventory,[&](const CameraDevice &candidate) {
+                if(stop)return false;
+                try {
+                    camera.release();first.release();
+                    if(!camera.open(candidate.path,cv::CAP_V4L2))return false;
+                    camera.set(cv::CAP_PROP_FRAME_WIDTH,640);camera.set(cv::CAP_PROP_FRAME_HEIGHT,480);camera.set(cv::CAP_PROP_BUFFERSIZE,1);
+                    return camera.read(first)&&!first.empty()&&first.type()==CV_8UC3;
+                }catch(const cv::Exception &){return false;}
+            });
+            require(device!=nullptr,i18n::text("检测到了摄像头，但无法读取彩色画面。请关闭占用相机的程序，并检查摄像头转发。"));
+            {std::lock_guard<std::mutex> guard(mutex);device_name=device->name+" ("+device->path+")";}
             std::array<uint8_t,32> random{};require(random_bytes(random.data(),random.size()),i18n::text("安全随机源不可用。"));
             Challenge challenge(random,seconds());bool reference_ready=!enroll;std::array<double,128> sum{};unsigned count=0;
             while(!stop&&challenge.state()!=Task::Complete&&challenge.state()!=Task::Failed) {
-                cv::Mat frame,faces;require(camera.read(frame)&&!frame.empty(),i18n::text("摄像头没有返回画面。"));
+                cv::Mat frame,faces;
+                if(!first.empty()){frame=first;first.release();}else require(camera.read(frame)&&!frame.empty(),i18n::text("摄像头没有返回画面。"));
+                require(frame.type()==CV_8UC3,i18n::text("摄像头没有返回彩色画面，请选择 RGB 摄像头。"));
                 detector->setInputSize(frame.size());detector->detect(frame,faces);
                 Sample sample;sample.time=seconds();sample.faces=unsigned(faces.rows);
                 if(faces.rows==1) {
@@ -113,6 +132,8 @@ struct Capture {
                 for(unsigned i=0;i<128;++i)s.reference[i]=float(sum[i]/norm);
             }
             auth_wipe(sum.data(),sizeof sum);camera.release();
+        } catch(const CaptureError &error) {
+            std::lock_guard<std::mutex> guard(mutex);success=false;message=error.what();
         } catch(const std::exception &) {
             std::lock_guard<std::mutex> guard(mutex);success=false;message=i18n::text("无法完成摄像头采集。请检查摄像头转发、设备权限、模型文件和光线。");
         }
@@ -120,11 +141,12 @@ struct Capture {
     }
 };
 struct View {
-    Capture &capture;GtkWidget *window{},*drawing{},*status{},*close{};guint timer=0;bool accepted=false;
+    Capture &capture;GtkWidget *window{},*drawing{},*status{},*device{},*close{};guint timer=0;bool accepted=false;
     View(Capture &c):capture(c) {
         window=gtk_window_new(GTK_WINDOW_TOPLEVEL);gtk_window_set_title(GTK_WINDOW(window),i18n::text("人脸验证 / Face verification"));gtk_window_set_default_size(GTK_WINDOW(window),800,680);
         auto *box=gtk_box_new(GTK_ORIENTATION_VERTICAL,10);gtk_container_set_border_width(GTK_CONTAINER(box),16);gtk_container_add(GTK_CONTAINER(window),box);
         gtk_box_pack_start(GTK_BOX(box),security::label(i18n::text("普通摄像头 · 本地验证\n请按提示完成眨眼、转头和圆环颜色检测。密码和已开启的验证器仍需验证。")),false,false,0);
+        device=security::label("");gtk_box_pack_start(GTK_BOX(box),device,false,false,0);
         drawing=gtk_drawing_area_new();gtk_widget_set_size_request(drawing,720,510);gtk_box_pack_start(GTK_BOX(box),drawing,true,true,0);
         status=security::label(i18n::text("正在准备…"));gtk_box_pack_start(GTK_BOX(box),status,false,false,0);close=gtk_button_new_with_label(i18n::text("取消"));gtk_box_pack_start(GTK_BOX(box),close,false,false,0);
         g_signal_connect(drawing,"draw",G_CALLBACK((+[](GtkWidget *w,cairo_t *cr,gpointer data)->gboolean {
@@ -144,6 +166,7 @@ struct View {
         timer=g_timeout_add(100,+[](gpointer data)->gboolean {
             auto *view=static_cast<View *>(data);std::lock_guard<std::mutex> guard(view->capture.mutex);
             gtk_label_set_text(GTK_LABEL(view->status),view->capture.message.c_str());gtk_widget_queue_draw(view->drawing);
+            gtk_label_set_text(GTK_LABEL(view->device),view->capture.device_name.c_str());
             if(view->capture.done&&view->capture.success) {view->accepted=true;view->timer=0;gtk_widget_destroy(view->window);return G_SOURCE_REMOVE;}
             if(view->capture.done)gtk_button_set_label(GTK_BUTTON(view->close),i18n::text("完成 / 关闭"));return G_SOURCE_CONTINUE;
         },this);gtk_widget_show_all(window);
