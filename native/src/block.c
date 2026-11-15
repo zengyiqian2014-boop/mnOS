@@ -1,7 +1,16 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "block.h"
-static uint16_t inw(uint16_t p) { uint16_t v; __asm__ volatile("inw %1,%0" : "=a"(v) : "Nd"(p)); return v; }
-static void outw(uint16_t p, uint16_t v) { __asm__ volatile("outw %0,%1" :: "a"(v), "Nd"(p)); }
+/* A sector is one ATA data phase. String I/O lets a hypervisor batch its
+ * 256 words into one I/O exit instead of trapping every word separately.
+ * Keep status checks between sectors and preserve the flush protocol. */
+static void read_sector(uint16_t port, void *buffer) {
+    size_t words = 256;
+    __asm__ volatile("cld; rep insw" : "+D"(buffer), "+c"(words) : "d"(port) : "memory", "cc");
+}
+static void write_sector(uint16_t port, const void *buffer) {
+    size_t words = 256;
+    __asm__ volatile("cld; rep outsw" : "+S"(buffer), "+c"(words) : "d"(port) : "memory", "cc");
+}
 static void settle(struct block_device *d) { for (unsigned i = 0; i < 4; ++i) (void)inb(d->control); }
 static bool wait_ready(struct block_device *d, bool data) {
     for (unsigned n = 0; n < 2000000; ++n) {
@@ -23,7 +32,7 @@ unsigned block_discover(struct block_device *devices, unsigned capacity) {
         outb(d.port + 2, 0); outb(d.port + 3, 0); outb(d.port + 4, 0); outb(d.port + 5, 0);
         outb(d.port + 7, 0xec); settle(&d);
         if (!wait_ready(&d, true) || inb(d.port + 4) || inb(d.port + 5)) continue; /* ATAPI ignored. */
-        uint16_t id[256]; for (unsigned i = 0; i < 256; ++i) id[i] = inw(d.port);
+        uint16_t id[256]; read_sector(d.port, id);
         if (!(id[49] & (1u << 9))) continue;
         if ((id[106] & 0xc000) == 0x4000 && (id[106] & (1u << 12)) &&
             ((uint32_t)id[117] | ((uint32_t)id[118] << 16)) != 256) continue; /* 512-byte sectors only. */
@@ -48,12 +57,9 @@ static bool transfer(struct block_device *d, uint64_t lba, unsigned count, void 
     uint8_t *bytes = buffer;
     while (count--) {
         settle(d); if (!wait_ready(d, true)) return false;
-        for (unsigned i = 0; i < 256; ++i) {
-            uint16_t value;
-            if (write) { memcpy(&value, bytes, 2); outw(d->port, value); }
-            else { value = inw(d->port); memcpy(bytes, &value, 2); }
-            bytes += 2;
-        }
+        if (write) write_sector(d->port, bytes);
+        else read_sector(d->port, bytes);
+        bytes += 512;
     }
     settle(d); return wait_ready(d, false);
 }

@@ -347,7 +347,10 @@ int main(int argc, char **argv) {
             vm.key("f3");
             vm.wait("UI: page 2", m);
             vm.send("A first save must retain the untitled document.");
-            vm.key("ctrl-s");
+            // Keep text and its save shortcut on the same ordered input
+            // channel. A PS/2 Ctrl-S can overtake the last UART character
+            // under TCG and put that character into the filename dialog.
+            vm.send(std::string(1, '\x13'));
             m = vm.send("untitled.txt\n");
             vm.wait("EDITOR: saved /disk/home/demo/untitled.txt", m);
             m = vm.output.size();
