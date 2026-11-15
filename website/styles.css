@@ -134,7 +134,6 @@ body{background:radial-gradient(ellipse at 90% 28%,#0c1a2b77,transparent 35%),li
 .film-controls button:hover,.film-controls button:focus-visible{opacity:1;background:#d3e9ff12}
 .film-controls button[hidden]{display:none}.film-controls svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .film-controls .pause-shape{display:none;stroke-width:2}.film-controls .play-shape{fill:currentColor;stroke:none}.film-controls .is-playing .pause-shape{display:block}.film-controls .is-playing .play-shape{display:none}
-.film-sound .sound-waves{display:none}.film-sound.is-audible .sound-waves{display:block}.film-sound.is-audible .sound-off{display:none}
 .film-scroll-hint{display:none}.film-ready:not(.film-static) .film-scroll-hint{display:flex;position:absolute;bottom:25px;left:50%;transform:translateX(-50%);flex-direction:column;align-items:center;font-size:9px;letter-spacing:.1em;color:#92a4b9;z-index:4;gap:6px;min-width:60px;min-height:35px}
 .film-scroll-hint svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.2}
 .film-timeline{display:none}.film-ready:not(.film-static) .film-timeline{display:block;position:absolute;inset:auto 0 0;height:1px;background:#b4d7ff0a;z-index:4}.film-timeline i{display:block;height:1px;background:linear-gradient(90deg,#506b90,#b5e8e1);transform:scaleX(var(--film-progress,0));transform-origin:left}
@@ -158,12 +157,3 @@ body{background:radial-gradient(ellipse at 90% 28%,#0c1a2b77,transparent 35%),li
 }
 @media(max-width:350px){.film-webgl .film-copy h2{font-size:26px}.film-webgl .film-copy>p:last-child{font-size:10px}.film-ready .film-topline{letter-spacing:0}.film-title h1{font-size:82px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
-
-.music-credit{margin:22px 0 0;font-size:11px;color:var(--muted);line-height:1.9}.music-credit a{text-underline-offset:3px}.music-credit a:hover{text-decoration:underline;color:var(--text)}
-.music-credit button{font:inherit;background:none;color:var(--text);padding:0;text-decoration:underline;text-underline-offset:3px}
-.music-provider{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:11px;color:#9eadc1;margin-bottom:14px}.music-provider select{min-width:0;padding:7px 10px;border:1px solid #ffffff25;border-radius:8px;background:#101a28;color:#dae7f5;font-size:11px}
-.music-player{width:min(440px,calc(100vw - 28px));max-height:calc(100svh - 28px);padding:24px;border:1px solid #d9ebff30;border-radius:24px;color:var(--text);background:linear-gradient(145deg,#172232f5,#0b101cf9);box-shadow:inset 0 1px 0 #ffffff18,0 30px 100px #0009;overflow:auto}
-.music-player::backdrop{background:#02050bb3;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
-.music-player-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px}.music-player-heading .eyebrow{margin:0 0 8px;font-size:10px;color:#9ebcdb}.music-player-heading h2{margin:0;font-size:32px;letter-spacing:-.035em}.music-player-heading button{flex-shrink:0;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;background:#ffffff0b;color:#c2d5e9}.music-player-heading button:hover{background:#ffffff18}.music-player-heading svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round}
-#music-player-description{font-size:10px;color:#93a6bc;margin-bottom:20px}.music-player-frame{height:175px;border-radius:12px;overflow:hidden;background:#111116}.music-player-frame iframe{display:block;width:100%;height:175px;border:0}.music-player-status{min-height:38px;margin:14px 0 6px;color:#9eadc1;font-size:11px;line-height:1.7}.music-player-links{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:11px}.music-player-links a{color:#c0d9f4}.music-player-links button{padding:8px 0;background:none;color:#9eadc1;font-size:11px}.music-player-links a:hover,.music-player-links button:hover{color:white}
-@media(max-width:360px){.music-player{padding:16px}.music-player-links{font-size:10px;gap:8px}}

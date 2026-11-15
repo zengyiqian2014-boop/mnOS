@@ -5,6 +5,13 @@ Original product site, published from this repository at
 no frontend framework, external fonts, analytics or third-party player SDKs.
 The visual introduction starts automatically in place; it never scrolls the page.
 
+For a complete static deployment to `mnos.micronull.cn`, use the
+[domain-administrator instructions](DEPLOY.zh.md). Build with
+`MNOS_SITE_PUBLIC_URL=https://mnos.micronull.cn/ node website/scripts/build.mjs`
+and upload the contents of `_site/` to Cloudflare Pages.
+To preview that exact upload locally, run
+`MNOS_SITE_DIR=_site node website/scripts/serve.mjs`.
+
 The prepared Cloudflare gateway for `mnos.micronull.cn` is in
 [`deploy/cloudflare`](../deploy/cloudflare/README.md), including the Worker,
 domain configuration and domain-administrator handoff. It retains this Pages
@@ -37,54 +44,9 @@ presentation. No Apple models, images or animation files are included.
 The 24-second introduction uses continuous camera curves, a moving hinge and
 transmissive glass around the floating system screens. It plays once and holds
 its final frame. Scrolling away or hiding the tab pauses it; returning resumes
-unless the user explicitly paused it. Small corner buttons control playback and
-sound. The ordinary page remains scrollable throughout.
-
-Audio uses a hidden native HTML audio element. Its clock synchronizes the camera
-while playing; blocked or unavailable audio cannot stop the visual introduction.
-Audible autoplay still follows browser policy: when blocked, a genuine tap or key
-press can start it. Reduced motion does not request audio or construct WebGL.
-
-The selected recording is **3 Strikes — Terror Jr**, the original 2016
-recording. The previously substituted Cipher excerpt has been removed.
-Official song pages: [Kugou](https://www.kugou.com/song/cnygy2e.html) and
-[NetEase Music](https://music.163.com/#/song?id=409647388).
-The music-note button in the introduction and “站内试听” in the footer open an
-official SoundCloud player for Terror Jr's original upload (track 256591463).
-The tested signed-out player streams the full 175.95-second recording. Visitors
-can select Apple Music as an alternative (song ID 1165457668, tested 90-second
-preview). Switching providers removes the previous player to stop its audio.
-Visitors press Play inside the selected official player; its controls and
-attribution remain visible. Closing the dialog removes the iframe and stops playback. No
-music platform requests are made before the visitor opens the player. The
-Kugou page requests login. Mainland-China network performance has not been tested.
-
-The official player is separate from the film clock. Apple's preview terms do
-not permit using its preview files as advertising soundtracks or synchronizing
-them with video: https://performance-partners.apple.com/search-api . Do not copy
-preview audio into this repository or silently substitute another track.
-The native background-audio interface remains available for an authorized
-recording; until one is configured, the introduction itself is silent.
-
-`media/music.json` selects the recording, its offset, the film duration and
-up to three authorized local/HTTPS audio sources in preference order:
-
-```json
-{
-  "title": "3 Strikes",
-  "artist": "Terror Jr",
-  "start": 12.06,
-  "duration": 24,
-  "sources": []
-}
-```
-
-Relative paths resolve from the website root. The recording must include the
-whole configured excerpt. Serve a correct audio MIME type and support byte
-ranges for seeking. Each unavailable source has a five-second timeout before
-trying the next mirror. Audio files under `media/` are included by the build;
-the configuration is versioned with the scripts. This setting alone does not
-make a GitHub-hosted file fast in China; verify the chosen CDN from that region.
+unless the user explicitly paused it. A small corner button controls playback.
+The ordinary page remains scrollable throughout. The introduction runs on its own
+animation clock, with no audio element, music configuration or third-party player.
 
 Downloads are selected from the published resource catalog by edition, image
 profile and CPU architecture. Unpublished combinations have no download link.
@@ -106,18 +68,15 @@ With Playwright and Chromium available, run these against the preview server:
 ```sh
 node website/scripts/film.test.mjs
 node website/scripts/cinema.test.mjs
-node website/scripts/music.test.mjs
 node website/scripts/download-consent.test.mjs
 ```
 
 `PLAYWRIGHT_MODULE`, `CHROMIUM` and `MNOS_SITE_URL` can override local paths.
-The cinema test renders real WebGL at 1440, 390 and 320 pixels and uses a
-generated WAV to exercise Chromium's real decoder, audio clock and autoplay
-policy. It verifies seeking, pause/resume, failed-source failover and image or
-context-loss fallback. The fixture is not the production recording. `music.test.mjs` separately
-checks the bundled MP3, actual decoding, seeking, autoplay and pause. No test
-from this build machine proves reachability from all mainland Chinese networks. Download tests separately check
-both system families, architectures, delivery modes and consent.
+The cinema test renders real WebGL at 1440, 390 and 320 pixels and verifies
+automatic playback, completion/replay, pause/resume and image/context-loss fallback.
+The film test covers off-screen suspension, visibility, reduced motion and the
+absence of audio components and music requests. Download tests check both system
+families, architectures, delivery modes and consent.
 
 The Pages workflow has separate read-only build and Pages deployment permissions.
 It runs for website changes and successful resource publications. The catalog

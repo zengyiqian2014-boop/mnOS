@@ -11,7 +11,6 @@ test('root, Linux page and versioned module map to the original project path', a
     ['/', origin], ['/linux.html', origin + 'linux.html'],
     ['/film-scene.mjs?v=abc123', origin + 'film-scene.mjs?v=abc123'],
     ['/vendor/three.module.min.js', origin + 'vendor/three.module.min.js'],
-    ['/media/music.json', origin + 'media/music.json'],
     ['/assets/native-desktop.png', origin + 'assets/native-desktop.png'],
   ]) {
     let called = false;
@@ -27,12 +26,11 @@ test('root, Linux page and versioned module map to the original project path', a
   }
 });
 
-test('HTML canonical and Open Graph use the new origin; releases, music and relative links stay intact', async () => {
+test('HTML canonical and Open Graph use the new origin; releases and relative links stay intact', async () => {
   const html = `<link rel="canonical" href="${origin}linux.html">
     <meta property="og:image" content="${origin}assets/linux-desktop.png">
     <script type="module" src="./app.mjs?v=123"></script>
-    <a href="https://github.com/zengyiqian2014-boop/mnOS/releases">Downloads</a>
-    <iframe src="https://w.soundcloud.com/player/"></iframe>`;
+    <a href="https://github.com/zengyiqian2014-boop/mnOS/releases">Downloads</a>`;
   const response = await handleRequest(request('/linux.html', {
     headers: { 'If-None-Match': 'old-html', Range: 'bytes=0-10' },
   }), async (_, options) => {
@@ -50,7 +48,6 @@ test('HTML canonical and Open Graph use the new origin; releases, music and rela
   assert.ok(body.includes(`${PUBLIC_ORIGIN}/assets/linux-desktop.png`));
   assert.ok(body.includes('./app.mjs?v=123'));
   assert.ok(body.includes('https://github.com/zengyiqian2014-boop/mnOS/releases'));
-  assert.ok(body.includes('https://w.soundcloud.com/player/'));
   assert.ok(!body.includes(origin));
   for (const key of ['etag', 'last-modified', 'content-length', 'content-encoding', 'accept-ranges', 'set-cookie']) {
     assert.equal(response.headers.has(key), false, key);
@@ -72,20 +69,20 @@ test('visitor credentials and identifying headers never reach the origin', async
 
 test('assets stream unchanged and preserve byte ranges and validators', async () => {
   const bytes = new Uint8Array([0, 255, 128, 37]);
-  const response = await handleRequest(request('/media/demo.mp4', {
-    headers: { Range: 'bytes=0-3', 'If-Range': 'video-v1' },
+  const response = await handleRequest(request('/assets/native-desktop.png', {
+    headers: { Range: 'bytes=0-3', 'If-Range': 'image-v1' },
   }), async (_, options) => {
     assert.equal(options.headers.get('range'), 'bytes=0-3');
-    assert.equal(options.headers.get('if-range'), 'video-v1');
+    assert.equal(options.headers.get('if-range'), 'image-v1');
     return new Response(bytes, { status: 206, headers: {
-      'Content-Type': 'video/mp4', 'Content-Range': 'bytes 0-3/100',
-      ETag: 'video-v1', 'Content-Length': '4', 'Accept-Ranges': 'bytes',
+      'Content-Type': 'image/png', 'Content-Range': 'bytes 0-3/100',
+      ETag: 'image-v1', 'Content-Length': '4', 'Accept-Ranges': 'bytes',
     } });
   });
   assert.equal(response.status, 206);
   assert.deepEqual(new Uint8Array(await response.arrayBuffer()), bytes);
   assert.equal(response.headers.get('content-range'), 'bytes 0-3/100');
-  assert.equal(response.headers.get('etag'), 'video-v1');
+  assert.equal(response.headers.get('etag'), 'image-v1');
   assert.equal(response.headers.get('content-length'), '4');
 });
 
@@ -128,7 +125,7 @@ test('unrelated hosts, unsupported methods and non-website paths are refused', a
   assert.equal((await handleRequest(new Request(PUBLIC_ORIGIN + ':8443/'), neverFetch)).status, 421);
   assert.equal((await handleRequest(request('/', { method: 'POST', body: 'data' }), neverFetch)).status, 405);
   for (const path of ['/other-project/', '/.git/config', '/assets/%2Fprivate.png', '/assets//a.png',
-    '/media/.env', '//other.example/', '/mnOS//other.example/', '/installer.iso']) {
+    '/media/.env', '/media/music.json', '/film-audio.mjs', '/music-player.mjs', '//other.example/', '/mnOS//other.example/', '/installer.iso']) {
     assert.equal((await handleRequest(request(path), neverFetch)).status, 404, path);
   }
 });

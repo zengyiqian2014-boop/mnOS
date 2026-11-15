@@ -8,14 +8,11 @@ try{
  for(const width of [1440,390,320]){
   const context=await browser.newContext({viewport:{width,height:width===320?640:900},reducedMotion:'no-preference'});
   await context.route('https://raw.githubusercontent.com/**',r=>r.abort());
-  // Exercise the deliberately unconfigured soundtrack independently of the bundled song.
-  await context.route('**/media/music.json*',r=>r.fulfill({contentType:'application/json',body:JSON.stringify({sources:[]})}));
   const page=await context.newPage(),errors=[],thirdParty=[];
-  page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(/soundcloud|youtube|music\.163/.test(r.url()))thirdParty.push(r.url());});
+  page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(/film-audio|music-player|media\/music|soundcloud|sndcdn|music\.apple|music\.163|kugou/.test(r.url()))thirdParty.push(r.url());});
   await page.goto(base);
   await page.waitForFunction(()=>document.querySelector('.scroll-film').dataset.playing==='true',null,{timeout:60000});
-  await page.waitForFunction(()=>document.querySelector('.scroll-film').dataset.audio==='unconfigured');
-  assert.equal(await page.locator('.film-sound').isVisible(),false);
+  assert.equal(await page.locator('audio, .film-sound, .film-track, #music-player, .music-credit').count(),0);
   assert.equal(await page.locator('iframe').count(),0);
   const progress=()=>page.locator('.scroll-film').evaluate(e=>Number(e.dataset.progress));
   const before=await progress();await page.waitForTimeout(650);assert.ok(await progress()>before,'Introduction starts without a button');
@@ -39,7 +36,7 @@ try{
   assert.deepEqual(thirdParty,[]);assert.deepEqual(errors,[]);
   await page.goto(base+'support.html');assert.equal(await page.locator('.support-email').getAttribute('href'),'mailto:report.mnos@proton.me?subject=mnOS%20feedback');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-  await context.close();console.log(`PASS ${width}px: automatic in-place playback, leaving/resuming, explicit pause, reduced motion, no hidden third-party player`);
+  await context.close();console.log(`PASS ${width}px: automatic in-place playback, leaving/resuming, explicit pause, reduced motion, no music components or requests`);
  }
  const context=await browser.newContext({javaScriptEnabled:false});const page=await context.newPage();await page.goto(base);
  assert.equal(await page.locator('.film-scene:visible').count(),3);assert.equal(await page.locator('.film-play').isVisible(),false);await context.close();

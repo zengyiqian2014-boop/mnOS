@@ -2,6 +2,9 @@
 
 目标地址：**https://mnos.micronull.cn/**
 
+要直接部署完整官网，请使用 [完整网站部署步骤](../../website/DEPLOY.zh.md)。
+本目录保留从 GitHub Pages 转接的方案。同一子域名只绑定其中一种服务。
+
 这份 Worker 把现有 GitHub Pages 官网接到新域名，地址栏保留新域名。
 原站是 https://zengyiqian2014-boop.github.io/mnOS/ 。原站继续更新后，新站通常
 一分钟内取得新页面，静态资源缓存最长五分钟。没有重新复制一个网站仓库。
@@ -56,11 +59,12 @@ curl -I https://mnos.micronull.cn/mnOS/linux.html
 
 - 只转接这个官网的页面、脚本、图片及媒体，不提供任意 URL 代理。访问者的 Cookie、
   Authorization 和自带的 IP 转发头不会传给原站；不转发原站 Cookie。
-- ISO、签名、实时资源目录以及官方音乐播放器保留原外部地址。新域名本身不会让
-  GitHub 大文件或第三方音乐变成国内镜像。附带的资源目录通过本站加载，实时目录
+- ISO、签名以及实时资源目录保留原外部地址。新域名本身不会让
+  GitHub 大文件变成国内镜像。附带的资源目录通过本站加载，实时目录
   不可达时网页使用附带目录。
+- 音乐播放器、入口及音频请求已经移除，介绍动画独立运行。
 - 没有实测中国各地网络速度；需在用户实际网络验收。Cloudflare 普通代理也不等于
-  中国大陆 CDN。不要仅因挂上域名就承诺下载或音乐加速。
+  中国大陆 CDN。不要仅因挂上域名就承诺下载加速。
 - 出现 `Unknown website host`：确认访问的是绑定后的 `mnos.micronull.cn`；为避免
   误用，Worker 不在其他域名提供服务（包括 workers.dev）。
 - 出现 `Unexpected website origin redirect`：检查是否误改了 GitHub Pages 自定义

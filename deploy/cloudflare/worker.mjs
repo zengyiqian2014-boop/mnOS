@@ -6,9 +6,9 @@ export const SOURCE_PREFIX = '/mnOS/';
 const pages = new Set(['/', '/index.html', '/linux.html', '/support.html', '/terms.html']);
 const files = new Set([
   '/styles.css', '/app.mjs', '/catalog.mjs', '/catalog.json', '/film.mjs',
-  '/film-scene.mjs', '/film-audio.mjs', '/film-timing.mjs', '/music-player.mjs',
+  '/film-scene.mjs', '/film-timing.mjs',
 ]);
-const assetPath = /^\/(?:assets|vendor|media)\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_-][A-Za-z0-9_.-]*\.(?:css|js|mjs|json|svg|png|jpg|jpeg|webp|avif|ico|woff2?|ttf|otf|mp3|m4a|ogg|wav|mp4|webm|txt)$/;
+const assetPath = /^\/(?:assets|vendor)\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_-][A-Za-z0-9_.-]*\.(?:css|js|mjs|json|svg|png|jpg|jpeg|webp|avif|ico|woff2?|ttf|otf|txt)$/;
 
 function headersFor(headers = {}) {
   const result = new Headers(headers);

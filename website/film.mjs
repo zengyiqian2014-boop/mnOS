@@ -1,5 +1,5 @@
-import {connectMusic,FILM_DURATION} from './film-audio.mjs';
 import {clamp,ease} from './film-timing.mjs';
+const FILM_DURATION=24;
 export function frameAt(value) {
   const p=clamp(value);
   return {progress:p,chapter:p<.32?0:p<.65?1:2,
@@ -9,25 +9,13 @@ export function mountFilm({isPaused}) {
   const section=document.querySelector('.scroll-film');
   if(!section)return{refresh(){}};
   const canvas=section.querySelector('.film-canvas'),scenes=[...section.querySelectorAll('.film-scene')];
-  const controls=section.querySelector('.film-controls'),play=section.querySelector('.film-play');
-  const sound=section.querySelector('.film-sound'),status=section.querySelector('.film-status');
-  const audio=section.querySelector('audio');
-  let world,worldPromise,worldFailed=false,player,preparingMusic;
+  const play=section.querySelector('.film-play'),status=section.querySelector('.film-status');
+  let world,worldPromise,worldFailed=false;
   let progress=0,playing=false,requested=true,frame=0,last=0,lastUI=-Infinity,lastChapter=-1;
-  let soundWanted=true,soundState='loading',sync=false,ready=false,inView=false,started=false;
-  let slowFrames=0,qualityReduced=false,buffered=false;
+  let ready=false,inView=false;
+  let slowFrames=0,qualityReduced=false;
   const staticMode=()=>isPaused()||innerHeight<440;
   const allowed=()=>!staticMode()&&!document.hidden&&inView;
-  function showSound(state) {
-    soundState=state;section.dataset.audio=state;
-    sound.hidden=['loading','unconfigured','configuration-unavailable'].includes(state);
-    sound.disabled=state==='unavailable';
-    const audible=state==='playing'&&soundWanted;
-    sound.setAttribute('aria-pressed',String(audible));
-    const label=audible?'关闭声音':state==='unavailable'?'音乐暂不可用':state==='blocked'?'点击开启声音':'开启声音';
-    sound.setAttribute('aria-label',label);sound.title=label;
-    sound.classList.toggle('is-audible',audible);
-  }
   function draw(value,stamp=performance.now(),force=false) {
     progress=clamp(value);
     if(force||stamp-lastUI>40) {
@@ -53,18 +41,14 @@ export function mountFilm({isPaused}) {
     play.classList.toggle('is-playing',playing);
   }
   function suspend() {
-    playing=false;cancelAnimationFrame(frame);frame=0;sync=false;player?.pause();updateControls();
+    playing=false;cancelAnimationFrame(frame);frame=0;updateControls();
   }
   function pause() { requested=false;suspend(); }
   function tick(stamp) {
     frame=0;
     if(!playing||!allowed()){suspend();return;}
     const delta=Math.min(.5,Math.max(0,(stamp-last)/1000));last=stamp;
-    const musicTime=sync&&soundWanted?player?.time():null;
-    // Native currentTime is sampled every frame; delayed iframe messages no
-    // longer make the camera stop/start. Audio buffering cannot stall visuals.
-    const target=musicTime==null?progress+delta/(player?.config.duration||FILM_DURATION):Math.max(progress,clamp(musicTime));
-    draw(target,stamp);
+    draw(progress+delta/FILM_DURATION,stamp);
     if(delta>.033)slowFrames++;else slowFrames=Math.max(0,slowFrames-1);
     if(slowFrames>12&&!qualityReduced&&world){world.reduceQuality();qualityReduced=true;}
     if(progress>=1){draw(1,stamp,true);requested=false;suspend();return;}
@@ -73,27 +57,6 @@ export function mountFilm({isPaused}) {
   function resume() {
     if(!requested||!allowed()||!ready||playing)return;
     playing=true;last=performance.now();updateControls();frame=requestAnimationFrame(tick);
-    if(player&&soundWanted)void startSound();
-  }
-  async function startSound() {
-    if(!player||!soundWanted||!playing||!allowed())return;
-    const result=await player.play(()=>progress);
-    if(!playing||!soundWanted||!allowed()){player.pause();return;}
-    sync=result;
-  }
-  function setupMusic() {
-    if(preparingMusic||staticMode())return;
-    preparingMusic=connectMusic(audio,state=>{
-      if(state==='buffering'){sync=false;buffered=true;}
-      if(state==='playing'){
-        if(!playing||!allowed()||!soundWanted){player?.pause();return;}
-        if(buffered&&(player?.time()??progress)<progress-.04)player?.seek(progress);
-        buffered=false;sync=true;
-      }
-      if(['paused','blocked','unavailable','ended'].includes(state))sync=false;
-      showSound(state);
-    }).then(value=>{player=value;if(player&&playing&&soundWanted)void startSound();})
-      .catch(()=>showSound('configuration-unavailable'));
   }
   async function loadWorld() {
     if(world||worldPromise||worldFailed||staticMode()||!inView)return;
@@ -102,7 +65,7 @@ export function mountFilm({isPaused}) {
       world=value;section.classList.add('film-webgl');section.dataset.renderer='webgl';
     }).catch(()=>{worldFailed=true;section.dataset.renderer='fallback';}).finally(()=>{
       worldPromise=null;ready=true;draw(progress,performance.now(),true);
-      if(!started){started=true;setupMusic();}resume();
+      resume();
     });
   }
   function refresh() {
@@ -123,27 +86,16 @@ export function mountFilm({isPaused}) {
   addEventListener('resize',refresh,{passive:true});
   document.addEventListener('visibilitychange',refresh);
   addEventListener('keydown',event=>{if(event.key==='Escape')pause();});
-  // Respect browser autoplay rules. A genuine first tap/key can unlock audio;
-  // never simulate an interaction or trap scrolling to get permission.
-  function unlock(event) {
-    if(!event.isTrusted||controls.contains(event.target)||!allowed()||!playing)return;
-    if(soundWanted&&soundState==='blocked')void startSound();
-  }
-  addEventListener('pointerdown',unlock,{passive:true});addEventListener('keydown',unlock);
   play.addEventListener('click',()=>{
     if(playing){pause();return;}
     if(progress>=1)draw(0,performance.now(),true);
     requested=true;resume();
-  });
-  sound.addEventListener('click',()=>{
-    if(soundState==='playing'&&soundWanted){soundWanted=false;sync=false;player?.pause();showSound('muted');}
-    else {soundWanted=true;if(!playing){requested=true;if(progress>=1)draw(0,performance.now(),true);resume();}else void startSound();}
   });
   canvas.addEventListener('webglcontextlost',event=>{
     event.preventDefault();world?.dispose();world=undefined;worldFailed=true;ready=true;
     section.classList.remove('film-webgl');section.dataset.renderer='fallback';draw(progress,performance.now(),true);
   });
   status.textContent='介绍会自动播放。可用右下角按钮或 Escape 暂停。';
-  section.classList.add('film-ready');showSound('loading');refresh();
+  section.classList.add('film-ready');refresh();
   return{refresh};
 }
