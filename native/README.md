@@ -59,7 +59,12 @@ boot 4, 8 and 32 CPUs plus two CPUs with sparse APIC IDs 0 and 256. Dynamic data
 structures do not mean literally unlimited CPUs: firmware, APIC IDs, RAM and
 tested scale still impose limits.
 
-CPU hotplug, task migration, NUMA placement, native USB/network/Wi-Fi/audio,
+The [native xHCI/UVC driver](USB.md) adds USB 2 high-speed YUY2 camera preview
+on direct root ports, with explicit start/stop and automatic stop at lock.
+Its original C implementation uses native MMIO/DMA, not Linux drivers. USB hubs,
+USB HID, hot-add, compressed video and physical-camera validation remain open.
+
+CPU hotplug, task migration, NUMA placement, native network/Wi-Fi/audio,
 AHCI/NVMe, GPU acceleration, arbitrary-size executable mapping and a POSIX/Linux
 ABI are not implemented. `exec PATH` can now run a static native ELF from MNFS,
 with multiple applications on the boot CPU alongside the fixed test workers.

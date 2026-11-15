@@ -106,6 +106,16 @@ void *kernel_alloc(size_t bytes) {
     barrier();
     return (void *)base;
 }
+void *memory_map_device(uint64_t address,size_t size) {
+    if(address<PAGE||!size||size>(256ULL<<20)||address>=physical.limit||size>physical.limit-address)return NULL;
+    uint64_t original=address;
+    size=(size+(address&(PAGE-1))+PAGE-1)&~(PAGE-1);address&=~(PAGE-1);
+    if(size>physical.limit-address)return NULL;
+    for(unsigned i=0;i<platform.ram_count;++i)
+        if(address<platform.ram[i].start+platform.ram[i].size&&address+size>platform.ram[i].start)return NULL;
+    region(address,size,DEVICE);__asm__ volatile("dsb sy; tlbi vmalle1; dsb sy; isb":::"memory");
+    return (void *)(uintptr_t)original;
+}
 void arm_mmu_on(uint64_t root) {
     sys_write(mair_el1, 0x04ff);
     sys_write(tcr_el1, arm_tcr);

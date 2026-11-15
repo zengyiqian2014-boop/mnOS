@@ -7,6 +7,7 @@
 #include "icons.h"
 #include "commands.h"
 #include "linux_guest.h"
+#include "usb.h"
 #include "../vendor/qrcodegen/qrcodegen.h"
 #define APP_COUNT 8
 static void focus_app(int);
@@ -285,6 +286,10 @@ static void kernel_command(const char *cmd) {
     else if (!strncmp(cmd,"help ",5)) command_help(cmd+5,add_line);
     else if (streq(cmd,"support")) command_help("support",add_line);
     else if (streq(cmd,"support -cn")) command_help("-cn support",add_line);
+    else if(streq(cmd,"usb"))usb_list(add_line);
+    else if(streq(cmd,"camera")||streq(cmd,"camera status")) {add_line(camera_status());add_number("Completed camera frames: ",camera_frames()->sequence);add_number("Discarded camera frames: ",camera_frames()->dropped);}
+    else if(streq(cmd,"camera start")){(void)camera_start();add_line(camera_status());focus_app(5);}
+    else if(streq(cmd,"camera stop")){camera_stop();add_line(camera_status());}
     else if (auth_command(cmd, add_line)) {}
     else if (linux_guest_command(cmd,add_line)) {
         if(streq(cmd,"linux start") || streq(cmd,"linux enable") || streq(cmd,"linux resume") ||
@@ -409,7 +414,7 @@ static const char *app_names[] = {"Welcome",  "Files",   "Text editor", "System 
                                   "Terminal", "Devices", "Settings", "Linux 模拟"};
 static const char *app_desc[] = {"Your native desktop",           "Browse your home folder",
                                  "Create and edit text files",    "Memory and kernel status",
-                                 "Commands and native programs",  "Detected hardware",
+                                 "Commands and native programs",  "USB camera and devices",
                                  "Display, wallpaper and Linux", "默认关闭，打开 Linux 程序时询问"};
 static char search[40], notice[120];
 static uint64_t notice_until;
@@ -894,14 +899,18 @@ static void window_content(unsigned app) {
         text(x + 36, v->y + v->h - 61, visible, FONT_MONO18, FG);
         rect(x + 36 + text_width(visible, FONT_MONO18), v->y + v->h - 57, 1, 20, ACCENT);
     } else if (app == 5) {
-        text(x, y, "Detected devices", 28, FG);
-        text(x, y + 51, graphics_driver(), 18, ACCENT);
-        for (unsigned i = 0; i < pci_count && i < 8; i++) {
-            char row[100];
-            pci_read_line(i, row, sizeof row);
-            text(x, y + 98 + (int)i * 34, row, 18, MUTED);
-        }
-        text(x, y + 390, "A detected device requires a compatible native driver.", 18, MUTED);
+        text(x,y,"USB camera",28,FG);
+        button(x,y+50,170,"Start camera",camera_active());button(x+182,y+50,140,"Stop",false);
+        text_fit(x,y+94,camera_status(),18,ACCENT,w);
+        const struct uvc_mode *mode=camera_mode();const struct uvc_frames *frames=camera_frames();
+        int area_h=v->h-230;rounded(x,y+130,w,area_h,0x071018);
+        if(mode&&frames->sequence&&camera_active()) {
+            int draw_w=w,draw_h=(int)((unsigned)w*mode->height/mode->width);
+            if(draw_h>area_h){draw_h=area_h;draw_w=(int)((unsigned)draw_h*mode->width/mode->height);}
+            for(int yy=0;yy<draw_h;++yy){const uint8_t *row=frames->ready+(unsigned)yy*mode->height/(unsigned)draw_h*mode->width*2;
+                for(int xx=0;xx<draw_w;++xx)pixel(x+(w-draw_w)/2+xx,y+130+(area_h-draw_h)/2+yy,uvc_yuy2_pixel(row,(unsigned)xx*mode->width/(unsigned)draw_w));}
+        } else text_fit(x+16,y+150,"Connect a USB UVC camera, then select Start camera.",16,MUTED,w-32);
+        text_fit(x,v->y+v->h-36,"Local preview · camera stops when the session locks",16,MUTED,w);
     } else if (app == 7) {
         button(x,y,102,"开启",linux_guest_enabled());
         button(x+112,y,102,"暂停",false);
@@ -1096,9 +1105,14 @@ void ui_tick(void) {
         dirty = true;
     }
     auth_tick(ticks / PIT_HZ);
+    if(!auth_logged_in()&&camera_active())camera_stop();
+    usb_poll();
+    static uint64_t last_camera_frame;
+    if(last_camera_frame!=camera_frames()->sequence){last_camera_frame=camera_frames()->sequence;if(windows[5].open)dirty=true;}
     process_session_check();
     static uint32_t last_user = UINT32_MAX;
     if (auth_uid() != last_user) {
+        if(camera_active())camera_stop();
         linux_guest_clear();
         last_user = auth_uid();
         history_count = 0;
@@ -1452,6 +1466,7 @@ void ui_pointer(int x, int y, bool pressed) {
                         if (hit == 2 && edit_changed)
                             dialog = 4;
                         else {
+                            if(hit==5)camera_stop();
                             v->open = false;
                             page = -1;
                         }
@@ -1482,6 +1497,8 @@ void ui_pointer(int x, int y, bool pressed) {
                         unsigned app=(unsigned)xx/122;
                         if(app<5&&(unsigned)xx%122<112)linux_guest_open(apps[app],add_line);
                     }
+                } else if (hit == 5) {
+                    if(yy>=50&&yy<82){if(xx>=0&&xx<170)(void)camera_start();else if(xx>=182&&xx<322)camera_stop();dirty=true;}
                 } else if (hit == 1) {
                     if (yy >= 0 && yy < 32) {
                         if (xx < 72) {

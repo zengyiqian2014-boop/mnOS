@@ -64,7 +64,9 @@ Preview 2 使用比例字体的真实字宽排版正文，保留 1/64 像素精�
 UTM 应使用 **QEMU 后端**并匹配上表设备；Apple Virtualization.framework 尚未验证。
 ARM64 当前原生驱动支持 VirtIO **MMIO**，不是 VirtIO PCI。实体机器也必须有已实现的
 启动、存储、输入和显示设备，不能从 QEMU 通过推断任意实体电脑均可运行。
-Secure Boot 签名和原生 AHCI/NVMe、USB、网络、Wi-Fi、音频及加速 GPU 驱动尚未完成。
+Secure Boot 签名和原生 AHCI/NVMe、网络、Wi-Fi、音频及加速 GPU 驱动尚未完成。
+新增的[原生 xHCI/UVC 驱动](USB.md)支持 USB 2 高速 YUY2 摄像头预览，
+尚不支持 USB 集线器、热插入或 USB 键鼠；实体摄像头和原生人脸登录尚未验证／实现。
 
 ## 实现边界
 

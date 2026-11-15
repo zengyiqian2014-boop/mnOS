@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "kernel.h"
+#include "usb.h"
 struct boot_info boot;
 char cpu_brand[49];
 bool cpu_smep, cpu_smap;
@@ -151,6 +152,7 @@ void kernel_main(uintptr_t address) {
     ++test_passed;
     interrupts_init();
     pci_scan();
+    usb_init();
     power_init();
     input_init();
     ui_init();

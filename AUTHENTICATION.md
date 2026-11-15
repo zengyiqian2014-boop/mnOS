@@ -99,8 +99,9 @@ Wayland、无显示的 SSH/TTY 会话需要人脸恢复码。SSH 公钥等绕过
 精心制作的视频或深伪。自动化测试覆盖真正的代理、PAM、模板加密与恢复流程，
 成功相机结果用明确标记的测试进程模拟；模型推理、空画面和缺失相机另行执行。
 尚无实体摄像头在不同光线、肤色及攻击样本下的测量结果，不宣称防伪认证达标。
-Native 尚无 USB/UVC 摄像头驱动，因此不提供该摄像头登录方式；Native TOTP
-仍使用其自身内核服务。
+Native 新增[原生 xHCI/UVC 预览驱动](native/USB.md)，可以在自研 GUI 内采集
+YUY2 画面；尚无人脸检测、身份比对及活体验证，因此仍不提供原生人脸登录。
+Native TOTP 使用其自身内核服务。虚拟摄像头传输测试不代表实体相机或人脸认证通过。
 
 ## 复现测试
 
@@ -139,6 +140,7 @@ Linux Full adds password-first face verification through PAM, in addition to
 any enabled TOTP. A dedicated unprivileged camera worker, protected encrypted
 records and separate one-use face recovery codes are used. Ordinary RGB cameras
 do not provide trusted depth or certified spoof resistance; physical-camera
-validation remains outstanding. Native has no UVC camera support. Software-only
+validation remains outstanding. Native now has original xHCI/UVC preview support,
+but no native face detection, matching or liveness authentication. Software-only
 isolation does not protect live secrets against a malicious root/kernel.
 Source changes do not automatically update previously published ISOs.

@@ -72,7 +72,10 @@ runtime. Press F1–F7 for apps; Ctrl-S saves a document.
 
 The original desktop is a development preview: built-in desktop services still
 run in kernel mode. Linux binary compatibility, Firefox, VS Code, native network,
-Wi-Fi, USB, AHCI/NVMe, audio, accelerated GPU and APFS support remain unfinished.
+Native [xHCI/UVC camera preview](native/USB.md) now uses original MMIO/DMA drivers
+on AMD64 and ARM64, with no Linux guest. Physical-camera validation and native
+face authentication are still outstanding. Wi-Fi, general USB hub/HID support,
+AHCI/NVMe, audio, accelerated GPU and APFS support remain unfinished.
 Tested hardware models and remaining limits are listed in the installation guide.
 
 The [integrated tools installer](https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.0-installer-preview.4)

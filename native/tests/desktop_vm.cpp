@@ -60,7 +60,8 @@ struct VM {
     int serial = -1, monitor = -1;
     std::string output;
     fs::path log;
-    VM(const fs::path &build, const fs::path &work, const std::string &arch, unsigned phase)
+    VM(const fs::path &build, const fs::path &work, const std::string &arch, unsigned phase,
+       const std::vector<std::string> &extra = {})
         : log(build / ("desktop-" + arch + "-" + std::to_string(phase) + ".log")) {
         std::ofstream(log).close();
         auto disk = work / "disk.img", vars = work / "vars.fd",
@@ -131,6 +132,7 @@ struct VM {
                                                  "-serial",
                                                  "unix:" + socket.string() + ",server=on,wait=on"};
         a.insert(a.end(), common.begin(), common.end());
+        a.insert(a.end(), extra.begin(), extra.end());
         pid = launch(a);
         serial = connect_socket(socket);
         monitor = connect_socket(qmp);

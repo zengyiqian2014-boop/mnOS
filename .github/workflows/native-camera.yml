@@ -1,0 +1,70 @@
+name: Native USB camera
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Publish the tested native USB prerelease (empty for tests only)
+        default: ''
+        required: false
+  pull_request:
+    paths: ['native/**', '.github/workflows/native-camera.yml']
+permissions:
+  contents: read
+jobs:
+  camera:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and test the original kernel, camera and desktop
+        run: |
+          docker build -t mnos-native-builder -f native/Builder.Dockerfile .
+          docker run --rm --user "$(id -u):$(id -g)" --network none -v "$PWD/native:/native" -w /native mnos-native-builder bash tests/camera_ci.sh
+      - name: Package the tested media and evidence
+        run: |
+          mkdir release
+          cp native/build/desktop/mnOS-0.4-desktop-installer-amd64.iso release/mnOS-native-usb-preview-amd64.iso
+          cp native/build/desktop/mnOS-0.4-desktop-installer-arm64.iso release/mnOS-native-usb-preview-arm64.iso
+          cp native/build/desktop/*-camera-*.png release/
+          cp native/USB-RELEASE.md release/RELEASE_NOTES.md
+          printf '%s\n' "$GITHUB_SHA" > release/SOURCE_COMMIT.txt
+          printf 'Validation: https://github.com/%s/actions/runs/%s\n' "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > release/PROVENANCE.txt
+          (cd native/build/desktop && tar -czf ../../../release/camera-validation.tar.gz -- *.log *.png)
+          git archive --format=tar.gz -o release/native-source.tar.gz HEAD native LICENSE .github/workflows/native-camera.yml
+          (cd release && sha256sum *.iso *.tar.gz *.png *.txt *.md > SHA256SUMS && sha256sum --check --strict SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-camera-logs
+          path: |
+            native/build/desktop/*.log
+            native/build/desktop/*.ppm
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-camera-release
+          path: release/
+          retention-days: 14
+  publish:
+    needs: camera
+    if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-camera-release
+          path: release
+      - name: Publish the unchanged verified ISO files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9A-Za-z._-]+$ ]]
+          test "$(cat release/SOURCE_COMMIT.txt)" = "$GITHUB_SHA"
+          (cd release && sha256sum --check --strict SHA256SUMS)
+          gh release create "$RELEASE_TAG" release/* --target "$GITHUB_SHA" --prerelease --latest=false \
+            --title "mnOS Native USB Preview — 原生 xHCI / UVC 摄像头" --notes-file release/RELEASE_NOTES.md

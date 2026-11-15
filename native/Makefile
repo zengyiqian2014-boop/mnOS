@@ -19,6 +19,7 @@ SOURCES = src/core.c src/string.c src/phys.c src/memory.c src/smp.c src/interrup
 SOURCES += src/process.c src/usercopy.c src/file_api.c src/disk_layout.c src/text.c src/commands.c assets/icons.c src/guest.c src/guest_memory.c src/guest_dtb.c src/linux_guest.c
 SOURCES += src/factor.c src/clock.c src/rtc.c vendor/monocypher/monocypher.c
 SOURCES += vendor/qrcodegen/qrcodegen.c
+SOURCES += src/uvc.c src/usb_platform.c src/usb_xhci.c
 GUEST ?= 0
 ifneq ($(GUEST),0)
 ifneq ($(GUEST),1)
@@ -58,7 +59,7 @@ build/mnfs: tools/mnfs.c src/mnfs.c include/mnfs.h
 	mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -Wno-misleading-indentation -Iinclude tools/mnfs.c src/mnfs.c -o $@
 
-host-tests:
+host-tests: uvc-tests
 	mkdir -p build
 	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude tests/guest.c src/guest.c -o build/guest-test
 	./build/guest-test
@@ -92,9 +93,16 @@ host-tests:
 build/mnos.elf: $(OBJECTS) linker.ld build/guest-config
 	$(LD) -nostdlib -z max-page-size=0x1000 -T linker.ld -o $@ $(OBJECTS)
 
-build/%.o: %.c build/flavor-config include/kernel.h include/boot_layout.h include/phys.h include/mnfs.h include/block.h include/auth.h include/factor.h include/clock.h include/exec.h include/process.h include/file_api.h include/usercopy.h include/font.h include/icons.h include/commands.h include/guest.h include/guest_memory.h include/linux_guest.h
+build/%.o: %.c build/flavor-config include/kernel.h include/boot_layout.h include/phys.h include/mnfs.h include/block.h include/auth.h include/factor.h include/clock.h include/exec.h include/process.h include/file_api.h include/usercopy.h include/font.h include/icons.h include/commands.h include/guest.h include/guest_memory.h include/linux_guest.h include/uvc.h include/usb.h include/usb_platform.h
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+.PHONY: uvc-tests
+uvc-tests:
+	mkdir -p build
+	$(CC) -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-misleading-indentation -fsanitize=address,undefined -Iinclude -c src/uvc.c -o build/uvc-test.o
+	$(CXX) -std=c++20 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -Iinclude tests/uvc.cpp build/uvc-test.o -o build/uvc-test
+	./build/uvc-test
 
 build/vendor/qrcodegen/qrcodegen.o: vendor/qrcodegen/qrcodegen.c vendor/qrcodegen/qrcodegen.h
 	mkdir -p $(dir $@)

@@ -10,6 +10,7 @@ COMMON += src/process.c src/usercopy.c src/file_api.c src/disk_layout.c src/text
 COMMON += src/guest.c src/guest_memory.c src/guest_dtb.c src/linux_guest.c
 COMMON += src/factor.c src/clock.c vendor/monocypher/monocypher.c
 COMMON += vendor/qrcodegen/qrcodegen.c
+COMMON += src/uvc.c src/usb_platform.c src/usb_xhci.c
 GUEST ?= 0
 ifneq ($(GUEST),0)
 ifneq ($(GUEST),1)

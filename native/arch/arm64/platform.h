@@ -19,6 +19,9 @@ struct arm_platform {
     bool psci_hvc, uefi;
     uintptr_t virtio[ARM_VIRTIO];
     unsigned virtio_count;
+    uintptr_t pci_ecam;
+    uint64_t pci_size;
+    unsigned pci_first,pci_last;
     uintptr_t image_start, image_end, text_start, text_end, ro_start, ro_end;
 };
 extern struct arm_platform platform;

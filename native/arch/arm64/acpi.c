@@ -43,6 +43,15 @@ bool arm_acpi(const void *rsdp, bool (*valid)(uint64_t, size_t)) {
         size_t n = little(p + 4, 4);
         if (!memcmp(p, "APIC", 4))
             madt = p;
+        if(!memcmp(p,"MCFG",4)&&n>=60&&(n-44)%16==0) {
+            for(size_t entry=44;entry<n;entry+=16) {
+                uint64_t base=little(p+entry,8);unsigned first=p[entry+10],last=p[entry+11];
+                if(!little(p+entry+8,2)&&first<=last&&base&&!(base&0xfffff)) {
+                    platform.pci_ecam=base+((uint64_t)first<<20);platform.pci_size=(uint64_t)(last-first+1)<<20;
+                    platform.pci_first=first;platform.pci_last=last;break;
+                }
+            }
+        }
         if (!memcmp(p, "SPCR", 4) && n >= 60 && (p[36] == 3 || p[36] == 13) && p[40] == 0)
             platform.uart = little(p + 44, 8);
         if (!memcmp(p, "FACP", 4) && n >= 131) {

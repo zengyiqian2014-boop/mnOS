@@ -29,7 +29,8 @@ struct node {
     unsigned ac, sc, pac, psc;
     const uint8_t *reg;
     uint32_t reglen;
-    bool memory, cpu, reserved, disabled, uart, gic2, gic3, virtio, psci, hvc, rtc;
+    bool memory, cpu, reserved, disabled, uart, gic2, gic3, virtio, psci, hvc, rtc, pci;
+    unsigned bus_first,bus_last;
 };
 static bool walk(const void *data, bool collect, void (*cpu)(uint64_t)) {
     const uint8_t *b = data;
@@ -66,6 +67,7 @@ static bool walk(const void *data, bool collect, void (*cpu)(uint64_t)) {
                               .sc = parent.sc,
                               .pac = parent.ac,
                               .psc = parent.sc,
+                              .bus_last = 255,
                               .memory = !strncmp(name, "memory@", 7),
                               .cpu = !strncmp(name, "cpu@", 4),
                               .reserved = parent.reserved || streq(name, "reserved-memory")};
@@ -98,6 +100,7 @@ static bool walk(const void *data, bool collect, void (*cpu)(uint64_t)) {
             if (streq(name, "compatible")) {
                 s->uart = compat(p, n, "arm,pl011");
                 s->rtc = compat(p,n,"arm,pl031");
+                s->pci = compat(p,n,"pci-host-ecam-generic");
                 s->gic2 = compat(p, n, "arm,cortex-a15-gic") || compat(p, n, "arm,gic-400");
                 s->gic3 = compat(p, n, "arm,gic-v3");
                 s->virtio = compat(p, n, "virtio,mmio");
@@ -105,6 +108,7 @@ static bool walk(const void *data, bool collect, void (*cpu)(uint64_t)) {
             }
             if (streq(name, "method"))
                 s->hvc = compat(p, n, "hvc");
+            if(streq(name,"bus-range")&&n==8){s->bus_first=be32(p);s->bus_last=be32(p+4);}
             if (collect && streq(name, "bootargs") && n) {
                 for (size_t i = 0; i + 15 < n; ++i)
                     if (!memcmp(p + i, "mnos.selftest=1", 15))
@@ -146,6 +150,9 @@ static bool walk(const void *data, bool collect, void (*cpu)(uint64_t)) {
                 if (!at && s->uart)
                     platform.uart = base;
                 if(!at&&s->rtc&&size>=4096)platform.rtc=base;
+                if(!at&&s->pci&&s->bus_first<=s->bus_last&&s->bus_last<=255&&size>=((uint64_t)(s->bus_last-s->bus_first+1)<<20)) {
+                    platform.pci_ecam=base;platform.pci_size=size;platform.pci_first=s->bus_first;platform.pci_last=s->bus_last;
+                }
                 if (!at && (s->gic2 || s->gic3)) {
                     platform.gicd = base;
                     platform.gic_version = s->gic3 ? 3 : 2;

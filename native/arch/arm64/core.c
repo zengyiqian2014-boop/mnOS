@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "auth.h"
 #include "platform.h"
+#include "usb.h"
 bool arch_time(uint64_t *epoch) {
     if(platform.rtc) {*epoch=*(volatile uint32_t *)platform.rtc;return *epoch>=1577836800ULL;}
     if(platform.firmware_epoch) {*epoch=platform.firmware_epoch+ticks/PIT_HZ;return true;}
@@ -217,6 +218,7 @@ void arm_main(void) {
     arm_irq_init();
     arm_irq_cpu();
     arm_virtio_init();
+    usb_init();
     files_init();
     ui_init();
     primary.irq_top = (uintptr_t)kernel_alloc(65536) + 65536;

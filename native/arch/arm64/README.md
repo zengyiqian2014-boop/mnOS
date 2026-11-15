@@ -89,8 +89,10 @@ Raspberry Pi, Rockchip and Apple Silicon are not claimed to work from this ISO
 without their respective boot firmware and missing platform drivers.
 
 Native VirtIO drivers currently use modern **MMIO**, not PCI transports. FDT
-enumerates them. ACPI-only platforms can boot and use GOP/serial, but do not yet
-have an AML interpreter or native PCI/USB/block input drivers. They may seed a
+enumerates them. Generic PCI ECAM from FDT or ACPI MCFG also supports the new
+[native xHCI/UVC camera driver](../../USB.md), using firmware-assigned BARs.
+ACPI-only platforms can boot and use GOP/serial, but do not yet have an AML
+interpreter or native PCI block/input drivers. They may seed a
 4-KiB, one-use password-salt pool from the UEFI RNG protocol before handoff.
 Each consumed byte is erased; pool exhaustion or unavailable entropy refuses
 new password hashes. FDT VirtIO RNG requests check returned byte counts and can
@@ -104,7 +106,7 @@ this does not yet provide application scheduling across CPUs. See the
 [native process ABI and validation](../../README.md#run-native-programs-from-mnfs).
 
 Secure Boot must be disabled for the unsigned original kernel. Native network,
-Wi-Fi, USB, accelerated GPU, POSIX/Linux ABI, CPU hotplug, task migration, NUMA
+Wi-Fi, general USB hub/HID support, accelerated GPU, POSIX/Linux ABI, CPU hotplug, task migration, NUMA
 policy and arbitrary-size/POSIX executable loading remain unimplemented. The Linux desktop
 provides those applications/drivers separately. These boot tests are not a
 security certification or a performance comparison with RHEL.
