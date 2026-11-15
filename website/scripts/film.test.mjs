@@ -34,7 +34,7 @@ try{
   await page.waitForFunction(()=>document.querySelector('.scroll-film').classList.contains('film-static'));
   assert.equal(await page.locator('.film-play').isVisible(),false);assert.equal(await page.locator('.film-scene[aria-hidden="true"]').count(),0);
   assert.deepEqual(thirdParty,[]);assert.deepEqual(errors,[]);
-  await page.goto(base+'support.html');assert.equal(await page.locator('.support-email').getAttribute('href'),'mailto:report.mnos@proton.me?subject=mnOS%20feedback');
+  await page.goto(base+'support.html');assert.deepEqual(await page.locator('.support-email').evaluateAll(links=>links.map(link=>link.getAttribute('href'))),['mailto:report.mnos@proton.me?subject=mnOS%20feedback','mailto:wrmfwv@163.com?subject=mnOS%20feedback']);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await context.close();console.log(`PASS ${width}px: automatic in-place playback, leaving/resuming, explicit pause, reduced motion, no music components or requests`);
  }

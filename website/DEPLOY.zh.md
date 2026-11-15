@@ -2,13 +2,17 @@
 
 网站地址：**https://mnos.micronull.cn/**
 
-使用 `mnOS-website-mnos.micronull.cn.zip`。这是完整的静态官网，包含首页、Linux
+使用随附的**完整网站部署包**。这是完整的静态官网，包含首页、Linux
 独立系统页、下载选择器、系统支持、使用说明、图片、样式及 3D 动画资源。
 无音乐组件，不需要安装 Node.js、Python、数据库或启动后端服务。
 ISO 文件保留发布页下载地址，没有装进网站 ZIP。
 
 另附 `mnOS-website-source.zip`，保留网页源码、构建脚本、测试和许可，供后续维护。
 直接上传时选择上面的静态网站包。绑定完成后，地址栏保持 `mnos.micronull.cn`。
+
+**已有网站更新：** 打开现有的 `mnos-website` Pages 项目，选择 **Create deployment**，
+上传这次的完整网站 ZIP，发布到 **Production**，然后点击 **Save and Deploy**。
+继续使用现有域名和 DNS；发布完成后刷新首页、Linux 页及系统支持页，检查两个反馈邮箱。
 
 ## 在 Cloudflare Pages 上传
 
@@ -35,7 +39,7 @@ ISO 文件保留发布页下载地址，没有装进网站 ZIP。
 - 原生系统与 Linux 独立系统的下载页各选各的镜像；检查 AMD64 / ARM64 和
   在线 / 离线选项。尚未发布的组合应显示不可下载，不能跳到别的镜像。
 - 下载前出现使用说明确认；未勾选同意不能下载。
-- 页脚的支持邮箱是 `report.mnos@proton.me`。
+- 官网反馈入口同时列出 `report.mnos@proton.me` 和 `wrmfwv@163.com`，点击能打开邮件应用。
 - 页面没有音乐按钮、播放器或音频请求。
 
 ## 后续更新和回滚
