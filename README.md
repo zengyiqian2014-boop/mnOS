@@ -1,7 +1,8 @@
 # mnOS 统一资源入口
 
 完整版、精简版、补丁都在这里，按类别、系统和 CPU 架构列出；安装 ISO 的具体测试范围见对应发布说明。
-Linux Edition 使用 Linux 内核；Native Edition 使用自研内核，当前 Linux 客体尚无 APT / 网络 / GUI 应用兼容。
+Linux Edition 使用 Linux 内核；Native Edition 使用自研内核，Linux 软件在单独的客体环境内运行。
+各版本的 APT、网络和图形应用支持范围以对应发布说明为准；旧 USB 驱动预览 ISO 不包含新版 Linux 应用环境。
 
 ```sh
 mnos list                  # 所有已发布资源
