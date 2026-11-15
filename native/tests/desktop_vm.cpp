@@ -186,6 +186,10 @@ struct VM {
         output.append(buf, n);
         std::ofstream(log, std::ios::app).write(buf, n);
         require(output.find("PANIC") == std::string::npos, output);
+        require(output.find("Buffer I/O error on device mnos1") == std::string::npos &&
+                    output.find("EXT4-fs error (device mnos1)") == std::string::npos &&
+                    output.find("I/O failed; remount required") == std::string::npos,
+                "guest storage failure\n" + output);
     }
     void wait(const std::string &s, size_t mark = 0, unsigned seconds = 0, bool host_stats = false) {
         auto end = Clock::now() + (seconds ? std::chrono::seconds(seconds) :
@@ -209,6 +213,8 @@ struct VM {
             }
             require(Clock::now() < end, "timeout: " + s + "\n" + output);
             poll_serial();
+            if(host_stats && s.find("MNOS_APT_") != std::string::npos)
+                require(output.find("\nE: ",mark)==std::string::npos,"APT failed\n"+output.substr(mark));
             // Only commands sent from the host console may query host stats.
             // Never inject these keys into a guest console or a GUI window.
             if(host_stats&&Clock::now()-stats>30s) {send("linux stats\n");stats=Clock::now();}
@@ -450,6 +456,10 @@ int main(int argc, char **argv) {
                 vm.guest_command("dpkg --print-architecture", "\r\nriscv64\r\n");
                 vm.guest_command("printf abc | sha256sum", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  -");
                 vm.guest_command("test ! -e /disk && printf '%s%s\\n' NO_HOST_ DISK", "\r\nNO_HOST_DISK\r\n");
+                // Large page-cache bios must split at the negotiated limit.
+                // A checksum before reboot alone can just read cached data;
+                // check this binary again after Linux powers off and boots.
+                vm.guest_command("dd if=/dev/urandom of=/root/bulk-check bs=1M count=1 status=none && sha256sum /root/bulk-check > /root/bulk-check.sha256 && sync && echo MNOS_BULK_WRITE_PASS", "\r\nMNOS_BULK_WRITE_PASS\r\n");
                 if(const char *proxy=std::getenv("MNOS_TEST_PROXY")) {
                     std::string p=proxy;
                     require(p.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:/.-")==std::string::npos,"test proxy URL");
@@ -511,6 +521,7 @@ int main(int argc, char **argv) {
                 vm.command("linux start","LINUX SIMULATION: confirmation requested");
                 vm.key("ret");
                 auto reboot=vm.output.size();vm.wait("linux-guest# ",reboot);
+                vm.guest_command("sha256sum -c /root/bulk-check.sha256 && echo MNOS_BULK_REBOOT_PASS", "\r\nMNOS_BULK_REBOOT_PASS\r\n");
                 vm.guest_command("cat /root/native-test", "\r\nPERSISTED\r\n");
                 vm.guest_command("test \"$(dpkg-query -W -f='${db:Status-Status}' x11-utils)\" = installed && echo MNOS_PACKAGE_PERSISTENCE_PASS", "\r\nMNOS_PACKAGE_PERSISTENCE_PASS\r\n");
                 vm.command("test -f /root/guiinput && echo MNOS_PERSISTENCE_PASS","\r\nMNOS_PERSISTENCE_PASS\r\n");

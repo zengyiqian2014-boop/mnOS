@@ -25,11 +25,17 @@ static unsigned disk_io_max;
 static DEFINE_SPINLOCK(disk_lock);
 static void disk_submit(struct bio *bio)
 {
-    unsigned disk=(unsigned)(uintptr_t)bio->bi_bdev->bd_disk->private_data;
-    unsigned op=bio_op(bio),size=bio->bi_iter.bi_size,at=0;
+    unsigned disk,op,size,at=0;
     struct bio_vec bvec;struct bvec_iter iter;
-    u64 offset=(u64)bio->bi_iter.bi_sector*512;
+    u64 offset;
     unsigned long flags;
+    /* submit_bio drivers must apply their own queue limits. A page-cache bio
+     * can be larger than max_hw_sectors; split it before taking our lock. */
+    bio=bio_split_to_limits(bio);
+    if(!bio)return;
+    disk=(unsigned)(uintptr_t)bio->bi_bdev->bd_disk->private_data;
+    op=bio_op(bio);size=bio->bi_iter.bi_size;
+    offset=(u64)bio->bi_iter.bi_sector*512;
     spin_lock_irqsave(&disk_lock,flags);
     if(op==REQ_OP_FLUSH){if(call(GD_SYNC,disk,0,0,0).error)goto fail;goto done;}
     if(op!=REQ_OP_READ&&op!=REQ_OP_WRITE)goto fail;

@@ -112,6 +112,7 @@ on a development host, using libslirp only as the test NIC. It supports
 Hosted execution is not evidence of a native boot. The release gate is
 `MNOS_TEST_LINUX_GUEST=1 build/desktop-vm build/desktop amd64` and `arm64`:
 install to a new disk, remove the ISO, boot the original kernel, authenticate,
+write a 1 MiB binary file and verify its checksum again after guest poweroff,
 run signed APT update/install over native VirtIO, open X11, deliver real input,
 shut down and verify package/file persistence. `MNOS_TEST_PROXY` can set a test
 network proxy; no development proxy is baked into the image.
