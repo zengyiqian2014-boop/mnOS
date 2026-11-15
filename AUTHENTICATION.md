@@ -53,7 +53,10 @@ SSH 公钥、其他绕过 common-auth 的服务或用户自行替换的认证栈
 二维码、恢复码和摄像头预览是用户主动要求显示的敏感界面；屏幕拍摄、
 受控桌面中的键盘记录、已登录会话的恶意程序不由静态磁盘加密解决。
 
-Linux 使用内核 `getrandom()`，Native 使用现有的安全随机设备/CPU 随机源。
+Linux 使用内核 `getrandom()`；Native 使用 CPU、VirtIO 随机设备或 UEFI 固件随机源。
+UEFI 启动时也可以从 TPM 2.0／TPM 1.2 的 GetRandom 接口取得种子，用带密钥更新的
+ChaCha20 生成器提供后续随机数。TPM 2.0 已通过无 CPU／VirtIO RNG 的启动测试，
+TPM 1.2 目前只有协议测试。Legacy BIOS 启动不使用这一 UEFI 回退路径。
 没有合格随机源时不生成密钥。认证状态迁移支持原 Native v1 账号记录；
 保存后升级为 v2，不要求用户重新创建已有账号。
 

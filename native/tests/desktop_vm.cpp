@@ -29,16 +29,22 @@ static void require(bool ok, const std::string &why) {
     if (!ok)
         throw std::runtime_error(why);
 }
-static void require_guest_frame(const fs::path &path) {
+static void require_guest_frame(const fs::path &path,unsigned x,unsigned y,unsigned width,unsigned height) {
     std::ifstream image(path,std::ios::binary);std::string magic;unsigned w=0,h=0,max=0;
     image>>magic>>w>>h>>max;
     require(magic=="P6"&&w&&h&&w<=8192&&h<=8192&&max==255,"framebuffer PPM header");
-    image.get();size_t green=0;
+    require(x+width<=w&&y+height<=h,"guest framebuffer rectangle");
+    image.get();size_t green=0,dark=0,text=0;
     for(size_t i=0;i<(size_t)w*h;i++) {
         unsigned char rgb[3];image.read((char *)rgb,3);require((bool)image,"truncated framebuffer");
+        unsigned px=i%w,py=i/w;
+        if(px<x||px>=x+width||py<y||py>=y+height)continue;
         if(rgb[0]==0x24&&rgb[1]==0x8b&&rgb[2]==0x42)green++;
+        if(rgb[0]<40&&rgb[1]<50&&rgb[2]<55)dark++;
+        if(rgb[0]>110&&rgb[1]>110&&rgb[2]>110)text++;
     }
     require(green>100,"Linux X11 background was not rendered in the native framebuffer");
+    require(dark>5000&&text>150,"Linux application window/text was not rendered inside the guest framebuffer");
 }
 static pid_t launch(const std::vector<std::string> &args) {
     pid_t p = fork();
@@ -181,9 +187,9 @@ struct VM {
         std::ofstream(log, std::ios::app).write(buf, n);
         require(output.find("PANIC") == std::string::npos, output);
     }
-    void wait(const std::string &s, size_t mark = 0, unsigned seconds = 0) {
+    void wait(const std::string &s, size_t mark = 0, unsigned seconds = 0, bool host_stats = false) {
         auto end = Clock::now() + (seconds ? std::chrono::seconds(seconds) :
-            std::getenv("MNOS_TEST_LINUX_GUEST") ? 900s : 150s), last = Clock::now();
+            std::getenv("MNOS_TEST_LINUX_GUEST") ? 900s : 150s), last = Clock::now(), stats = last;
         while (output.find(s, mark) == std::string::npos) {
             if (Clock::now() - last > 5s) {
                 qmp_command("{\"execute\":\"screendump\",\"arguments\":{\"filename\":\"" +
@@ -192,6 +198,9 @@ struct VM {
             }
             require(Clock::now() < end, "timeout: " + s + "\n" + output);
             poll_serial();
+            // Only commands sent from the host console may query host stats.
+            // Never inject these keys into a guest console or a GUI window.
+            if(host_stats&&Clock::now()-stats>30s) {send("linux stats\n");stats=Clock::now();}
         }
     }
     size_t send(const std::string &s) {
@@ -204,7 +213,7 @@ struct VM {
     }
     void command(const std::string &s, const std::string &wanted, unsigned seconds = 0) {
         auto m = send(s + "\n");
-        wait(wanted, m, seconds);
+        wait(wanted, m, seconds, s.compare(0,11,"linux send ")==0);
     }
     void guest_command(const std::string &s,const std::string &wanted) {
         auto mark=send(s+"\n");wait(wanted,mark);
@@ -429,6 +438,10 @@ int main(int argc, char **argv) {
                 vm.wait("linux-guest# ", vm.output.find("LINUX SIMULATION: app sent to guest shell",desktop));
                 vm.page_key("f5",4);
                 vm.command("linux send for i in $(seq 1 120); do DISPLAY=:0 xsetroot -solid '#248b42' 2>/dev/null && { echo MNOS_X11_PASS; break; }; sleep 1; done","\r\nMNOS_X11_PASS\r\n");
+                // Xorg accepting connections does not mean xterm has mapped
+                // its window or started its shell. Do not type into the root
+                // window while fonts and X clients are still initializing.
+                vm.command("linux send for i in $(seq 1 300); do p=$(pgrep -x xterm); test -n \"$p\" && pgrep -P \"$p\" -x bash >/dev/null && { echo MNOS_XTERM_PASS; break; }; sleep 1; done","\r\nMNOS_XTERM_PASS\r\n");
                 vm.command("linux send DISPLAY=:0 xsetroot -solid '#248b42'; echo MNOS_FRAME_READY", "\r\nMNOS_FRAME_READY\r\n");
                 vm.command("linux resume","UI: page 7");
                 // Move into the xterm client, then deliver real host keys through
@@ -441,10 +454,12 @@ int main(int argc, char **argv) {
                 int sy=74+52+115+(area-dh)/2;
                 vm.click_at(sx+dw/2,sy+dh/3);
                 for(const char *key:{"t","o","u","c","h","spc","slash","r","o","o","t","slash","g","u","i","i","n","p","u","t","ret"})vm.key(key);
-                vm.screenshot(build/(arch+"-linux-guest-gui.ppm"));
-                require_guest_frame(build/(arch+"-linux-guest-gui.ppm"));
                 vm.page_key("f5",4);
-                vm.command("linux send test -f /root/guiinput && echo MNOS_GUI_INPUT_PASS","\r\nMNOS_GUI_INPUT_PASS\r\n");
+                vm.command("linux send for i in $(seq 1 120); do test -f /root/guiinput && { echo MNOS_GUI_INPUT_PASS; break; }; sleep 1; done","\r\nMNOS_GUI_INPUT_PASS\r\n");
+                vm.command("linux resume","UI: page 7");
+                vm.screenshot(build/(arch+"-linux-guest-gui.ppm"));
+                require_guest_frame(build/(arch+"-linux-guest-gui.ppm"),sx,sy,dw,dh);
+                vm.page_key("f5",4);
                 // Check the bundled offline GUI before the network-dependent
                 // package test. Full Debian index parsing takes billions of
                 // interpreted instructions under an outer QEMU TCG instance.
