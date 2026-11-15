@@ -37,8 +37,9 @@ jobs:
       - name: Boot firmware TPM fallback without CPU or VirtIO random devices
         run: |
           set -euo pipefail
-          docker run --rm -v "$PWD/native:/native" -w /native mnos-native-builder \
-            build/firmware-vm build/desktop build/desktop 2>&1 | tee native/build/desktop/firmware-validation.log
+          docker run --rm -v "$PWD/native:/native" -w /native mnos-native-builder bash -ec '
+            set -o pipefail
+            build/firmware-vm build/desktop build/desktop 2>&1 | tee build/desktop/firmware-validation.log'
       - name: Install and execute guest Linux in both native desktops
         run: |
           set -euo pipefail
