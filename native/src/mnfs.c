@@ -314,8 +314,13 @@ static int next_entry(struct mnfs *f, uint64_t root, struct key after, bool incl
 done:
     f->io.release(n); return e;
 }
+/* One traversal holds one immutable CoW root. Reuse its last validated owner
+ * instead of looking up the same inode for every data block of a large file.
+ * Never share this result across current/previous/snapshot roots: the same
+ * inode number may be truncated or deleted in a different root. */
+struct walk_owner { uint64_t id; struct value inode; int error; bool valid; };
 static int walk_mark(struct mnfs *f, uint64_t root, uint64_t block, unsigned expected,
-                     const struct key *lower, const struct key *upper) {
+                     const struct key *lower, const struct key *upper, struct walk_owner *owner) {
     if (!block) return MN_OK;
     struct node *n;
     int e = load_node(f, block, &n);
@@ -331,8 +336,13 @@ static int walk_mark(struct mnfs *f, uint64_t root, uint64_t block, unsigned exp
     for (unsigned i = 0; i < n->count; ++i) {
         struct entry entry = n->entries[i];
         if (!entry.value.block || entry.key.type == DIRECTORY) continue;
-        struct value ino;
-        e = inode_read(f, root, entry.key.owner, &ino, NULL, NULL);
+        if (!owner->valid || owner->id != entry.key.owner) {
+            owner->id = entry.key.owner;
+            owner->error = inode_read(f, root, entry.key.owner, &owner->inode, NULL, NULL);
+            owner->valid = true;
+        }
+        struct value ino = owner->inode;
+        e = owner->error;
         if (e == MN_NOENT && entry.key.type == DATA) { e = MN_OK; continue; }
         if (e) goto done;
         if (entry.key.type == DATA) {
@@ -345,11 +355,15 @@ static int walk_mark(struct mnfs *f, uint64_t root, uint64_t block, unsigned exp
     if (n->level) for (unsigned i = 0; i <= n->count; ++i) {
         e = walk_mark(f, root, n->children[i], n->level,
                       i ? &n->entries[i - 1].key : lower,
-                      i < n->count ? &n->entries[i].key : upper);
+                      i < n->count ? &n->entries[i].key : upper, owner);
         if (e) goto done;
     }
 done:
     f->io.release(n); return e;
+}
+static int walk_root(struct mnfs *f, uint64_t root) {
+    struct walk_owner owner = {0};
+    return walk_mark(f, root, root, MAX_LEVEL + 1, NULL, NULL, &owner);
 }
 int mnfs_collect(struct mnfs *f) {
     memset(f->used, 0, (size_t)((f->io.blocks + 7) / 8));
@@ -357,7 +371,7 @@ int mnfs_collect(struct mnfs *f) {
     uint64_t roots[] = {f->root, f->snapshot, f->previous, f->previous_snapshot};
     for (unsigned i = 0; i < 4; ++i) {
         memset(f->seen, 0, (size_t)((f->io.blocks + 7) / 8));
-        int e = walk_mark(f, roots[i], roots[i], MAX_LEVEL + 1, NULL, NULL);
+        int e = walk_root(f, roots[i]);
         if (e) { f->poisoned = true; f->collect = true; return e; }
     }
     f->cursor = 2; f->collect = false; return MN_OK;
@@ -454,9 +468,9 @@ int mnfs_mount(struct mnfs *f, const struct mnfs_io *io, bool writable) {
             if (valid[at ^ 1] && c[at ^ 1]->generation < c[at]->generation) {
                 uint64_t old = c[at ^ 1]->root, snap = c[at ^ 1]->snapshot;
                 memset(f->seen, 0, (size_t)((f->io.blocks + 7) / 8));
-                int old_error = walk_mark(f, old, old, MAX_LEVEL + 1, NULL, NULL);
+                int old_error = walk_root(f, old);
                 memset(f->seen, 0, (size_t)((f->io.blocks + 7) / 8));
-                if (!old_error && !walk_mark(f, snap, snap, MAX_LEVEL + 1, NULL, NULL)) {
+                if (!old_error && !walk_root(f, snap)) {
                     f->previous = old; f->previous_snapshot = snap;
                 }
             }

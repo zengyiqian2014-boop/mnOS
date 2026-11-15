@@ -9,11 +9,12 @@
 struct disk {
     unsigned char *data, *stable;
     uint16_t dirty[BLOCKS];
-    unsigned operations, fail_at, flushes;
+    unsigned operations, fail_at, flushes, reads;
     bool torn;
 };
 static bool read_block(void *ctx, uint64_t n, void *out) {
-    struct disk *d = ctx; assert(n < BLOCKS); memcpy(out, d->data + n * MNFS_BLOCK, MNFS_BLOCK); return true;
+    struct disk *d = ctx; assert(n < BLOCKS); ++d->reads;
+    memcpy(out, d->data + n * MNFS_BLOCK, MNFS_BLOCK); return true;
 }
 static bool write_block(void *ctx, uint64_t n, const void *in) {
     struct disk *d = ctx; assert(n < BLOCKS);
@@ -100,6 +101,31 @@ static void bulk_write(void) {
     expect(&f,"/file",0,zero,sizeof zero);expect(&f,"/file",size+512,zero,sizeof zero);
     mnfs_close(&f);free(data);free(d.data);
     puts("PASS MNFS: 128 KiB unaligned batch uses two durability barriers, remount preserves every byte and neighboring sectors");
+}
+static void owner_walk(bool deleted) {
+    struct disk d = {.data = calloc(1, BYTES)};
+    struct mnfs_io device = io(&d);struct mnfs f;
+    size_t size=1024u*1024u;unsigned char *original=malloc(size), *replacement=malloc(size);
+    assert(d.data&&original&&replacement);
+    for(size_t i=0;i<size;i++){original[i]=(uint8_t)(i*43+(i>>8));replacement[i]=(uint8_t)~original[i];}
+    ok(mnfs_format(&f,&device));ok(mnfs_create(&f,"/payload",false));
+    ok(mnfs_write(&f,"/payload",0,original,size));ok(mnfs_snapshot(&f,0));
+    mnfs_close(&f);d.reads=0;ok(mnfs_mount(&f,&device,true));
+    unsigned reads=d.reads;
+    /* Mounting a one-MiB payload must not read its owner's inode once per
+     * data block. Allow up to two MiB of metadata across all retained roots. */
+    assert((uint64_t)reads*MNFS_BLOCK<=2*size);
+    if(deleted)ok(mnfs_remove(&f,"/payload"));else ok(mnfs_truncate(&f,"/payload",MNFS_BLOCK));
+    /* The snapshot still needs every block of the original owner, even when
+     * that inode is missing or shorter in the current root. Reuse free space
+     * after collection to expose an incorrectly shared ownership cache. */
+    ok(mnfs_collect(&f));ok(mnfs_create(&f,"/replacement",false));
+    ok(mnfs_write(&f,"/replacement",0,replacement,size));
+    ok(mnfs_snapshot(&f,1));mnfs_close(&f);
+    ok(mnfs_mount(&f,&device,false));expect(&f,"/payload",0,original,size);
+    struct mnfs_stat st;assert(mnfs_stat(&f,"/replacement",&st)==MN_NOENT);
+    mnfs_close(&f);free(original);free(replacement);free(d.data);
+    printf("PASS MNFS: one-MiB snapshot mount uses %u metadata reads; %s owner cannot invalidate retained snapshot data\n",reads,deleted?"deleted":"truncated");
 }
 static void space_and_corruption(void) {
     struct disk d = {.data = calloc(1, BYTES)};
@@ -199,6 +225,6 @@ int main(void) {
     puts("PASS MNFS: 4 GiB boundary, 32 TiB sparse offsets, B-tree splits, directories, rename, GC, snapshot and remount");
     crash_tests(false,6); crash_tests(true,6);
     crash_tests(false,2*MNFS_BLOCK+17); crash_tests(true,2*MNFS_BLOCK+17);
-    bulk_write(); space_and_corruption(); checkpoint_recovery();
+    bulk_write(); owner_walk(false); owner_walk(true); space_and_corruption(); checkpoint_recovery();
     return 0;
 }
