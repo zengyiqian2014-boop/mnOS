@@ -200,6 +200,10 @@ struct VM {
         auto m = send(s + "\n");
         wait(wanted, m);
     }
+    void guest_command(const std::string &s,const std::string &wanted) {
+        auto mark=send(s+"\n");wait(wanted,mark);
+        wait("linux-guest# ",output.find(wanted,mark)+wanted.size());
+    }
     void qmp_command(const std::string &s) {
         std::string cmd = s + "\n", reply;
         require(::send(monitor, cmd.data(), cmd.size(), MSG_NOSIGNAL) == (ssize_t)cmd.size(),
@@ -402,10 +406,10 @@ int main(int argc, char **argv) {
                 vm.wait("LINUX SIMULATION: app sent to guest shell",enabled);
                 vm.wait("Swap:",enabled);
                 vm.wait("linux-guest# ",vm.output.find("Swap:",enabled));
-                vm.command("uname -s", "\r\nLinux\r\n");
-                vm.command("dpkg --print-architecture", "\r\nriscv64\r\n");
-                vm.command("printf abc | sha256sum", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  -");
-                vm.command("test ! -e /disk && printf '%s%s\\n' NO_HOST_ DISK", "\r\nNO_HOST_DISK\r\n");
+                vm.guest_command("uname -s", "\r\nLinux\r\n");
+                vm.guest_command("dpkg --print-architecture", "\r\nriscv64\r\n");
+                vm.guest_command("printf abc | sha256sum", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  -");
+                vm.guest_command("test ! -e /disk && printf '%s%s\\n' NO_HOST_ DISK", "\r\nNO_HOST_DISK\r\n");
                 if(const char *proxy=std::getenv("MNOS_TEST_PROXY")) {
                     std::string p=proxy;
                     require(p.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:/.-")==std::string::npos,"test proxy URL");
@@ -447,8 +451,8 @@ int main(int argc, char **argv) {
                 vm.command("linux start","LINUX SIMULATION: confirmation requested");
                 vm.key("ret");
                 auto reboot=vm.output.size();vm.wait("linux-guest# ",reboot);
-                vm.command("cat /root/native-test; dpkg-query -W x11-utils", "\r\nPERSISTED\r\n");
-                vm.wait("x11-utils",vm.output.rfind("PERSISTED"));
+                vm.guest_command("cat /root/native-test", "\r\nPERSISTED\r\n");
+                vm.guest_command("test \"$(dpkg-query -W -f='${db:Status-Status}' x11-utils)\" = installed && echo MNOS_PACKAGE_PERSISTENCE_PASS", "\r\nMNOS_PACKAGE_PERSISTENCE_PASS\r\n");
                 vm.command("test -f /root/guiinput && echo MNOS_PERSISTENCE_PASS","\r\nMNOS_PERSISTENCE_PASS\r\n");
                 vm.command("poweroff","LINUX GUEST: stopped");
                 vm.page_key("f5",4);

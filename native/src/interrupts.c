@@ -292,7 +292,9 @@ struct irq_frame *irq_dispatch(struct irq_frame *f) {
                 tasks[i].ready = true;
             }
         if (!cpu_this()->index) {
-            if (inb(0x3fd) & 1) ui_key((char)inb(0x3f8));
+            /* Drain a bounded UART batch. One byte per tick loses pasted
+             * commands when guest execution makes a timer handler longer. */
+            for(unsigned n=0;n<64&&(inb(0x3fd)&1);++n)ui_key((char)inb(0x3f8));
             ui_tick();
         }
         if (ticks == 30) {
