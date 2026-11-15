@@ -96,7 +96,7 @@ let catalog;
 let selectedImage = null;
 const downloadButton = $('#download-button');
 const guidance = {
-  native: '此 ISO 安装自研 mnOS。Linux 仅在模拟环境内运行；当前支持部分控制台程序。',
+  native: '此 ISO 安装自研 mnOS。Linux 软件在模拟环境内运行；具体兼容范围见所选版本的发布说明。',
   linux: '此 ISO 安装独立的 Linux 系统。Firefox、VS Code、APT 与 CTF 工具在 Linux 系统内运行。',
 };
 function renderDownload() {
