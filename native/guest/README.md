@@ -71,6 +71,13 @@ nano /root/example.txt
 poweroff
 ```
 
+A cold X11/GTK start on an outer software VM can take many minutes. The launcher
+keeps the request pending for up to 30 minutes while its session supervisor is
+alive, and reports an early exit immediately. Startup details are in
+`/tmp/mnos-gui.log` and `/run/mnos-gui/session.log`; failures also appear in the
+Linux terminal. This is a bounded compatibility path, not a claim of interactive
+performance on every host.
+
 The application center discovers visible installed `.desktop` entries through
 GIO, refreshes on installation, and searches names, IDs and descriptions. Its
 Install action opens an APT terminal through `mnos-pkg`. Programs without desktop
@@ -148,7 +155,12 @@ network proxy; no development proxy is baked into the image.
 The native-boot test checks the bundled GUI before downloading packages. Its two
 APT steps each have a one-hour ceiling and report elapsed time: parsing the full
 Debian catalog under an outer QEMU software CPU can take billions of interpreted
-instructions. When `/dev/kvm` is available, the AMD64 **test host** can use it;
+instructions. AMD64 and ARM64 run in separate CI jobs on matching host
+architectures; the release gate requires both, their matching source commit and
+identical guest package versions. GUI startup/window waits are bounded at 30
+minutes (one hour for the browser), and poll slowly to avoid spending the
+interpreted CPU on test utilities. When `/dev/kvm` is available on a matching
+architecture, the **test host** can use it;
 `MNOS_TEST_TCG=1` forces TCG. This does not add hardware acceleration to the
 installed RV64 guest. The tests also boot without CPU/VirtIO random devices to
 exercise the UEFI TPM entropy fallback and refusal when all trusted sources are absent.

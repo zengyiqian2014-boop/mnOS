@@ -26,19 +26,21 @@ static uint32_t owner=UINT32_MAX;
 static unsigned requested_app, prompt_match;
 static uint64_t host_tick;
 static const char *queued_command;
+#define GUI_COMMAND(command) "(" command " > /tmp/mnos-gui.log 2>&1 || tail -n 8 /tmp/mnos-gui.log) &"
 static const struct { const char *id, *name, *command; bool graphical; } apps[] = {
     {"terminal", "Linux 终端", NULL, false},
     {"files", "Linux 文件列表", "ls -la /", false},
     {"processes", "Linux 进程", "ps", false},
     {"system", "Linux 系统信息", "uname -a; free -m", false},
     {"commands", "Linux 命令目录", "help", false},
-    {"desktop", "Linux 图形桌面", "mnos-gui desktop > /tmp/mnos-gui.log 2>&1 &", true},
+    {"desktop", "Linux 图形桌面", GUI_COMMAND("mnos-gui desktop"), true},
     {"packages", "APT 软件管理", "apt list --installed", false},
-    {"applications", "Linux 应用中心", "mnos-gui show > /tmp/mnos-gui.log 2>&1 &", true},
-    {"browser", "Firefox ESR", "mnos-gui open firefox-esr.desktop > /tmp/mnos-gui.log 2>&1 &", true},
-    {"file-manager", "Linux 文件管理器", "mnos-gui open thunar.desktop > /tmp/mnos-gui.log 2>&1 &", true},
-    {"editor", "Linux 图形编辑器", "mnos-gui open org.xfce.mousepad.desktop > /tmp/mnos-gui.log 2>&1 &", true}
+    {"applications", "Linux 应用中心", GUI_COMMAND("mnos-gui show"), true},
+    {"browser", "Firefox ESR", GUI_COMMAND("mnos-gui open firefox-esr.desktop"), true},
+    {"file-manager", "Linux 文件管理器", GUI_COMMAND("mnos-gui open thunar.desktop"), true},
+    {"editor", "Linux 图形编辑器", GUI_COMMAND("mnos-gui open org.xfce.mousepad.desktop"), true}
 };
+#undef GUI_COMMAND
 static bool disk_read(void *context,uint64_t offset,void *out,size_t n) {
     (void)context;size_t got=0;uint64_t before=usb_millis();
     bool ok=!mnfs_read(storage.volume,storage.path,offset,out,n,&got)&&got==n;

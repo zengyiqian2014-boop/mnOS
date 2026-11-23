@@ -32,7 +32,8 @@ static int connection(const std::string &path) {
     const int fd=socket(AF_UNIX,SOCK_STREAM|SOCK_CLOEXEC,0);
     if(fd<0)return -1;
     if(connect(fd,reinterpret_cast<sockaddr *>(&address),sizeof address)){close(fd);return -1;}
-    timeval timeout{10,0};
+    // A cold application index can take appreciable time on the software CPU.
+    timeval timeout{120,0};
     setsockopt(fd,SOL_SOCKET,SO_RCVTIMEO,&timeout,sizeof timeout);
     setsockopt(fd,SOL_SOCKET,SO_SNDTIMEO,&timeout,sizeof timeout);
     return fd;
@@ -64,6 +65,12 @@ static bool start_session(const std::string &path) {
     int status=0;while(waitpid(child,&status,0)<0&&errno==EINTR){}
     close(lock);_exit(WIFEXITED(status)?WEXITSTATUS(status):1);
 }
+static bool session_running(const std::string &path) {
+    const int lock=open((path+"/session.lock").c_str(),O_RDWR|O_NOFOLLOW|O_CLOEXEC);
+    if(lock<0)return false;
+    const bool running=flock(lock,LOCK_EX|LOCK_NB)<0&&errno==EWOULDBLOCK;
+    close(lock);return running;
+}
 static std::string quoted(const std::string &word) {
     std::string out="'";
     for(char c:word){if(c=='\'')out+="'\\''";else out+=c;}
@@ -92,10 +99,22 @@ int main(int argc,char **argv) {
     if(fd<0&&(action=="status"||action=="hide")){std::cerr<<"Linux graphical session is not running.\n";return 1;}
     if(fd<0) {
         if(!start_session(path)){std::cerr<<"Cannot start the Linux graphical session.\n";return 1;}
-        const auto end=std::chrono::steady_clock::now()+std::chrono::seconds(300);
-        std::cerr<<"Starting Linux graphical session...\n";
+        // Native mnOS may itself be running under QEMU TCG. Five minutes was
+        // shorter than Xorg/GTK's observed cold start in this configuration.
+        // Keep the request alive while the real session supervisor is alive,
+        // but fail promptly if startx exits and retain an absolute bound.
+        const auto end=std::chrono::steady_clock::now()+std::chrono::minutes(30);
+        auto progress=std::chrono::steady_clock::now()+std::chrono::seconds(30);
+        std::cerr<<"Starting Linux graphical session; software emulation can take several minutes.\n";
         while(fd<0&&std::chrono::steady_clock::now()<end) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));fd=connection(path+"/socket");
+            if(!session_running(path)) {
+                std::cerr<<"Linux graphical session exited during startup. Details: "<<path<<"/session.log\n";return 1;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));fd=connection(path+"/socket");
+            if(fd<0&&std::chrono::steady_clock::now()>=progress) {
+                std::cerr<<"Still starting Linux graphics. Details: "<<path<<"/session.log\n";
+                progress=std::chrono::steady_clock::now()+std::chrono::seconds(30);
+            }
         }
     }
     if(fd<0){std::cerr<<"Linux desktop did not become ready. Details: "<<path<<"/session.log\n";return 1;}

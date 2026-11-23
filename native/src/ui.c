@@ -926,9 +926,19 @@ static void window_content(unsigned app) {
         if(linux_guest_graphical()) {
             int dw=w,dh=w*768/1024,area=v->h-207;
             if(dh>area){dh=area;dw=dh*1024/768;}
-            uint32_t pixels[1024];
+            uint32_t pixels[1024],painted=0;
             for(int row=0;row<dh;row++)if(linux_guest_pixels((unsigned)row*768/(unsigned)dh,pixels,1024))
-                for(int col=0;col<dw;col++)pixel(x+(w-dw)/2+col,y+115+(area-dh)/2+row,pixels[(unsigned)col*1024/(unsigned)dw]&0xffffff);
+                for(int col=0;col<dw;col++) {
+                    uint32_t color=pixels[(unsigned)col*1024/(unsigned)dw]&0xffffff;painted|=color;
+                    pixel(x+(w-dw)/2+col,y+115+(area-dh)/2+row,color);
+                }
+            if(!painted) {
+                text_fit(x+14,y+132,"Starting Linux graphics... / 正在启动 Linux 图形环境",18,FG,w-28);
+                text_fit(x+14,y+165,"Open Terminal to view startup messages. / 终端可查看启动日志",16,MUTED,w-28);
+                unsigned count=linux_guest_lines(),first=count>4?count-4:0;
+                for(unsigned i=first;i<count;i++)
+                    text_fit(x+14,y+205+(int)(i-first)*23,linux_guest_line(i),FONT_MONO18,MUTED,w-28);
+            }
         } else {
         unsigned rows=(unsigned)(v->h-222)/23,count=linux_guest_lines();
         unsigned first=count>rows?count-rows:0;
@@ -1167,7 +1177,10 @@ void ui_tick(void) {
         log_write("\n");
     }
     linux_guest_tick();
-    if (windows[7].open && !windows[7].minimized && ticks % 10 == 0)dirty=true;
+    // Keep the foreground guest responsive without repainting the entire
+    // desktop ten times a second while the host terminal/settings are focused.
+    // Background windows still refresh with the normal one-second clock tick.
+    if (page==7 && windows[7].open && !windows[7].minimized && ticks % 10 == 0)dirty=true;
     if (ticks % PIT_HZ == 0)
         dirty = true;
     if (dirty && ticks % 5 == 0)

@@ -5,6 +5,10 @@ if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
     exec dbus-run-session -- "$0" "$@"
 fi
 export XDG_CURRENT_DESKTOP=mnOS XDG_SESSION_TYPE=x11
+# Host authentication owns locking. The nested X server must not blank its
+# framebuffer during a long interpreted startup or while an app is loading.
+xset s off
+xset -dpms 2>/dev/null || true
 xsetroot -solid '#0c1720'
 twm &
 xterm -fa monospace -fs 12 -bg '#101a24' -fg '#d8e7ed' -geometry 96x30+25+65 -title 'mnOS Linux - APT terminal' &

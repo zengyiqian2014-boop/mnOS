@@ -149,8 +149,15 @@ struct VM {
         }
         // Accelerate the development VM when available. This executes the
         // original mnOS host on a CPU; its RV64 Linux guest still uses our
-        // software interpreter. ARM-on-x86 and forced TCG remain emulated.
-        bool kvm=arch=="amd64"&&!std::getenv("MNOS_TEST_TCG")&&access("/dev/kvm",R_OK|W_OK)==0;
+        // software interpreter. Cross-architecture and forced TCG stay emulated.
+#if defined(__aarch64__)
+        const bool native_arch=arch=="arm64";
+#elif defined(__x86_64__)
+        const bool native_arch=arch=="amd64";
+#else
+        const bool native_arch=false;
+#endif
+        bool kvm=native_arch&&!std::getenv("MNOS_TEST_TCG")&&access("/dev/kvm",R_OK|W_OK)==0;
         std::cout<<"OUTER QEMU "<<arch<<" phase "<<phase<<" accelerator "<<(kvm?"KVM":"TCG")<<std::endl;
         const std::vector<std::string> common = {"-accel",
                                                  kvm?"kvm":"tcg",
@@ -490,11 +497,11 @@ int main(int argc, char **argv) {
                 vm.wait("LINUX SIMULATION: app sent to guest shell",desktop);
                 vm.wait("linux-guest# ", vm.output.find("LINUX SIMULATION: app sent to guest shell",desktop));
                 vm.page_key("f5",4);
-                vm.command("linux send for i in $(seq 1 120); do DISPLAY=:0 xsetroot -solid '#248b42' 2>/dev/null && { echo MNOS_X11_PASS; break; }; sleep 1; done","\r\nMNOS_X11_PASS\r\n");
+                vm.command("linux send for i in $(seq 1 120); do DISPLAY=:0 xsetroot -solid '#248b42' 2>/dev/null && { echo MNOS_X11_PASS; break; }; sleep 5; done","\r\nMNOS_X11_PASS\r\n");
                 // Xorg accepting connections does not mean xterm has mapped
                 // its window or started its shell. Do not type into the root
                 // window while fonts and X clients are still initializing.
-                vm.command("linux send for i in $(seq 1 300); do p=$(pgrep -x xterm); test -n \"$p\" && pgrep -P \"$p\" -x bash >/dev/null && { echo MNOS_XTERM_PASS; break; }; sleep 1; done","\r\nMNOS_XTERM_PASS\r\n");
+                vm.command("linux send for i in $(seq 1 300); do p=$(pgrep -x xterm); test -n \"$p\" && pgrep -P \"$p\" -x bash >/dev/null && { echo MNOS_XTERM_PASS; break; }; sleep 5; done","\r\nMNOS_XTERM_PASS\r\n");
                 vm.command("linux send DISPLAY=:0 xsetroot -solid '#248b42'; echo MNOS_FRAME_READY", "\r\nMNOS_FRAME_READY\r\n");
                 vm.command("linux resume","UI: page 7");
                 // Move into the xterm client, then deliver real host keys through
@@ -519,20 +526,22 @@ int main(int argc, char **argv) {
                 // and a full browser without disabling its sandbox.
                 vm.command("linux send grep -q ' /dev/shm tmpfs ' /proc/mounts && test -w /dev/shm && echo MNOS_SHARED_MEMORY_PASS","\r\nMNOS_SHARED_MEMORY_PASS\r\n");
                 vm.command("linux send mnos-gui list > /root/gui-apps; grep -q firefox-esr.desktop /root/gui-apps && echo MNOS_GUI_DISCOVERY_PASS","\r\nMNOS_GUI_DISCOVERY_PASS\r\n",600);
-                vm.command("linux send wait_gui() { for i in $(seq 1 600); do DISPLAY=:0 xdotool search --onlyvisible --name \"$1\" >/dev/null && { echo MNOS_WINDOW_PASS; return; }; sleep 1; done; tail -30 /run/mnos-gui/session.log; }","linux-guest# ");
+                // Repeatedly loading X11 utilities on the interpreted CPU can
+                // itself delay the application being observed. Poll less often.
+                vm.command("linux send wait_gui() { for i in $(seq 1 600); do DISPLAY=:0 xdotool search --onlyvisible --name \"$1\" >/dev/null && { echo MNOS_WINDOW_PASS; return; }; sleep 5; done; tail -30 /run/mnos-gui/session.log; }","linux-guest# ");
                 vm.command("linux open applications","UI: page 7");
                 vm.page_key("f5",4);
-                vm.command("linux send wait_gui 'mnOS Linux applications'","\r\nMNOS_WINDOW_PASS\r\n",650);
+                vm.command("linux send wait_gui 'mnOS Linux applications'","\r\nMNOS_WINDOW_PASS\r\n",1800);
                 vm.command("linux resume","UI: page 7");
                 vm.screenshot(build/(arch+"-linux-guest-applications.ppm"));
                 vm.page_key("f5",4);
-                vm.command("linux send mnos-gui open org.xfce.mousepad.desktop && wait_gui Mousepad","\r\nMNOS_WINDOW_PASS\r\n",650);
+                vm.command("linux send mnos-gui open org.xfce.mousepad.desktop && wait_gui Mousepad","\r\nMNOS_WINDOW_PASS\r\n",1800);
                 vm.command("linux send printf '%s\\n' '<!doctype html><title>mnOS browser verification</title><h1>Linux GUI on mnOS</h1><canvas id=\"p\" width=\"400\" height=\"140\"></canvas>' > /root/browser.html; echo MNOS_HTML_READY","\r\nMNOS_HTML_READY\r\n");
                 vm.command("linux send printf '%s\\n' '<script>let c=document.getElementById(\"p\").getContext(\"2d\");c.fillStyle=\"#e34397\";c.fillRect(0,0,200,140);c.fillStyle=\"#59d6ea\";c.fillRect(200,0,200,140);</script>' >> /root/browser.html; echo MNOS_JS_READY","\r\nMNOS_JS_READY\r\n");
-                vm.command("linux send mnos-gui run firefox-esr --no-remote file:///root/browser.html && wait_gui Firefox","\r\nMNOS_WINDOW_PASS\r\n",650);
+                vm.command("linux send mnos-gui run firefox-esr --no-remote file:///root/browser.html && wait_gui Firefox","\r\nMNOS_WINDOW_PASS\r\n",3600);
                 vm.command("linux resume","UI: page 7");
                 auto browser_frame=build/(arch+"-linux-guest-firefox.ppm");
-                auto render_deadline=Clock::now()+600s;
+                auto render_deadline=Clock::now()+3600s;
                 for(;;) {
                     vm.screenshot(browser_frame);
                     if(browser_rendered(browser_frame,sx,sy,dw,dh))break;

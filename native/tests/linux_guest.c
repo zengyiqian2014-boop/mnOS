@@ -134,7 +134,7 @@ int main(void){
     assert(!strcmp(received+len,"ls -la /\n"));
     len=received_len;
     assert(linux_guest_open("applications",out)&&linux_guest_graphical());pump_guest();
-    assert(!strcmp(received+len,"mnos-gui show > /tmp/mnos-gui.log 2>&1 &\n"));
+    assert(!strcmp(received+len,"(mnos-gui show > /tmp/mnos-gui.log 2>&1 || tail -n 8 /tmp/mnos-gui.log) &\n"));
     assert(linux_guest_open("terminal",out)&&!linux_guest_graphical());pump_guest();
     linux_guest_command("linux pause",out);before=runs;pump_guest();
     assert(runs==before&&linux_guest_enabled());

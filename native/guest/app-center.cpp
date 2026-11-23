@@ -132,6 +132,11 @@ static void read_done(GObject *object,GAsyncResult *result,gpointer data) {
     r->used+=size_t(n);
     const auto *newline=static_cast<const char *>(memchr(r->input.data(),'\n',r->used));
     if(newline) {
+        // The short deadline protects incomplete requests. Desktop discovery
+        // and GTK cold startup run on an interpreted CPU and may take longer;
+        // do not cancel their response using the input deadline.
+        if(r->timeout){g_source_remove(r->timeout);r->timeout=0;}
+        r->timeout=g_timeout_add_seconds(120,[](gpointer data)->gboolean{auto *r=static_cast<Request *>(data);r->timeout=0;g_cancellable_cancel(r->cancel);return G_SOURCE_REMOVE;},r);
         const size_t size=size_t(newline-r->input.data());
         if(memchr(r->input.data(),0,size)||!g_utf8_validate(r->input.data(),gssize(size),nullptr))respond(r,"ERROR Invalid request encoding.\n");
         else respond(r,dispatch(std::string(r->input.data(),size)));

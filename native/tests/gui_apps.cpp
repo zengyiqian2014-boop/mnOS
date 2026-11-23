@@ -7,10 +7,12 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <fcntl.h>
 #include <iostream>
 #include <stdexcept>
 #include <string>
 #include <sys/socket.h>
+#include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/un.h>
 #include <sys/wait.h>
@@ -102,7 +104,29 @@ int main(int argc,char **argv) {
         for(const char *name:{"opened.pid","arguments.pid"}) {
             std::ifstream pidfile(base+"/"+name);int pid=0;pidfile>>pid;if(pid>1)kill(pid,SIGTERM);
         }
+        // A session can die before its service socket exists. Observe a real
+        // process-held startup lock, then release it like an exiting supervisor;
+        // the client must fail promptly instead of waiting the full deadline.
+        const auto startup=base+"/failed-startup";fs::create_directory(startup);chmod(startup.c_str(),0700);
+        const int lock=open((startup+"/session.lock").c_str(),O_RDWR|O_CREAT|O_CLOEXEC,0600);
+        check(lock>=0&&!flock(lock,LOCK_EX|LOCK_NB),"startup fixture lock");
+        const auto waiting=fork();check(waiting>=0,"startup client fork");
+        if(!waiting) {
+            unsetenv("MNOS_GUI_NO_START");setenv("MNOS_GUI_DIRECTORY",startup.c_str(),1);
+            if(!freopen((startup+"/error").c_str(),"w",stderr))_exit(127);
+            execl(client.c_str(),client.c_str(),"show",static_cast<char *>(nullptr));_exit(127);
+        }
+        auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(5);
+        while(read(startup+"/error").find("Starting Linux graphical session")==std::string::npos&&std::chrono::steady_clock::now()<deadline)
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        close(lock);
+        int result=0;pid_t done=0;deadline=std::chrono::steady_clock::now()+std::chrono::seconds(5);
+        while(!(done=waitpid(waiting,&result,WNOHANG))&&std::chrono::steady_clock::now()<deadline)
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        if(!done){kill(waiting,SIGKILL);waitpid(waiting,&result,0);}
+        check(done==waiting&&WIFEXITED(result)&&WEXITSTATUS(result)!=0&&read(startup+"/error").find("exited during startup")!=std::string::npos,"failed session must not leave a stale startup wait");
         std::cout<<"PASS Linux GUI: desktop discovery, visible GTK windows, launch, hidden entries, literal argv, nonblocking private IPC\n";
+        std::cout<<"PASS Linux GUI startup: supervisor exit detected before the startup deadline\n";
         return 0;
     }catch(const std::exception &error){std::cerr<<error.what()<<'\n';return 1;}
 }
