@@ -1,6 +1,14 @@
 name: Native GUI with real Linux guest
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'native/**'
+      - 'live/src/package.cpp'
+      - 'live/src/install-notice.hpp'
+      - 'live/src/mnos-locale.h'
+      - '.github/workflows/native-linux-guest.yml'
 permissions:
   contents: read
 jobs:
