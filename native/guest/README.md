@@ -44,6 +44,12 @@ does not require a download. Installing additional packages with APT requires
 network access. An integrated installer is larger than the separate USB driver
 preview; compare filenames, checksums and package manifests, not size alone.
 
+Before ISO packaging, `verify-image.sh` extracts the guest's init, desktop
+session, launchers and corresponding application sources. It compares them
+with the current build inputs, checks the executable architecture and validates
+the guest kernel configuration and hashes. A stale staging directory fails
+the build instead of producing an ISO with an older initialization script.
+
 The Debian builder precomputes Fontconfig's le64 caches after rounding font
 directory timestamps to SquashFS's second precision. This avoids invalidating
 the caches and rescanning all fonts during the first interpreted X11 launch.

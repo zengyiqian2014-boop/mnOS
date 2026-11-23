@@ -9,6 +9,7 @@ case "$FLAVOR" in full) suffix='' ;; lite) suffix='-lite' ;; *) exit 2 ;; esac
 ARCHES=${ARCHES:-amd64 arm64}
 test -n "$ARCHES" || exit 2
 for arch in $ARCHES; do case "$arch" in amd64|arm64) ;; *) echo 'ARCHES accepts amd64 and arm64 only.' >&2; exit 2;; esac; done
+if [ "${GUEST:-0}" = 1 ]; then bash guest/verify-image.sh; fi
 mkdir -p build/desktop/amd64 build/desktop/arm64
 flags='-O2 -ffreestanding -fno-builtin -fno-stack-protector -mno-stack-arg-probe -fshort-wchar -mgeneral-regs-only -Wall -Wextra -Werror -Wno-misleading-indentation -Iarch/arm64/freestanding -Iinclude'
 for arch in $ARCHES; do

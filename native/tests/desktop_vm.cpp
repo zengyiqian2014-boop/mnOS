@@ -237,6 +237,8 @@ struct VM {
             }
             require(Clock::now() < end, "timeout: " + s + "\n" + output);
             poll_serial();
+            require(output.find("\nMNOS_TEST_FAILURE_",mark)==std::string::npos,
+                    "guest prerequisite failed\n"+output.substr(mark));
             if(host_stats && s.find("MNOS_APT_") != std::string::npos)
                 require(output.find("\nE: ",mark)==std::string::npos,"APT failed\n"+output.substr(mark));
             // Only commands sent from the host console may query host stats.
@@ -477,6 +479,9 @@ int main(int argc, char **argv) {
                 vm.wait("linux-guest# ",vm.output.find("Swap:",enabled));
                 vm.guest_command("test \"$(cat /sys/block/mnos1/queue/max_hw_sectors_kb)\" = 128 && echo MNOS_BULK_IO_PASS", "\r\nMNOS_BULK_IO_PASS\r\n");
                 std::cout<<"LINUX BOOT PASS "<<arch<<": private disk mounted, 128 KiB transport negotiated"<<std::endl;
+                // Fail before starting X11 if the packaged init omitted a
+                // GUI prerequisite. A missing mount is not slow startup.
+                vm.guest_command("if grep -q ' /dev/shm tmpfs ' /proc/mounts && test -w /dev/shm; then echo MNOS_SHARED_MEMORY_PASS; else echo MNOS_TEST_FAILURE_shared_memory; fi","\r\nMNOS_SHARED_MEMORY_PASS\r\n");
                 vm.guest_command("uname -s", "\r\nLinux\r\n");
                 vm.guest_command("dpkg --print-architecture", "\r\nriscv64\r\n");
                 vm.guest_command("printf abc | sha256sum", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  -");
@@ -524,7 +529,6 @@ int main(int argc, char **argv) {
                 // Inspect actual mapped windows, not just a launcher process.
                 // This also exercises GTK, dynamically discovered desktop files
                 // and a full browser without disabling its sandbox.
-                vm.command("linux send grep -q ' /dev/shm tmpfs ' /proc/mounts && test -w /dev/shm && echo MNOS_SHARED_MEMORY_PASS","\r\nMNOS_SHARED_MEMORY_PASS\r\n");
                 vm.command("linux send mnos-gui list > /root/gui-apps; grep -q firefox-esr.desktop /root/gui-apps && echo MNOS_GUI_DISCOVERY_PASS","\r\nMNOS_GUI_DISCOVERY_PASS\r\n",600);
                 // Repeatedly loading X11 utilities on the interpreted CPU can
                 // itself delay the application being observed. Poll less often.
