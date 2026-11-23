@@ -39,7 +39,13 @@ help -cn updates
 2.2.0~preview3 的 Linux Full 组件加入 PAM 附加人脸验证、受保护的加密模板、
 一次性人脸恢复码和语言/地区设置。摄像头需要本地 X11 环境；普通 RGB 摄像头
 没有可信深度，实体摄像头和防伪测量尚未完成。具体发布状态以签名目录为准。
-自研版当前的 RV64 客体尚无 APT/虚拟网卡；不能把这些 Linux 软件包装进自研内核。
+自研版的 Debian riscv64 客体已有 APT、网络和 X11。软件装进客体，不会变成自研
+内核原生程序。本页 AMD64/ARM64 组件包用于独立 Linux 版，不能装进 riscv64 客体。
+
+2.2.0~preview7：通过 `mnos apt install` 或 `mnos-pkg install` 明确指定 Python 相关包或
+`linux-libc-dev` 时，会先显示额外说明并要求确认，默认取消。不会吞掉 APT 自己
+的确认；查询、模拟和排除的目标不提示。该提示不覆盖直接调用的上游 `apt`。
+Python 的占用及性能取决于程序和依赖；`linux-libc-dev` 是头文件，安装本身不造成内存泄漏。
 
 公钥指纹：`117234CA3D793137BE651EC6D2F2944324FA4E65`。
 软件源：`https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/`。

@@ -17,10 +17,15 @@ VirtIO Ethernet and a private persistent disk. This implementation is in the
 current source; old USB-only preview ISOs do not acquire it automatically.
 See the exact release manifest and [guest build/use guide](native/guest/README.md).
 
-Linux simulation is off by default. `linux open desktop` requests permission and
-opens X11; `linux start` requests the console. F5 returns to the host terminal.
+Linux simulation is off by default. `linux open applications` requests permission
+and opens the searchable application center; `linux open desktop` shows Xterm.
+`linux start` requests the console. F5 returns to the host terminal.
 `linux apps` lists launchers, `linux status` shows the real state and RAM use.
 Use `apt update`, `apt install PACKAGE` and `apt list --installed` inside Linux.
+`mnos-gui list` discovers visible installed desktop entries. `mnos-gui open ID`
+launches one; `mnos-gui run PROGRAM [ARG...]` handles programs without an entry.
+The current source bundles Firefox ESR, Thunar and Mousepad; each release must
+pass its native-window tests before those binaries are published.
 Use a graphical Xterm for full-screen programs such as nano. The host serial
 console is line-oriented. `help` is English and `help -cn` is Chinese.
 

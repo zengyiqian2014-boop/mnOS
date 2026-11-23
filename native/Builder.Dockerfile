@@ -5,6 +5,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     qemu-system-x86 qemu-system-arm qemu-efi-aarch64 ovmf \
     grub-pc-bin grub-efi-amd64-bin grub-common xorriso mtools dosfstools \
     ca-certificates curl xz-utils bzip2 bc bison flex cpio rsync libelf-dev libssl-dev zbar-tools libusbredirparser-dev \
-    gcc-riscv64-linux-gnu gcc-riscv64-unknown-elf device-tree-compiler \
-    debootstrap qemu-user-static binfmt-support squashfs-tools libslirp-dev swtpm fontconfig \
+    gcc-riscv64-linux-gnu g++-riscv64-linux-gnu pkg-config gcc-riscv64-unknown-elf device-tree-compiler \
+    debootstrap qemu-user-static binfmt-support squashfs-tools libslirp-dev swtpm fontconfig shared-mime-info \
     && rm -rf /var/lib/apt/lists/*

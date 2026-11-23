@@ -46,6 +46,23 @@ static void require_guest_frame(const fs::path &path,unsigned x,unsigned y,unsig
     require(green>100,"Linux X11 background was not rendered in the native framebuffer");
     require(dark>5000&&text>150,"Linux application window/text was not rendered inside the guest framebuffer");
 }
+static bool browser_rendered(const fs::path &path,unsigned x,unsigned y,unsigned width,unsigned height) {
+    std::ifstream image(path,std::ios::binary);std::string magic;unsigned w=0,h=0,max=0;
+    image>>magic>>w>>h>>max;
+    require(magic=="P6"&&w&&h&&w<=8192&&h<=8192&&max==255,"browser PPM header");
+    require(x+width<=w&&y+height<=h,"browser framebuffer rectangle");
+    image.get();size_t pink=0,cyan=0;
+    for(size_t i=0;i<(size_t)w*h;i++) {
+        unsigned char rgb[3];image.read((char *)rgb,3);require((bool)image,"truncated browser framebuffer");
+        unsigned px=i%w,py=i/w;
+        if(px<x||px>=x+width||py<y||py>=y+height)continue;
+        if(rgb[0]==0xe3&&rgb[1]==0x43&&rgb[2]==0x97)pink++;
+        if(rgb[0]==0x59&&rgb[1]==0xd6&&rgb[2]==0xea)cyan++;
+    }
+    // These blocks exist only after our page's JavaScript paints its canvas.
+    // A running process, empty window or first-run page cannot satisfy this.
+    return pink>200&&cyan>200;
+}
 static pid_t launch(const std::vector<std::string> &args) {
     pid_t p = fork();
     require(p >= 0, "fork");
@@ -229,6 +246,7 @@ struct VM {
         return m;
     }
     void command(const std::string &s, const std::string &wanted, unsigned seconds = 0) {
+        if(s.compare(0,11,"linux send ")==0)require(s.size()<256,"test command exceeds the native console buffer");
         auto m = send(s + "\n");
         wait(wanted, m, seconds, s.compare(0,11,"linux send ")==0);
     }
@@ -496,6 +514,34 @@ int main(int argc, char **argv) {
                 require_guest_frame(build/(arch+"-linux-guest-gui.ppm"),sx,sy,dw,dh);
                 std::cout<<"LINUX GUI INPUT PASS "<<arch<<std::endl;
                 vm.page_key("f5",4);
+                // Inspect actual mapped windows, not just a launcher process.
+                // This also exercises GTK, dynamically discovered desktop files
+                // and a full browser without disabling its sandbox.
+                vm.command("linux send grep -q ' /dev/shm tmpfs ' /proc/mounts && test -w /dev/shm && echo MNOS_SHARED_MEMORY_PASS","\r\nMNOS_SHARED_MEMORY_PASS\r\n");
+                vm.command("linux send mnos-gui list > /root/gui-apps; grep -q firefox-esr.desktop /root/gui-apps && echo MNOS_GUI_DISCOVERY_PASS","\r\nMNOS_GUI_DISCOVERY_PASS\r\n",600);
+                vm.command("linux send wait_gui() { for i in $(seq 1 600); do DISPLAY=:0 xdotool search --onlyvisible --name \"$1\" >/dev/null && { echo MNOS_WINDOW_PASS; return; }; sleep 1; done; tail -30 /run/mnos-gui/session.log; }","linux-guest# ");
+                vm.command("linux open applications","UI: page 7");
+                vm.page_key("f5",4);
+                vm.command("linux send wait_gui 'mnOS Linux applications'","\r\nMNOS_WINDOW_PASS\r\n",650);
+                vm.command("linux resume","UI: page 7");
+                vm.screenshot(build/(arch+"-linux-guest-applications.ppm"));
+                vm.page_key("f5",4);
+                vm.command("linux send mnos-gui open org.xfce.mousepad.desktop && wait_gui Mousepad","\r\nMNOS_WINDOW_PASS\r\n",650);
+                vm.command("linux send printf '%s\\n' '<!doctype html><title>mnOS browser verification</title><h1>Linux GUI on mnOS</h1><canvas id=\"p\" width=\"400\" height=\"140\"></canvas>' > /root/browser.html; echo MNOS_HTML_READY","\r\nMNOS_HTML_READY\r\n");
+                vm.command("linux send printf '%s\\n' '<script>let c=document.getElementById(\"p\").getContext(\"2d\");c.fillStyle=\"#e34397\";c.fillRect(0,0,200,140);c.fillStyle=\"#59d6ea\";c.fillRect(200,0,200,140);</script>' >> /root/browser.html; echo MNOS_JS_READY","\r\nMNOS_JS_READY\r\n");
+                vm.command("linux send mnos-gui run firefox-esr --no-remote file:///root/browser.html && wait_gui Firefox","\r\nMNOS_WINDOW_PASS\r\n",650);
+                vm.command("linux resume","UI: page 7");
+                auto browser_frame=build/(arch+"-linux-guest-firefox.ppm");
+                auto render_deadline=Clock::now()+600s;
+                for(;;) {
+                    vm.screenshot(browser_frame);
+                    if(browser_rendered(browser_frame,sx,sy,dw,dh))break;
+                    require(Clock::now()<render_deadline,"Firefox did not render the offline JavaScript canvas");
+                    vm.poll_serial();std::this_thread::sleep_for(3s);
+                }
+                std::cout<<"LINUX APPLICATIONS PASS "<<arch<<": real GTK application center, installed desktop entry, Mousepad and Firefox JavaScript canvas\n";
+                vm.page_key("f5",4);
+                vm.command("linux send pkill -TERM firefox-esr; pkill -TERM mousepad; mnos-gui hide; echo MNOS_GUI_CLOSED","\r\nMNOS_GUI_CLOSED\r\n");
                 // Check the bundled offline GUI before the network-dependent
                 // package test. Full Debian index parsing takes billions of
                 // interpreted instructions under an outer QEMU TCG instance.

@@ -13,9 +13,13 @@
 和私有持久磁盘。这是当前源码的实现；旧的 USB 驱动预览 ISO 不会自动获得这些功能。
 请查看具体发布版本的清单和[构建、使用及验证说明](native/guest/README.md)。
 
-在原生终端执行 `linux open desktop`，确认开启模拟后进入 X11；`linux start`
+在原生终端执行 `linux open applications`，确认后进入可搜索的应用中心；
+`linux open desktop` 打开图形终端，`linux start`
 打开行式控制台。F5 返回宿主。`linux apps` 列入口，`linux status` 查状态与内存。
 在 Linux 环境中用 `apt update`、`apt install 包名`、`apt list --installed`。
+`mnos-gui list` 发现已安装的桌面应用；`mnos-gui open 桌面ID` 启动应用，
+`mnos-gui run 程序 [参数]` 启动没有桌面条目的程序。当前源码集成 Firefox ESR、
+Thunar 和 Mousepad；发布这些二进制前，必须通过自研宿主内的真实窗口测试。
 nano 等全屏程序在图形终端 Xterm 中运行。`help` 默认英文，`help -cn` 中文。
 
 安装后的系统把当前用户的软件和文件保存在个人目录下的 8 GiB 稀疏数据文件。

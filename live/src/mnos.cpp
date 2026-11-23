@@ -16,7 +16,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include "mnos-locale.h"
+#include "install-notice.hpp"
 static int run(std::vector<std::string> words) {
+    if(!mnos::confirm_install(words))return 1;
     std::vector<char *> args;for(auto &w:words)args.push_back(w.data());args.push_back(nullptr);
     pid_t child=fork();if(child<0)return 1;
     if(!child) {execv(args[0],args.data());perror(args[0]);_exit(127);}
@@ -213,6 +215,8 @@ int main(int argc,char **argv) {
           "update: refresh signed metadata and update installed mnOS packages.\n"
           "rollback VERSION: reinstall retained mnOS package versions; not disk/data rollback.\n"
           "apt ...: run the real Linux APT client. sudo apt upgrade updates Debian packages.\n"
+          "Installing named Python packages or linux-libc-dev asks an extra y/N confirmation.\n"
+          "APT -y does not bypass this notice; simulations and excluded packages do not prompt.\n"
           "Detailed English/Chinese manual: help updates / help -cn updates\n";
         return 0;
     }

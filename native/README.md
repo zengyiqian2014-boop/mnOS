@@ -1,7 +1,8 @@
 # mnOS native kernel and desktop
 
-Current development adds the original C RV64IMAC/Sv39 machine and a real Linux
-guest window: build with `GUEST=1` after `guest/build.sh`. This executes Linux
+Current development includes the original C RV64GC/Sv39 machine and a real Linux
+guest with APT and an X11 application center: build with `GUEST=1` after
+`guest/build.sh` and `bash guest/build-debian.sh`. This executes Linux
 inside the native desktop; it does not add a host Linux ABI. See
 [two editions and exact runtime limits](../EDITIONS.md). `system` unifies native
 status queries; `linux` controls the guest. The older release notes below

@@ -267,9 +267,10 @@ static void tools_help(const char *cmd) {
         add_line("Build-host SDK: native/user/api.h; make -C native user-programs");
         add_line("No native network stack, APT, dynamic linker or Linux ABI yet.");
         add_line("linux start: boot the bundled software Linux guest in this desktop.");
-        add_line("Firefox and VS Code require the separate Linux Edition. See tools linux.");
+        add_line("Linux GUI apps: linux open applications. See tools linux for architecture limits.");
     } else if (streq(cmd,"tools linux")) {
-        add_line("Native guest: linux open desktop; then apt update; apt install PACKAGE.");
+        add_line("Native guest: linux open applications; then use its Install button or APT.");
+        add_line("mnos-gui list / open DESKTOP_ID / run PROGRAM: actual Linux application windows.");
         add_line("Debian riscv64, X11, private persistent disk and VirtIO Ethernet.");
         add_line("The separate Linux Edition includes Firefox ESR and official VS Code.");
         add_line("In Linux Edition, as an ordinary user:");
@@ -412,6 +413,8 @@ static bool layout_ready, menu_open, dragging;
 static int drag_dx, drag_dy;
 static const char *app_names[] = {"Welcome",  "Files",   "Text editor", "System monitor",
                                   "Terminal", "Devices", "Settings", "Linux 模拟"};
+static const char *linux_actions[]={"applications","desktop","terminal","browser","file-manager","commands"};
+static const char *linux_labels[]={"应用中心","图形终端","终端","Firefox","文件管理","帮助"};
 static const char *app_desc[] = {"Your native desktop",           "Browse your home folder",
                                  "Create and edit text files",    "Memory and kernel status",
                                  "Commands and native programs",  "USB camera and devices",
@@ -487,13 +490,13 @@ static void focus_app(int app) {
 }
 static void launch_app(int app) {
     focus_app(app);
-    if(app==7)linux_guest_open("terminal",add_line);
+    if(app==7)linux_guest_open("applications",add_line);
 }
 static void toggle_linux(void) {
     if(linux_guest_enabled()||linux_guest_prompting()) {
         linux_guest_command("linux disable",add_line);
-        setting_message("Linux 模拟已关闭，临时文件已清除。");
-    } else linux_guest_open("terminal",add_line);
+        setting_message("Linux 已停止，内存已清除；磁盘数据保留。");
+    } else linux_guest_open("applications",add_line);
     dirty=true;
 }
 static void home_folder(bool persistent) {
@@ -916,8 +919,8 @@ static void window_content(unsigned app) {
         button(x+112,y,102,"暂停",false);
         button(x+224,y,102,"继续",false);
         button(x+336,y,102,"关闭",false);
-        const char *labels[]={"终端","图形桌面","进程","APT 软件包","命令目录"};
-        for(unsigned i=0;i<5;i++)button(x+(int)i*122,y+42,112,labels[i],false);
+        int step=w/(int)ARRAY_SIZE(linux_actions);
+        for(unsigned i=0;i<ARRAY_SIZE(linux_actions);i++)button(x+(int)i*step,y+42,step-8,linux_labels[i],false);
         text_fit(x,y+81,linux_guest_status(),16,ACCENT,w);
         rounded(x,y+115,w,v->h-207,0x0c1720);
         if(linux_guest_graphical()) {
@@ -951,7 +954,7 @@ static void window_content(unsigned app) {
         text_fit(x, y + 258, setting_status, 16, MUTED,w);
         button(x,y+342,235,"Linux 模拟 / L",linux_guest_enabled());
         text(x+264,y+342,linux_guest_enabled()?"已开启 / 本次登录":"已关闭 / 默认状态",18,ACCENT);
-        text_fit(x,y+381,"关闭立即停止 Linux，并清除其中的临时文件。",18,MUTED,w);
+        text_fit(x,y+381,"关闭立即停止 Linux 并清除内存；已安装磁盘上的数据保留。",18,MUTED,w);
         text_fit(x,y+419,"登录或重启后默认关闭。打开 Linux 程序时会再次询问。",16,MUTED,w);
     }
 }
@@ -1512,9 +1515,8 @@ void ui_pointer(int x, int y, bool pressed) {
                         const char *action=xx<102?"linux start":xx<214?"linux pause":xx<326?"linux resume":xx<438?"linux stop":NULL;
                         if(action)linux_guest_command(action,add_line);
                     } else if(yy>=42&&yy<74&&xx>=0) {
-                        const char *apps[]={"terminal","desktop","processes","packages","commands"};
-                        unsigned app=(unsigned)xx/122;
-                        if(app<5&&(unsigned)xx%122<112)linux_guest_open(apps[app],add_line);
+                        unsigned step=(unsigned)(v->w-40)/ARRAY_SIZE(linux_actions),app=(unsigned)xx/step;
+                        if(app<ARRAY_SIZE(linux_actions)&&(unsigned)xx%step<step-8)linux_guest_open(linux_actions[app],add_line);
                     }
                 } else if (hit == 5) {
                     if(yy>=50&&yy<82){if(xx>=0&&xx<170)(void)camera_start();else if(xx>=182&&xx<322)camera_stop();dirty=true;}

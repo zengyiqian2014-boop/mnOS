@@ -7,6 +7,7 @@ are used only by build/test tools. This is software interpretation, not hardware
 virtualization. See [edition boundaries](../../EDITIONS.md).
 
 The guest includes APT, glibc, a dynamic linker, Xorg/fbdev, Xterm, twm,
+the C++ mnOS application center, Firefox ESR, Mousepad, Thunar, the C++ toolchain,
 standard file/process/network commands and nano. Software must have a riscv64
 or architecture-independent build. An AMD64 or ARM64 DEB is not translated into
 another architecture by unpacking it. Official VS Code AMD64/ARM64 packages
@@ -33,7 +34,9 @@ LP64D/glibc ABI; the original interpreter implements F and D without host floati
 point. Debian packages are authenticated by Debian's archive keys. Package
 versions are recorded in `build/guest/DEBIAN-PACKAGES.tsv`; builds use the current
 Debian 13 repositories and are not bit-for-bit reproducible across repository
-updates. No Python or Java is authored or installed in this base guest.
+updates. mnOS programs use C/C++/assembly, not Python or Java. GTK build tools
+and their unused dependencies are removed after compilation; only dependencies
+needed by the selected runtime packages remain. The package manifest records them.
 
 `prepare-debian.sh` produces `rootfs.squashfs`. The native installer embeds this
 file together with Linux, so booting the guest and opening its included desktop
@@ -44,21 +47,44 @@ preview; compare filenames, checksums and package manifests, not size alone.
 The Debian builder precomputes Fontconfig's le64 caches after rounding font
 directory timestamps to SquashFS's second precision. This avoids invalidating
 the caches and rescanning all fonts during the first interpreted X11 launch.
+It also generates the MIME cache needed by GTK's embedded icons. The guest
+kernel enables shared memory and memfd; init mounts `/dev/shm` as a separate
+tmpfs with mode 1777, `nosuid` and `nodev`. Pages are allocated on demand, with
+the kernel's default size limit proportional to the guest's RAM.
 
 ## Use and persistence
 
-On the host, `linux open desktop` asks to enable simulation, then starts X11.
+On the host, `linux open applications` asks to enable simulation, then starts the
+application center in X11. `linux open desktop` shows the graphical terminal.
 `linux start` opens the line console. F5 returns to the host. In the Linux window:
 
 ```sh
 apt update
 apt install x11-utils
 apt list --installed
+mnos-gui list
+mnos-gui open firefox-esr.desktop
+mnos-gui run mousepad /root/example.txt
 # In Xterm, applications open real windows:
 xmessage 'Hello from Debian'
 nano /root/example.txt
 poweroff
 ```
+
+The application center discovers visible installed `.desktop` entries through
+GIO, refreshes on installation, and searches names, IDs and descriptions. Its
+Install action opens an APT terminal through `mnos-pkg`. Programs without desktop
+entries can use `mnos-gui run PROGRAM [ARG...]`; argument splitting never invokes
+a shell. `show`, `desktop`, `hide` and `status` reuse one graphical session.
+Requests use a private Unix socket with peer-UID checks and bounded async reads.
+Closing the center hides its window, leaving other applications running.
+If a launched child exits with an error or signal, the center reopens with the
+failure and records it in `/run/mnos-gui/session.log`.
+
+`mnos-pkg install` asks an additional default-no confirmation for explicitly named
+Python packages and `linux-libc-dev`. APT still shows dependencies and its own
+confirmation. Header files consume disk space; they are not runtime libraries
+and do not themselves cause memory leaks. Direct `apt` retains upstream behavior.
 
 Use `help` / `help -cn` in either environment. Guest root has no host account
 privileges. The host's authenticated user owns a private sparse 8 GiB
@@ -114,6 +140,8 @@ Hosted execution is not evidence of a native boot. The release gate is
 install to a new disk, remove the ISO, boot the original kernel, authenticate,
 write a 1 MiB binary file and verify its checksum again after guest poweroff,
 run signed APT update/install over native VirtIO, open X11, deliver real input,
+discover installed apps, open the real GTK center and Mousepad, and check pixels
+painted by JavaScript in a real Firefox window,
 shut down and verify package/file persistence. `MNOS_TEST_PROXY` can set a test
 network proxy; no development proxy is baked into the image.
 
@@ -124,6 +152,12 @@ instructions. When `/dev/kvm` is available, the AMD64 **test host** can use it;
 `MNOS_TEST_TCG=1` forces TCG. This does not add hardware acceleration to the
 installed RV64 guest. The tests also boot without CPU/VirtIO random devices to
 exercise the UEFI TPM entropy fallback and refusal when all trusted sources are absent.
+
+`bash native/tests/gui_apps.sh` separately tests the GTK service and CLI under
+Xvfb: mapped windows, desktop discovery, hidden entries, literal arguments and a
+silent client's inability to block the UI. These hosted checks complement the
+native boot tests; they do not replace them. Firefox runs with its standard
+sandbox; the guest kernel enables user namespaces and seccomp for that purpose.
 
 ## Sources and licenses
 

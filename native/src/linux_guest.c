@@ -26,14 +26,18 @@ static uint32_t owner=UINT32_MAX;
 static unsigned requested_app, prompt_match;
 static uint64_t host_tick;
 static const char *queued_command;
-static const struct { const char *id, *name, *command; } apps[] = {
-    {"terminal", "Linux 终端", NULL},
-    {"files", "Linux 文件列表", "ls -la /"},
-    {"processes", "Linux 进程", "ps"},
-    {"system", "Linux 系统信息", "uname -a; free -m"},
-    {"commands", "Linux 命令目录", "help"},
-    {"desktop", "Linux 图形桌面", "startx > /tmp/mnos-x11.log 2>&1 &"},
-    {"packages", "APT 软件管理", "apt list --installed"}
+static const struct { const char *id, *name, *command; bool graphical; } apps[] = {
+    {"terminal", "Linux 终端", NULL, false},
+    {"files", "Linux 文件列表", "ls -la /", false},
+    {"processes", "Linux 进程", "ps", false},
+    {"system", "Linux 系统信息", "uname -a; free -m", false},
+    {"commands", "Linux 命令目录", "help", false},
+    {"desktop", "Linux 图形桌面", "mnos-gui desktop > /tmp/mnos-gui.log 2>&1 &", true},
+    {"packages", "APT 软件管理", "apt list --installed", false},
+    {"applications", "Linux 应用中心", "mnos-gui show > /tmp/mnos-gui.log 2>&1 &", true},
+    {"browser", "Firefox ESR", "mnos-gui open firefox-esr.desktop > /tmp/mnos-gui.log 2>&1 &", true},
+    {"file-manager", "Linux 文件管理器", "mnos-gui open thunar.desktop > /tmp/mnos-gui.log 2>&1 &", true},
+    {"editor", "Linux 图形编辑器", "mnos-gui open org.xfce.mousepad.desktop > /tmp/mnos-gui.log 2>&1 &", true}
 };
 static bool disk_read(void *context,uint64_t offset,void *out,size_t n) {
     (void)context;size_t got=0;uint64_t before=usb_millis();
@@ -227,7 +231,7 @@ static bool start(void (*out)(const char *)) {
     log_write("LINUX GUEST: start / original mnOS host / " MNOS_ARCH "\n");return true;
 }
 static void queue_app(unsigned app,void (*out)(const char *)) {
-    graphical=app==5;
+    graphical=apps[app].graphical;
     queued_command=apps[app].command;
     if(queued_command)out("Linux app queued; waiting for the guest shell.");
 }

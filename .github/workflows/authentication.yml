@@ -24,6 +24,12 @@ jobs:
         run: |
           docker run --rm --init --network none -e MNOS_AUTH_TEST_CONTAINER=1 \
             -v "$PWD:/source" -w /source/live mnos-auth-test bash tests/authentication.sh
+      - name: Verify package confirmations and installed Linux GUI applications
+        run: |
+          docker run --rm --init --network none -e MNOS_UPDATE_TEST_CONTAINER=1 \
+            -v "$PWD:/source:ro" -w /source/live mnos-auth-test bash tests/updates.sh
+          docker run --rm --init --network none -v "$PWD:/source:ro" \
+            mnos-auth-test bash /source/native/tests/gui_apps.sh
   native:
     runs-on: ubuntu-24.04
     timeout-minutes: 30

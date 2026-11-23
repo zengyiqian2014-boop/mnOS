@@ -231,9 +231,10 @@ Original kernel environment
 Native Edition is a separate installer with the original C/assembly kernel,
 GUI, MNFS, authentication and native ELF ABI. This Linux Edition does not add
 that kernel to its boot menu. In the native desktop, linux start opens the
-bundled software Linux guest for RV64IMAC/LP64 console applications and temporary
-files. It has no virtual NIC/GPU or host storage sharing. Firefox and VS Code
-require Linux Edition. Native hardware support remains narrower; see help editions
+bundled RV64GC/LP64D Debian guest with APT, network and X11 applications. Installed
+systems retain guest files in a private per-user disk. Linux software needs a
+riscv64/all build; official AMD64/ARM64 VS Code DEBs need Linux Edition.
+Native hardware support remains narrower; see help editions
 and /usr/src/mnos-native/README.md. That reference source is not the running kernel.
 
 @@commands
@@ -342,10 +343,12 @@ and supported algorithms depend on the driver/device, not a menu setting.
 
 @@editions
 mnOS has two editions. Native Edition boots the original C/assembly kernel
-and its own GUI. Its Linux window runs an actual Linux kernel and RV64IMAC/LP64
-console programs inside an original C software CPU/MMU, with 64 MiB temporary
-RAM. It has no guest GPU, floating-point ISA, virtual network adapter or host
-storage sharing. It cannot yet run Firefox or VS Code. Guest root is not host root.
+and its own GUI. Its Linux window runs Linux/Debian riscv64 inside an original
+C RV64GC CPU/MMU, with floating-point instructions, APT, VirtIO network transport
+and X11 framebuffer graphics. RAM is configurable and allocated on demand.
+Installed systems retain a private per-user data disk after a clean shutdown.
+It has no hardware virtualization, 3D acceleration or host directory sharing.
+Guest root is not host root; official AMD64/ARM64 VS Code binaries cannot run here.
 Linux Edition uses Debian/Linux/Xfce and mnOS C/C++ management tools. It includes
 Firefox, VS Code, development, GNU/Linux commands and CTF desktop applications.
 Ordinary applications need no root; changing system state requires authentication.
@@ -456,11 +459,17 @@ assemblers and compiler/header packages are protected too. APT still asks before
 removing ordinary packages. It does not automatically autoremove dependencies.
 This guard belongs to mnos; it is not a restriction on root using other tools.
 
-Inside a supported Linux guest, APT installs INTO THAT GUEST, not into the mnOS
-native kernel. Current Native Edition's RV64 BusyBox guest does NOT yet provide
-APT, virtual networking, or a Debian userspace. It cannot install Firefox/VS Code
-by typing apt. This is an outstanding compatibility feature, not an alias to a
-working package manager. The separate Linux Full/Lite editions provide APT now.
+With mnos apt install or mnos-pkg install, explicitly named Python packages and
+linux-libc-dev receive an extra default-no confirmation, even with APT -y.
+Queries, simulations and excluded targets do not prompt. This checks named
+targets, not every transitive dependency or local DEB; direct apt is unchanged.
+Python may add disk/runtime memory usage; performance and leaks depend on the
+program. linux-libc-dev contains headers, not loaded runtime code; installing
+headers does not itself cause memory leaks. APT keeps its own confirmation.
+
+In Native Edition, APT installs INTO the Debian riscv64 guest, not the mnOS
+kernel. Use riscv64/all packages and its X11 application center. Other CPU
+architectures require matching binaries; unpacking a DEB does not translate code.
 
 If update fails, check network/DNS and UTC time first: ip route; nmcli general;
 timedatectl. Do not bypass repository signature or TLS verification. An offline
@@ -517,9 +526,9 @@ The command date still displays/sets time; mnOS does not replace it with an
 updater. Package queries need no root. Installing, updating or rolling back
 requires explicit sudo, and APT asks before applying its transaction.
 
-These .deb resources are for the Linux edition. The Native Edition cannot use
-APT or these packages until its Linux guest gains the required userspace and
-network devices. Its current software interpreter keeps guest addresses private;
+These AMD64/ARM64 .deb resources are for the Linux edition. Native Edition's
+Debian guest has APT/networking but requires riscv64/all packages. Its software
+interpreter keeps guest addresses private;
 there is no implemented switch that makes arbitrary Linux binaries native or
 removes that memory boundary. Choosing a Linux host means booting Linux Edition.
 

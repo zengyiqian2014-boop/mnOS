@@ -1,0 +1,11 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Keep the bus address shared by the launcher and every application it starts.
+if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+    exec dbus-run-session -- "$0" "$@"
+fi
+export XDG_CURRENT_DESKTOP=mnOS XDG_SESSION_TYPE=x11
+xsetroot -solid '#0c1720'
+twm &
+xterm -fa monospace -fs 12 -bg '#101a24' -fg '#d8e7ed' -geometry 96x30+25+65 -title 'mnOS Linux - APT terminal' &
+exec /usr/local/bin/mnos-apps --serve

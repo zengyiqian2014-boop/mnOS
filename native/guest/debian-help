@@ -6,15 +6,24 @@ mnOS Linux 环境（Debian riscv64）
   apt update                 更新签名的软件目录，需要网络。
   apt search 关键词          搜索软件包。
   apt install 包名           下载并安装软件及其依赖。
+  mnos-pkg install 包名      调用 APT；指定 Python 或 linux-libc-dev 时额外确认。
   apt remove 包名            卸载软件，保留配置。
   apt list --installed       查看已安装的软件包。
   dpkg -i 文件.deb           安装 riscv64 或 all 架构的 DEB；缺依赖时用 apt -f install。
-  startx                     启动 X11 桌面。宿主选择“图形桌面”查看画面。
+  mnos-gui show              启动/显示应用中心，可搜索已安装的图形应用。
+  mnos-gui list              列出可见桌面应用的 ID 和名称。
+  mnos-gui open 桌面ID       例如 mnos-gui open firefox-esr.desktop。
+  mnos-gui run 程序 [参数]   在同一个 X11 会话中启动程序，参数不经过 shell 展开。
+  mnos-gui desktop           打开图形会话，隐藏应用中心。
+  mnos-gui status / hide     查询会话 / 隐藏应用中心；不会关闭其他程序。
   xterm / xclock / xeyes     在图形终端里运行窗口程序。
   poweroff                   同步文件并关闭 Linux 客体，保留已安装软件。
 
 普通 Linux 命令直接在本终端执行，例如 ls、cp、mv、cat、ps、ip、df。
 程序的完整参数请用 程序 --help；APT 帮助用 apt --help。
+应用中心读取可见的 .desktop 条目，安装后自动更新；没有条目的程序可用 run。
+安装按钮打开真实 APT 终端，并保留依赖及磁盘用量确认。
+额外提示只检查 mnos-pkg 明确指定的包；直接调用 apt 不增加该提示。
 这里的 root 只管理客体。宿主原生内核没有替换成 Linux。
 安装后的系统把修改保存到当前宿主用户的 linux-data.img；未安装的试用
 环境可能只有临时存储。强制关闭相当于断电，请优先使用 poweroff。
@@ -28,15 +37,25 @@ mnOS Linux environment (Debian riscv64)
   apt update                 Refresh signed package indexes; requires a network.
   apt search WORD            Search packages.
   apt install PACKAGE        Download a package and its dependencies.
+  mnos-pkg install PACKAGE    APT with an extra notice for Python / linux-libc-dev.
   apt remove PACKAGE         Uninstall a package, keeping its configuration.
   apt list --installed       List installed packages.
   dpkg -i FILE.deb           Install a riscv64/all DEB; apt -f install repairs dependencies.
-  startx                     Start X11; select Desktop in the host Linux window.
+  mnos-gui show              Start/show the searchable installed application center.
+  mnos-gui list              List visible desktop application IDs and names.
+  mnos-gui open DESKTOP_ID   For example: mnos-gui open firefox-esr.desktop.
+  mnos-gui run PROGRAM [ARG] Start a program in the same X11 session; no shell expansion.
+  mnos-gui desktop           Start the graphical session; hide the application center.
+  mnos-gui status / hide     Query the session / hide the center, keeping apps running.
   xterm / xclock / xeyes     Run windowed programs from an X terminal.
   poweroff                   Sync files and shut down the Linux guest.
 
 Linux commands run directly here: ls, cp, mv, cat, ps, ip, df, etc.
 Use PROGRAM --help or apt --help for each program's full usage.
+The center discovers visible .desktop entries and refreshes after installation.
+Use run for programs without an entry. Install opens a real APT terminal, keeping
+its dependency and disk-space confirmation. The extra notice checks explicitly
+named mnos-pkg targets; invoking apt directly does not add that notice.
 Guest root is not host root; the original mnOS kernel remains the host.
 Installed systems keep changes in the current host user's linux-data.img.
 A trial without a writable installed disk is temporary. Forced stop is a power

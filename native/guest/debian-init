@@ -4,8 +4,12 @@
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin TERM=dumb HOME=/root
 B=/usr/local/lib/mnos/busybox
 $B mount -t tmpfs -o mode=1777,nosuid,nodev tmpfs /tmp
-mkdir -p /run/lock /run/dbus /dev/pts /root
+mkdir -p /run/lock /run/dbus /dev/pts /dev/shm /root
 $B mount -t devpts devpts /dev/pts 2>/dev/null || true
+# POSIX shared memory is required by multiprocess GUI applications (including
+# Firefox). devtmpfs alone does not provide the separate shared-memory mount.
+# tmpfs allocates pages on demand; its default limit scales with guest RAM.
+$B mount -t tmpfs -o mode=1777,nosuid,nodev tmpfs /dev/shm || exit 1
 $B hostname mnos-linux-guest
 if [ ! -s /etc/machine-id ]; then dbus-uuidgen > /etc/machine-id; fi
 dbus-daemon --system --fork

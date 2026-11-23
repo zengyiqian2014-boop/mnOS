@@ -105,7 +105,7 @@ int main(void){
     assert(!linux_guest_confirm(true,out));
 
     /* All off -> start routes require consent, including restart and enable. */
-    const char *routes[]={"linux start","linux enable","linux restart","linux open system"};
+    const char *routes[]={"linux start","linux enable","linux restart","linux open system","linux open applications","linux open browser","linux open file-manager","linux open editor"};
     for(unsigned i=0;i<ARRAY_SIZE(routes);i++){
         assert(linux_guest_command(routes[i],out));assert(linux_guest_prompting());
         pump_guest();assert(!allocations&&!boots);linux_guest_command("linux disable",out);off();
@@ -132,6 +132,10 @@ int main(void){
     size_t len=received_len;pump_guest();assert(received_len==len);
     assert(linux_guest_open("files",out)&&!linux_guest_prompting());pump_guest();
     assert(!strcmp(received+len,"ls -la /\n"));
+    len=received_len;
+    assert(linux_guest_open("applications",out)&&linux_guest_graphical());pump_guest();
+    assert(!strcmp(received+len,"mnos-gui show > /tmp/mnos-gui.log 2>&1 &\n"));
+    assert(linux_guest_open("terminal",out)&&!linux_guest_graphical());pump_guest();
     linux_guest_command("linux pause",out);before=runs;pump_guest();
     assert(runs==before&&linux_guest_enabled());
     linux_guest_command("linux resume",out);pump_guest();assert(runs>before&&!linux_guest_prompting());

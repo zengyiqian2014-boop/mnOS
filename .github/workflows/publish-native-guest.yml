@@ -8,7 +8,7 @@ on:
       release_tag:
         description: Native edition preview tag matching the built filenames
         required: true
-        default: v0.9-native-preview.1
+        default: v0.10-native-preview.1
       authentication_run:
         description: Successful authentication run at the same source commit
         required: true
@@ -74,9 +74,12 @@ jobs:
             new="release/mnOS-native-$version-$arch.iso"
             if [ "${images[0]}" != "$new" ]; then mv "${images[0]}" "$new"; fi
             grep -q "NATIVE LINUX GUEST PASS $arch" "evidence/guest-validation-$arch.log"
+            grep -q "LINUX APPLICATIONS PASS $arch" "evidence/guest-validation-$arch.log"
             grep -q "DESKTOP PASS $arch" "evidence/guest-validation-$arch.log"
             test -s "evidence/$arch-linux-guest-gui.ppm"
             test -s "evidence/$arch-linux-guest-consent.ppm"
+            test -s "evidence/$arch-linux-guest-applications.ppm"
+            test -s "evidence/$arch-linux-guest-firefox.ppm"
           done
           printf 'Authentication: https://github.com/%s/actions/runs/%s\n' "$GH_REPO" "$AUTH_RUN" >> release/PROVENANCE.txt
           cp AUTHENTICATION.md release/
@@ -84,7 +87,11 @@ jobs:
           cat > /tmp/native-notes.md <<EOF
           自研 C / 汇编内核和原生 GUI，AMD64 / ARM64 图形安装 ISO。
 
-          离线 ISO 内含原生系统、Linux 6.12、Debian riscv64、APT、Xorg、Xterm、twm 和基础命令。安装和启动随附桌面无需下载；使用 APT 添加软件需要网络。
+          离线 ISO 内含原生系统、Linux 6.12、Debian riscv64、APT、Xorg、Xterm、twm、C++ 应用中心、Firefox ESR、Thunar、Mousepad、C++ 工具链和基础命令。安装和启动随附桌面无需下载；使用 APT 添加软件需要网络。
+
+          原生桌面用 linux open applications 打开 Linux 应用中心，自动发现和搜索已安装的桌面应用。安装按钮打开真实 APT 终端。客体内 mnos-gui list 列应用，mnos-gui open 桌面ID 启动桌面应用，mnos-gui run 程序 [参数] 运行其他程序；复用一个 X11 会话。
+
+          mnos-pkg install 对明确指定的 Python 相关包和 linux-libc-dev 增加默认取消的确认，随后仍保留 APT 自己的提示。头文件占用磁盘，不作为运行时库加载，安装本身不会造成内存泄漏。直接调用上游 apt 不增加此提示。
 
           Linux 客体内存按需分配，自动上限至多 1 GiB。停止时可用 linux memory MIB 调整。APT 和图形桌面建议至少 768 MiB 客体内存、4 GiB 宿主内存；停止或退出会擦除并回收客体页。
 
@@ -96,9 +103,9 @@ jobs:
 
           Linux 模拟默认关闭，启动前确认。原生 VirtIO PCI/MMIO 驱动连接客体网络，图形窗口接收键盘和鼠标。每位用户有独立的 8 GiB 稀疏数据文件，安装的软件和文件在正常关机后保存。先在 Linux 中执行 poweroff，再关闭模拟。pause / resume 保留内存；空闲时让出 CPU，定时器仍正常唤醒。
 
-          这是单核 RV64GC 软件解释器，没有硬件虚拟化或 3D 加速。APT 支持 riscv64 / all 软件包，不能直接运行 AMD64 / ARM64 的 DEB。官方 VS Code、Firefox 和完整 CTF 工作台仍请使用独立的 Linux Edition；本包不包含它们，也不宣称高性能生产服务器、全部硬件兼容或普通摄像头安全解锁已完成。
+          这是单核 RV64GC 软件解释器，没有硬件虚拟化或 3D 加速。APT 支持 riscv64 / all 软件包，不能直接运行 AMD64 / ARM64 的 DEB。随附 Firefox ESR 使用 Debian riscv64 构建；官方 AMD64/ARM64 VS Code 和完整 CTF 工作台仍请使用独立的 Linux Edition。软件解释较慢，应用兼容性须逐项测试；不宣称高性能生产服务器、全部硬件兼容或普通摄像头安全解锁已完成。
 
-          两种架构均通过真实安装、移除 ISO 后启动、APT 更新及安装、X11 窗口、键盘鼠标和持久化测试；同一源码的验证器测试通过。实际文件大小、校验和、完整包清单、对应源码及截图日志见附件。旧 USB 驱动预览 ISO 不含本次 Linux 应用环境。
+          两种架构均通过真实安装、移除 ISO 后启动、APT 更新及安装、应用中心、Mousepad、Firefox JavaScript 绘图、键盘鼠标和持久化测试；同一源码的验证器、包管理事务及 GTK 应用中心测试通过。实际文件大小、校验和、完整包清单、对应源码及截图日志见附件。旧 USB 驱动预览 ISO 不含本次 Linux 应用环境。
 
           [安装与客体测试](https://github.com/$GH_REPO/actions/runs/$SOURCE_RUN) · [认证测试](https://github.com/$GH_REPO/actions/runs/$AUTH_RUN)
           EOF

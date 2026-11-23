@@ -1,26 +1,47 @@
-[kernel] linux memory auto|MIB; linux apps|open APP|start|status|pause|resume|stop|restart|enable|disable|send COMMAND
-Manage Linux simulation
-No root needed. Off by default on boot and after host account changes.
-Opening an app while off asks permission: Enter enables, Esc cancels.
-start/enable open the terminal; apps lists the supported launchers.
-open APP accepts terminal, files, processes, system or commands.
-After approval the selected console program runs in a real Linux guest.
-F7 Settings: Linux simulation (L) toggles it; F5 returns to host Terminal.
-pause/resume preserve state. stop/disable immediately stop and wipe RAM.
-restart discards guest files; when off it also requires confirmation.
-Closing the window only hides it. Enabling is not saved across logins.
-Original C RV64IMAC/Sv39 interpreter, one software CPU.
-RAM: automatic up to 1 GiB, bounded by available host memory.
-When stopped, memory auto or memory MIB changes the limit.
-MIB accepts 128..524288; start checks free RAM and reserves 32 MiB.
-Pages are allocated as used, wiped and freed on stop.
-Guest files are temporary; no host files/disks/devices/network are shared.
-RV64IMAC/LP64 console programs only; no GPU, floating-point or desktop apps.
-Use Linux Edition for Firefox, VS Code and full CTF tools.
-send COMMAND queues guest input, never a host command. In the guest,
-busybox --list lists utilities; COMMAND --help explains each utility.
+support [-cn]
+System support and feedback
+Report bugs and hardware compatibility issues at any time:
+report.mnos@proton.me
+wrmfwv@163.com
+Include version/edition, CPU architecture, hardware or VM model,
+expected result and reproduction steps. Screenshots and relevant logs help.
+Review attachments; never send passwords, tokens or recovery codes.
+Settings > Support / H opens this information. No root required.
+Use your email service on another device; no report is sent automatically.
 Example:
-linux open system
+help -cn support
+
+[kernel] linux memory auto|MIB; linux apps|open APP|start|status|stats|pause|resume|stop|restart|enable|disable|send COMMAND
+Manage Linux simulation
+Off by default; opening an app asks permission. Enter accepts; Esc cancels.
+Approval lasts for the current host login. No host root is needed.
+apps lists applications, browser, file-manager, editor, desktop, terminal,
+files, processes, system, commands and packages. open applications shows
+the searchable GTK center; open desktop shows Xterm. open terminal returns
+to the Linux console. Inside Linux: mnos-gui list; mnos-gui open DESKTOP_ID;
+mnos-gui run PROGRAM [ARG...]. Install opens the real APT terminal.
+Debian riscv64 provides real APT, DEB dependencies and graphical X11 apps.
+Inside Linux: apt update; apt install PACKAGE; apt list --installed.
+Use riscv64/all DEBs. Official AMD64/ARM64 VS Code packages do not run here.
+One original RV64GC/Sv39 software CPU, including integer-only F/D emulation.
+No hardware virtualization, vector ISA or accelerated 3D GPU.
+A supported VirtIO Ethernet device supplies network access via DHCP.
+The installed host keeps an 8 GiB sparse data image per user; packages and
+files survive shutdown. A trial without an installed disk is temporary.
+Guest root does not grant host root. No host directory or raw disk sharing.
+Use guest poweroff before stopping: stop/disable is an abrupt power cut.
+RAM is wiped on stop; the persistent image is retained. restart reloads it.
+pause/resume retain RAM. Idle execution yields; timers still wake Linux.
+When stopped, memory auto or memory MIB selects the RAM limit.
+Automatic: up to 1 GiB. Explicit: 128..524288 MiB, subject to host free RAM.
+APT/X11: use at least 768 MiB guest RAM; a 4 GiB host is recommended.
+stats reports guest instructions and private-disk I/O counters.
+F5 opens the host terminal; F7 Settings toggles Linux simulation.
+Closing a window leaves guest jobs running. Logout disables the guest.
+send COMMAND sends input only to the guest. Use its help or help -cn.
+The serial console is line-oriented; run nano and full-screen apps in Xterm.
+Example:
+linux open desktop
 
 system [status|cpu|memory|processes|storage|security|display|guest]
 Unified native system management
@@ -92,6 +113,23 @@ Read-only: names the active native framebuffer/display driver.
 A framebuffer does not imply GPU acceleration or arbitrary mode changes.
 Example:
 kernel gpu
+
+[kernel] usb
+Native USB devices
+Lists the native xHCI controllers and enumerated root-port USB devices.
+No Linux kernel, guest, V4L2 or libusb is used. USB hubs and USB HID
+input are not implemented by this camera driver.
+Example:
+kernel usb
+
+[kernel] camera [status|start|stop]
+Native USB camera preview
+status reports capture state, completed and discarded frames. start
+negotiates USB high-speed UVC YUY2 video (up to 640x480) and opens the
+native Devices window. stop cancels DMA and clears the preview. Camera
+is off at boot and stops on session lock. No recording or face login.
+Example:
+camera start
 
 kernel devices
 Enumerated PCI devices
@@ -374,12 +412,12 @@ kernel shutdown
 
 tools [native|linux]
 Application environment and availability
-native lists built-in tools and the static ELF environment. linux
-explains the bundled software Linux guest and separate Linux Edition.
-Use linux start for real guest shell programs; busybox --list gives its
-compiled inventory. The guest has temporary files and no network/GPU.
-Firefox, VS Code, APT and the complete CTF desktop need Linux Edition.
-They are not supported by this initial native guest runtime.
+native lists original tools and static ELF support. linux explains the
+Debian riscv64 guest: APT, X11 applications, private disk and VirtIO network.
+Use linux open applications for installed GUI apps, desktop for Xterm,
+or linux start for a console. mnos-gui run launches programs inside Linux.
+Packages must match riscv64/all. Linux Edition runs native AMD64/ARM64
+packages, including official VS Code and Firefox; see EDITIONS.md.
 Example:
 tools linux
 

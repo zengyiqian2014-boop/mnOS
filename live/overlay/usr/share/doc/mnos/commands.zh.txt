@@ -216,9 +216,10 @@ rg 文字 目录                  搜索文件内容
 
 自研版通过单独的 Native Edition 安装包交付，包含原生 C/汇编内核、GUI、
 MNFS、账号和原生 ELF 接口。本 Linux Edition 不在引导菜单加入自研内核。
-自研桌面内用 linux start 启动软件模拟的 Linux 客体，运行 RV64IMAC/LP64
-控制台程序；客体文件临时保存，没有虚拟网卡、GPU 或宿主存储共享。
-Firefox、VS Code 仍需要 Linux Edition。原生硬件支持范围较窄，详见
+自研桌面内用 linux start 启动 RV64GC/LP64D Debian 客体，已有 APT、网络及
+X11 图形应用。安装后的系统将客体文件保存到每个用户自己的磁盘文件。
+需要 riscv64/all 软件包；官方 AMD64/ARM64 VS Code 包仍需要 Linux Edition。
+原生硬件支持范围较窄，详见
 help -cn editions 和 /usr/src/mnos-native/README.md；源码供参考，不是本版运行内核。
 
 @@commands
@@ -321,9 +322,10 @@ GPU 的可用性与速度取决于实际驱动和设备。
 @@editions
 mnOS 分为自研版和 Linux 版。
 自研版启动原生 C/汇编内核及自己的 GUI；其中的 Linux 窗口使用自研 C CPU/MMU
-模拟器运行真实 Linux 内核和 RV64IMAC/LP64 控制台程序，分配 64 MiB 临时内存。
-初期没有客体 GPU、浮点指令、虚拟网卡、宿主存储共享，不能运行 Firefox 或 VS Code。
-客体 root 不等于宿主 root；停止、重启客体或宿主切换账号会丢弃客体文件。
+模拟器运行 Linux/Debian riscv64，支持 RV64GC 浮点、APT、VirtIO 网络及 X11
+帧缓冲图形。内存可调且按需分配，安装后拥有每个用户独立的持久化数据盘。
+没有硬件虚拟化、3D 加速或宿主目录共享，官方 AMD64/ARM64 VS Code 包不能直接运行。
+客体 root 不等于宿主 root；正常关机后保留磁盘文件，停止客体时擦除其内存。
 Linux 版使用 Debian/Linux/Xfce，配有 mnOS 自写的 C/C++ 管理工具，包含 Firefox、
 VS Code、开发环境、GNU/Linux 命令和 CTF 图形应用。日常使用无需 root，系统修改需认证。
 两版均提供 AMD64 与 ARM64 镜像；设备范围以实测及支持文档为准，不宣称全硬件兼容或安全认证。
@@ -423,10 +425,15 @@ C++ 命令 mnos 提供 --without：后面的所有名称均从本次安装中排
 也会预先检查 APT 依赖移除计划，避免连带卸载工具链；普通包仍需确认后移除，
 不自动执行 autoremove。这是 mnos 的防误操作检查，不限制 root 使用其他工具。
 
-在支持 APT 的 Linux 客体中，软件装进该客体，不会变成自研内核的原生程序。
-当前 Native Edition 内置的 RV64 BusyBox 客体尚无 APT、虚拟网卡和 Debian
-用户环境，暂时不能在其中用 apt 安装 Firefox/VS Code。这仍是待完成的兼容
-功能，不能用同名空命令冒充；独立的 Linux 完整版、精简版已有真实 APT。
+用 mnos apt install 或 mnos-pkg install 明确指定 Python 相关包或 linux-libc-dev
+时，会额外要求确认，默认取消；APT 的 -y 不跳过此提示，APT 自己的确认也保留。
+查询、模拟及已排除的目标不提示。检查范围是明确指定的目标，不涵盖所有间接依赖
+或本地 DEB；直接使用 apt 保持上游行为。Python 可能增加磁盘和运行时内存占用，
+性能及泄漏取决于程序实现。linux-libc-dev 是头文件，安装本身不导致内存泄漏。
+
+Native Edition 中，APT 软件装进 Debian riscv64 客体，不会变成自研内核的原生程序。
+使用 riscv64/all 软件包和 X11 应用中心；其他 CPU 架构需要匹配的二进制文件，
+解压 DEB 不会转换其中的机器指令。
 
 下载失败先检查网络、DNS 和时间：ip route、nmcli general、timedatectl。
 不要关闭软件源签名或 HTTPS 校验。离线 ISO 包含所选软件，不包含整个
@@ -479,8 +486,8 @@ InRelease 签名和下载包摘要；旧版本软件包保留，供明确指定�
 日期命令 date 保持原功能；更新用 mnos update。查询不需要 root；安装、更新
 和回退需要 sudo。APT 会在实际修改前列出变更并请求确认。
 
-这些 .deb 功能包属于 Linux 版。Native 版当前的 Linux 模拟环境缺少 APT
-所需的用户环境及虚拟网卡，还不能使用这些软件包。现有解释器始终隔离客体
+这些 AMD64/ARM64 .deb 功能包属于 Linux 版。Native 版的 Debian 客体已有 APT
+和网络，但需要 riscv64/all 包，不能安装本页其他架构的二进制包。解释器始终隔离客体
 地址，尚无“关闭隔离就能本机执行任意 Linux 软件”的开关。需要 Linux 直接
 管理硬件时，启动 Linux Edition；不能把启动方式的区别藏在一个假开关后面。
 

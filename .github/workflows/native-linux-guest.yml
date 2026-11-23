@@ -18,7 +18,7 @@ jobs:
       - name: Build original host and pinned Linux guest
         run: |
           docker build -t mnos-native-builder -f native/Builder.Dockerfile .
-          docker run --rm --privileged -v "$PWD/native:/native" -w /native mnos-native-builder bash -ec '
+          docker run --rm --privileged -v "$PWD/native:/native" -v "$PWD/live/src:/mnos-live-src:ro" -e MNOS_LIVE_SOURCE=/mnos-live-src -w /native mnos-native-builder bash -ec '
             mkdir -p build
             if ! guest/build.sh > build/guest-source-build.log 2>&1; then
               tail -100 build/guest-source-build.log
@@ -59,6 +59,7 @@ jobs:
           grep -q 'FIRMWARE RNG BOOT PASS: CPU RNG and VirtIO RNG absent, TPM missing fails closed' native/build/desktop/firmware-validation.log
           for arch in amd64 arm64; do
             grep -q "NATIVE LINUX GUEST PASS $arch" "native/build/desktop/guest-validation-$arch.log"
+            grep -q "LINUX APPLICATIONS PASS $arch" "native/build/desktop/guest-validation-$arch.log"
             grep -q "DESKTOP PASS $arch" "native/build/desktop/guest-validation-$arch.log"
             cp "native/build/desktop/mnOS-0.4-desktop-installer-$arch.iso" "release/mnOS-native-linux-apps-preview-$arch.iso"
           done
@@ -70,7 +71,7 @@ jobs:
           printf 'Validation: https://github.com/%s/actions/runs/%s\n' "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > release/PROVENANCE.txt
           tar -C native/build/guest-source -cf release/linux-guest-upstream-sources.tar linux-6.12.114.tar.xz busybox-1.37.0.tar.bz2 musl-1.2.5.tar.gz
           tar -C native/build/debian-sources -cf release/debian-corresponding-sources.tar .
-          git archive --format=tar.gz -o release/mnos-native-source.tar.gz HEAD native EDITIONS.md EDITIONS.zh.md LICENSE .github/workflows/native-linux-guest.yml
+          git archive --format=tar.gz -o release/mnos-native-source.tar.gz HEAD native live/src/package.cpp live/src/install-notice.hpp live/src/mnos-locale.h EDITIONS.md EDITIONS.zh.md LICENSE .github/workflows/native-linux-guest.yml
           (cd native/build/desktop && tar -czf ../../../release/native-installation-validation.tar.gz -- *.log *-linux-guest*.ppm *-support.ppm)
           (cd release && sha256sum *.iso *.tar *.tar.gz *.config *.txt *.md *.tsv SOURCES.sha256 > SHA256SUMS && sha256sum -c SHA256SUMS)
       - uses: actions/upload-artifact@v4
