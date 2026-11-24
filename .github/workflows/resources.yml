@@ -1,6 +1,9 @@
 name: Publish tested update resources
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/runtime-release-request.json']
 permissions:
   contents: read
 concurrency:
@@ -20,6 +23,9 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+      - name: Check the requested runtime version
+        if: github.event_name == 'push'
+        run: test "$(jq -er '.version | strings' .github/runtime-release-request.json)" = "$(cat live/VERSION)"
       - run: docker build -t mnos-auth-test -f live/tests/Authentication.Dockerfile .
       - run: bash live/fetch-face-models.sh
       - name: Verify real authentication and package update transactions
