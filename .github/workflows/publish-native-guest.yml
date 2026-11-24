@@ -3,6 +3,10 @@ on:
   push:
     branches: [main]
     paths: ['.github/native-release-request.json']
+  workflow_run:
+    workflows: [Native GUI with real Linux guest, Authentication and enrollment]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       build_run:
@@ -23,6 +27,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   publish:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
@@ -35,10 +40,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Read the exact tested release request
-        if: github.event_name == 'push'
+        id: request
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           set -euo pipefail
           request=.github/native-release-request.json
+          if [ ! -f "$request" ]; then echo 'No native release requested.'; exit 0; fi
           build_run=$(jq -er '.build_run | strings' "$request")
           auth_run=$(jq -er '.authentication_run | strings' "$request")
           tag=$(jq -er '.release_tag | strings' "$request")
@@ -46,9 +55,22 @@ jobs:
           [[ "$build_run" =~ ^[0-9]+$ && "$auth_run" =~ ^[0-9]+$ ]]
           [[ "$tag" =~ ^v[0-9]+\.[0-9]+-native-preview\.[0-9]+$ ]]
           [[ "$sha" =~ ^[0-9a-f]{40}$ ]]
+          if [ "$GITHUB_EVENT_NAME" = workflow_run ] && [ "$EVENT_RUN_ID" != "$build_run" ] && [ "$EVENT_RUN_ID" != "$auth_run" ]; then
+            echo 'This event is not one of the requested validation runs.'
+            exit 0
+          fi
+          for run in "$build_run" "$auth_run"; do
+            gh api "repos/$GH_REPO/actions/runs/$run" > /tmp/requested-run.json
+            if ! jq -e '.status == "completed" and .conclusion == "success"' /tmp/requested-run.json >/dev/null; then
+              echo 'The requested validations have not both succeeded. No images published; completion events will check again.'
+              exit 0
+            fi
+          done
           printf 'SOURCE_RUN=%s\nAUTH_RUN=%s\nTAG=%s\nEXPECTED_SHA=%s\n' "$build_run" "$auth_run" "$tag" "$sha" >> "$GITHUB_ENV"
+          printf 'publish=true\n' >> "$GITHUB_OUTPUT"
       - name: Require a successful complete native installation and Linux guest run
         id: source
+        if: github.event_name == 'workflow_dispatch' || steps.request.outputs.publish == 'true'
         run: |
           set -euo pipefail
           [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
@@ -68,12 +90,14 @@ jobs:
           printf 'sha=%s\n' "$(jq -r .head_sha /tmp/source.json)" >> "$GITHUB_OUTPUT"
           printf 'run=%s\n' "$SOURCE_RUN" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v4
+        if: github.event_name == 'workflow_dispatch' || steps.request.outputs.publish == 'true'
         with:
           name: native-linux-guest-release
           run-id: ${{ steps.source.outputs.run }}
           github-token: ${{ github.token }}
           path: release
       - name: Verify the exact images, source archives and both architecture records
+        if: github.event_name == 'workflow_dispatch' || steps.request.outputs.publish == 'true'
         env:
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
         run: |
@@ -135,6 +159,7 @@ jobs:
           [安装与客体测试](https://github.com/$GH_REPO/actions/runs/$SOURCE_RUN) · [认证测试](https://github.com/$GH_REPO/actions/runs/$AUTH_RUN)
           EOF
       - name: Publish the verified native preview
+        if: github.event_name == 'workflow_dispatch' || steps.request.outputs.publish == 'true'
         env:
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
         run: |
