@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "latest_linux_runtime": "2.2.0~preview7",
-  "updated": "2026-11-24T09:40:05Z",
+  "updated": "2026-11-24T13:17:50Z",
   "resources": [
     {
       "name": "mnOS-2.1-linux-preview.1-amd64.iso",
@@ -26,6 +26,18 @@
       "architecture": "arm64",
       "version": "v2.1-linux-preview.1",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v2.1-linux-preview.1"
+    },
+    {
+      "name": "mnOS-native-0.10-preview.1-amd64.iso",
+      "url": "https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.10-native-preview.1/mnOS-native-0.10-preview.1-amd64.iso",
+      "bytes": 650579968,
+      "sha256": "85ddd548f1da8bcc7ef178e68d79fe8c92689d2869b8b6de8a52572203f8c4e9",
+      "kind": "full",
+      "edition": "native",
+      "delivery": "offline",
+      "architecture": "amd64",
+      "version": "v0.10-native-preview.1",
+      "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.10-native-preview.1"
     },
     {
       "name": "mnOS-native-x86_64.iso",
@@ -122,6 +134,18 @@
       "architecture": "amd64",
       "version": "v0.9-native-preview.1",
       "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.9-native-preview.1"
+    },
+    {
+      "name": "mnOS-native-0.10-preview.1-arm64.iso",
+      "url": "https://github.com/zengyiqian2014-boop/mnOS/releases/download/v0.10-native-preview.1/mnOS-native-0.10-preview.1-arm64.iso",
+      "bytes": 649531392,
+      "sha256": "1c0135cce18a4f8b4ab41ca46b7c6d209bdacc455c518317a55346737b5d9c80",
+      "kind": "full",
+      "edition": "native",
+      "delivery": "offline",
+      "architecture": "arm64",
+      "version": "v0.10-native-preview.1",
+      "release": "https://github.com/zengyiqian2014-boop/mnOS/releases/tag/v0.10-native-preview.1"
     },
     {
       "name": "mnOS-native-arm64.iso",
