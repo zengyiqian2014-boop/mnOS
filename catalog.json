@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "latest_linux_runtime": "2.2.0~preview7",
-  "updated": "2026-11-24T07:29:05Z",
+  "updated": "2026-11-24T07:38:12Z",
   "resources": [
     {
       "name": "mnOS-2.1-linux-preview.1-amd64.iso",
