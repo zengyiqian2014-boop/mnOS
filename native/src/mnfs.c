@@ -36,6 +36,34 @@ _Static_assert(sizeof(struct inode) == MNFS_BLOCK, "inode format");
 _Static_assert(sizeof(struct checkpoint) == MNFS_BLOCK, "checkpoint format");
 struct change { uint64_t left, right; struct entry middle; };
 struct transaction { uint64_t root, next_inode, snapshot; };
+/* Only immutable, already-written metadata is cached. Data writes and both
+ * durability barriers still reach the device before a transaction succeeds.
+ * Bound this per mounted volume; memory pressure can disable it entirely. */
+#define CACHE_SLOTS 64u
+struct mnfs_cache {
+    uint64_t block[CACHE_SLOTS];
+    unsigned next;
+    uint8_t bytes[CACHE_SLOTS][MNFS_BLOCK];
+};
+static void cache_invalidate(struct mnfs *f, uint64_t block) {
+    if (f->cache) for (unsigned i = 0; i < CACHE_SLOTS; ++i)
+        if (f->cache->block[i] == block) f->cache->block[i] = 0;
+}
+static void cache_save(struct mnfs *f, uint64_t block, const void *data) {
+    if (!f->cache || block < 2) return;
+    cache_invalidate(f, block);
+    unsigned slot = f->cache->next++ % CACHE_SLOTS;
+    memcpy(f->cache->bytes[slot], data, MNFS_BLOCK);
+    f->cache->block[slot] = block;
+}
+static bool metadata_read(struct mnfs *f, uint64_t block, void *out) {
+    if (f->cache) for (unsigned i = 0; i < CACHE_SLOTS; ++i)
+        if (f->cache->block[i] == block) {
+            memcpy(out, f->cache->bytes[i], MNFS_BLOCK); return true;
+        }
+    if (!f->io.read(f->io.context, block, out)) return false;
+    cache_save(f, block, out); return true;
+}
 static const uint32_t crc_table[256] = {
     0x00000000u, 0xf26b8303u, 0xe13b70f7u, 0x1350f3f4u, 0xc79a971fu, 0x35f1141cu, 0x26a1e7e8u, 0xd4ca64ebu,
     0x8ad958cfu, 0x78b2dbccu, 0x6be22838u, 0x9989ab3bu, 0x4d43cfd0u, 0xbf284cd3u, 0xac78bf27u, 0x5e133c24u,
@@ -97,6 +125,9 @@ static int allocate_block(struct mnfs *f, uint64_t *p) {
     return MN_NOSPC;
 }
 static int write_block(struct mnfs *f, uint64_t p, const void *buffer) {
+    /* GC can reuse an old metadata address for data or a torn write. Never
+     * let the previous cached bytes survive either outcome. */
+    cache_invalidate(f, p);
     if (p >= f->io.blocks || !f->io.write(f->io.context, p, buffer)) {
         f->poisoned = true; return MN_IO;
     }
@@ -106,14 +137,16 @@ static int save_metadata(struct mnfs *f, void *buffer, uint64_t *p) {
     int e = allocate_block(f, p);
     if (e) return e;
     *(uint32_t *)buffer = metadata_crc(buffer);
-    return write_block(f, *p, buffer);
+    e = write_block(f, *p, buffer);
+    if (!e) cache_save(f, *p, buffer);
+    return e;
 }
 static int load_node(struct mnfs *f, uint64_t p, struct node **result) {
     if (!valid_block(f, p)) return MN_CORRUPT;
     struct node *n = f->io.allocate(sizeof *n);
     if (!n) return MN_NOMEM;
     int e = MN_CORRUPT;
-    if (!f->io.read(f->io.context, p, n)) { e = MN_IO; goto bad; }
+    if (!metadata_read(f, p, n)) { e = MN_IO; goto bad; }
     if (n->magic != NODE_MAGIC || n->checksum != metadata_crc(n) ||
         !n->count || n->count > MAX_KEYS || n->level > MAX_LEVEL) goto bad;
     for (unsigned i = 0; i < n->count; ++i) {
@@ -230,7 +263,7 @@ static int inode_read(struct mnfs *f, uint64_t root, uint64_t id, struct value *
     if (!valid_block(f, v->block) || v->size > MNFS_MAX_FILE || v->flags > 1) return MN_CORRUPT;
     struct inode *n = f->io.allocate(sizeof *n);
     if (!n) return MN_NOMEM;
-    if (!f->io.read(f->io.context, v->block, n)) e = MN_IO;
+    if (!metadata_read(f, v->block, n)) e = MN_IO;
     else if (n->magic != INODE_MAGIC || n->checksum != metadata_crc(n) || n->id != id ||
              !n->parent || !valid_name(n->name)) e = MN_CORRUPT;
     else { if (parent) *parent = n->parent; if (name) memcpy(name, n->name, 256); }
@@ -417,9 +450,12 @@ static int init(struct mnfs *f, const struct mnfs_io *io, bool writable) {
     if (!f->used) return MN_NOMEM;
     f->seen = io->allocate((size_t)((io->blocks + 7) / 8));
     if (!f->seen) { io->release(f->used); f->used = NULL; return MN_NOMEM; }
+    f->cache = io->allocate(sizeof *f->cache);
+    if (f->cache) memset(f->cache, 0, sizeof *f->cache);
     f->cursor = 2; return mnfs_collect(f);
 }
 void mnfs_close(struct mnfs *f) {
+    if (f->cache) { memset(f->cache, 0, sizeof *f->cache); f->io.release(f->cache); }
     if (f->used) f->io.release(f->used);
     if (f->seen) f->io.release(f->seen);
     memset(f, 0, sizeof *f);

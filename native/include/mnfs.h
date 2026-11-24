@@ -24,6 +24,7 @@ struct mnfs {
     uint64_t root, generation, next_inode, snapshot, previous, previous_snapshot;
     uint64_t free_blocks, cursor;
     uint8_t *used, *seen;
+    struct mnfs_cache *cache;
     unsigned slot;
     bool writable, poisoned, collect;
 };

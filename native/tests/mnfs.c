@@ -173,6 +173,32 @@ static void checkpoint_recovery(void) {
     assert(mnfs_mount(&f, &device, false) == MN_CORRUPT);
     free(d.data); puts("PASS MNFS: damaged latest metadata falls back; two damaged roots rejected");
 }
+static void *small_alloc(size_t size) { return size > 128u * 1024u ? NULL : malloc(size); }
+static unsigned metadata_workload(bool cached) {
+    struct disk d = {.data = calloc(1, BYTES)};
+    struct mnfs_io device = io(&d); struct mnfs f;
+    if (!cached) device.allocate = small_alloc;
+    unsigned char *payload = malloc(128u * 1024u); assert(d.data && payload);
+    for (unsigned n = 0; n < 128u * 1024u; ++n) payload[n] = (uint8_t)(n * 73 + (n >> 8));
+    ok(mnfs_format(&f, &device)); assert((f.cache != NULL) == cached);
+    ok(mnfs_create(&f, "/home", true)); ok(mnfs_create(&f, "/home/demo", true));
+    ok(mnfs_create(&f, "/home/demo/linux-data.img", false));
+    ok(mnfs_truncate(&f, "/home/demo/linux-data.img", 8ULL << 30));
+    d.reads = 0;
+    for (unsigned n = 0; n < 32; ++n)
+        ok(mnfs_write(&f, "/home/demo/linux-data.img", (uint64_t)n << 17, payload, 128u << 10));
+    unsigned reads = d.reads;
+    /* More blocks than the cache holds, collection and address reuse must not
+     * change the data visible through current or retained CoW roots. */
+    ok(mnfs_snapshot(&f, 0)); ok(mnfs_truncate(&f, "/home/demo/linux-data.img", 0));
+    ok(mnfs_collect(&f)); ok(mnfs_create(&f, "/reuse", false));
+    ok(mnfs_write(&f, "/reuse", 0, payload, 128u << 10));
+    ok(mnfs_snapshot(&f, 1)); mnfs_close(&f);
+    ok(mnfs_mount(&f, &device, false));
+    for (unsigned n = 0; n < 32; ++n)
+        expect(&f, "/home/demo/linux-data.img", (uint64_t)n << 17, payload, 128u << 10);
+    mnfs_close(&f); free(d.data); free(payload); return reads;
+}
 int main(void) {
     struct disk d = {.data = calloc(1, BYTES)}; assert(d.data);
     struct mnfs_io device = io(&d); struct mnfs f; struct mnfs_stat st;
@@ -226,5 +252,8 @@ int main(void) {
     crash_tests(false,6); crash_tests(true,6);
     crash_tests(false,2*MNFS_BLOCK+17); crash_tests(true,2*MNFS_BLOCK+17);
     bulk_write(); owner_walk(false); owner_walk(true); space_and_corruption(); checkpoint_recovery();
+    unsigned uncached = metadata_workload(false), cached = metadata_workload(true);
+    printf("PASS MNFS: 4 MiB private-disk workload, metadata reads %u -> %u; bounded cache, allocation fallback, eviction, reuse and snapshot/remount verified\n", uncached, cached);
+    assert(cached < uncached / 4);
     return 0;
 }

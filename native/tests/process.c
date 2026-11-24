@@ -22,6 +22,19 @@ static bool logged = true;
 static char output[1024 * 1024];
 static size_t output_used;
 static unsigned char image[1024];
+#ifdef __aarch64__
+#define ELF_MACHINE 183
+static unsigned cache_syncs;
+void arm_cache_code(uint64_t address, size_t size) {
+    /* Hosted tests never execute payloads. Check that the real ARM process
+     * loader synchronizes the allocated code page before scheduling it. */
+    assert(address >= PAGE && address <= ARENA_PAGES * PAGE && !(address % PAGE));
+    assert(size == PAGE && used[address / PAGE - 1]);
+    ++cache_syncs;
+}
+#else
+#define ELF_MACHINE 62
+#endif
 struct cpu *cpu_this(void) { return &cpu; }
 bool auth_logged_in(void) { return logged; }
 bool auth_admin(void) { return logged && !uid; }
@@ -83,7 +96,7 @@ static void put(size_t off, uint64_t value, size_t n) {
 }
 static void fixture(void) {
     memcpy(image, "\177ELF\2\1\1", 7);
-    put(16, 2, 2); put(18, 62, 2); put(20, 1, 4); put(24, USER_BASE, 8);
+    put(16, 2, 2); put(18, ELF_MACHINE, 2); put(20, 1, 4); put(24, USER_BASE, 8);
     put(32, 64, 8); put(52, 64, 2); put(54, 56, 2); put(56, 2, 2);
     put(64, 1, 4); put(68, 5, 4); put(72, 256, 8); put(80, USER_BASE, 8);
     put(96, 16, 8); put(104, 32, 8); put(112, 1, 8);
@@ -91,7 +104,16 @@ static void fixture(void) {
     put(152, 16, 8); put(160, PAGE, 8); put(168, 1, 8);
     memset(image + 256, 0x90, 16); memset(image + 512, 0x42, 16);
 }
-static int start(void) { return process_start(image, sizeof image, "/ram/bin/test"); }
+static int start(void) {
+#ifdef __aarch64__
+    unsigned before = cache_syncs;
+#endif
+    int result = process_start(image, sizeof image, "/ram/bin/test");
+#ifdef __aarch64__
+    assert(cache_syncs == before + (result == 0));
+#endif
+    return result;
+}
 static void boot_context(void) { cpu.current = 0; active_root = 1; }
 static struct task *choose(void) {
     struct task *t = process_choose();
@@ -125,7 +147,7 @@ static void allocation_failures(void) {
         assert(start() == -12); fail_at = 0;
         assert(allocated == before && choose() == survivor && pid() == id);
     }
-    image[18] = 0; assert(start() == -8); image[18] = 62;
+    image[18] = 0; assert(start() == -8); image[18] = ELF_MACHINE;
     assert(allocated == 8);
     logged = false; assert(start() == -13); logged = true;
     cpu.completed = 0; assert(start() == -16); cpu.completed = 1;

@@ -1,5 +1,8 @@
 name: Publish tested native GUI and Linux guest
 on:
+  push:
+    branches: [main]
+    paths: ['.github/native-release-request.json']
   workflow_dispatch:
     inputs:
       build_run:
@@ -15,6 +18,9 @@ on:
 permissions:
   contents: write
   actions: read
+concurrency:
+  group: publish-native-preview
+  cancel-in-progress: false
 jobs:
   publish:
     runs-on: ubuntu-24.04
@@ -25,8 +31,22 @@ jobs:
       SOURCE_RUN: ${{ inputs.build_run }}
       TAG: ${{ inputs.release_tag }}
       AUTH_RUN: ${{ inputs.authentication_run }}
+      EXPECTED_SHA: ''
     steps:
       - uses: actions/checkout@v4
+      - name: Read the exact tested release request
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          request=.github/native-release-request.json
+          build_run=$(jq -er '.build_run | strings' "$request")
+          auth_run=$(jq -er '.authentication_run | strings' "$request")
+          tag=$(jq -er '.release_tag | strings' "$request")
+          sha=$(jq -er '.source_sha | strings' "$request")
+          [[ "$build_run" =~ ^[0-9]+$ && "$auth_run" =~ ^[0-9]+$ ]]
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+-native-preview\.[0-9]+$ ]]
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]]
+          printf 'SOURCE_RUN=%s\nAUTH_RUN=%s\nTAG=%s\nEXPECTED_SHA=%s\n' "$build_run" "$auth_run" "$tag" "$sha" >> "$GITHUB_ENV"
       - name: Require a successful complete native installation and Linux guest run
         id: source
         run: |
@@ -42,13 +62,15 @@ jobs:
           jq -e 'any(.jobs[]; .name == "package" and .conclusion == "success")' /tmp/jobs.json
           [[ "$AUTH_RUN" =~ ^[0-9]+$ ]]
           source_sha=$(jq -r .head_sha /tmp/source.json)
+          if [ -n "$EXPECTED_SHA" ]; then test "$source_sha" = "$EXPECTED_SHA"; fi
           gh api "repos/$GH_REPO/actions/runs/$AUTH_RUN" > /tmp/auth.json
           jq -e --arg sha "$source_sha" --arg repo "$GH_REPO" '.head_sha == $sha and .repository.full_name == $repo and .path == ".github/workflows/authentication.yml" and .conclusion == "success"' /tmp/auth.json
           printf 'sha=%s\n' "$(jq -r .head_sha /tmp/source.json)" >> "$GITHUB_OUTPUT"
+          printf 'run=%s\n' "$SOURCE_RUN" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v4
         with:
           name: native-linux-guest-release
-          run-id: ${{ inputs.build_run }}
+          run-id: ${{ steps.source.outputs.run }}
           github-token: ${{ github.token }}
           path: release
       - name: Verify the exact images, source archives and both architecture records

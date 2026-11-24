@@ -60,6 +60,16 @@ Native allocation is limited by available RAM. New-name churn leaves tombstone
 metadata; metadata compaction is not yet implemented. Collection walks metadata
 and is not optimized for very large populated disks.
 
+Each mount optionally keeps 64 metadata blocks (256 KiB plus index storage) in
+memory. This avoids repeatedly reading inode and tree blocks while writing a
+Linux guest's sparse disk. If the cache allocation fails, the same operations
+continue without it. Metadata checksums and structural checks still run on each
+lookup; ordinary file data is not cached here. All writes invalidate a cached
+copy of that physical block before touching the device, including failed and
+torn writes. Only successfully written metadata enters the cache. Both commit
+flushes remain mandatory. Closing a mount clears and frees its cache; a mounted
+device must not also be modified through another mount or raw writer.
+
 ## Access and drivers
 
 The native kernel creates an 8 MiB temporary `/ram` volume. Its optional `/disk`
