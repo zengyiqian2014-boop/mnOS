@@ -17,7 +17,7 @@ static uint64_t sx(uint64_t x, unsigned bits) {
     return (x ^ sign) - sign;
 }
 static uint64_t word(uint64_t v) { return sx((uint32_t)v, 32); }
-void guest_flush(struct guest *g) { memset(g->tlb, 0, sizeof g->tlb); }
+void guest_flush(struct guest *g) { memset(g->tlb, 0, sizeof g->tlb); g->code_page.pointer=NULL; }
 void guest_init(struct guest *g, uint8_t *ram, size_t size) {
     memset(g, 0, sizeof *g); g->ram = ram; g->ram_size = size;
     g->pc = GUEST_BASE + GUEST_LOAD; g->privilege = 1;
@@ -144,11 +144,25 @@ static bool memory(struct guest *g, uint64_t addr, unsigned n, unsigned access, 
 }
 static bool instruction(struct guest *g,uint32_t *raw,unsigned *size) {
     uint64_t pa;if(g->pc&1){trap(g,0,g->pc);return false;}
-    if(!translate(g,g->pc,0,&pa))return false;
     uint8_t *p;
-    if((g->satp>>60)==8){struct guest_tlb *t=&g->tlb[((g->pc>>12)*3)&255];p=t->pointer?t->pointer+(pa&4095):NULL;}
-    else p=physical(g,pa,2);
-    if(!p){trap(g,1,g->pc);return false;}
+    struct guest_code_page *code=&g->code_page;
+    /* Reuse one already-authorized Sv39 instruction page. Compare the full
+     * virtual address, satp and privilege; SFENCE/satp writes invalidate it.
+     * SUM and MXR never grant instruction access. Read the actual bytes on
+     * every fetch so guest writes/FENCE.I cannot leave stale decoded code. */
+    if(code->pointer&&code->satp==g->satp&&code->privilege==g->privilege&&
+       (g->pc^code->virtual_page)<4096) {
+        pa=code->physical_page|(g->pc&4095);p=code->pointer+(g->pc&4095);
+    } else {
+        if(!translate(g,g->pc,0,&pa))return false;
+        if((g->satp>>60)==8){struct guest_tlb *t=&g->tlb[((g->pc>>12)*3)&255];p=t->pointer?t->pointer+(pa&4095):NULL;}
+        else p=physical(g,pa,2);
+        if(!p){trap(g,1,g->pc);return false;}
+        if((g->satp>>60)==8) {
+            code->virtual_page=g->pc&~UINT64_C(4095);code->physical_page=pa&~UINT64_C(4095);
+            code->satp=g->satp;code->privilege=g->privilege;code->pointer=p-(pa&4095);
+        }
+    }
     *raw=(uint32_t)le(p,2);*size=2;
     if((*raw&3)==3){
         uint64_t high;

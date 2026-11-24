@@ -12,6 +12,11 @@
 #define GUEST_LOAD (2u * 1024u * 1024u)
 #define GUEST_DTB (GUEST_RAM - 65536u)
 struct guest_tlb { uint64_t tag, physical; uint8_t *pointer; unsigned valid; };
+struct guest_code_page {
+    uint64_t virtual_page, physical_page, satp;
+    uint8_t *pointer;
+    unsigned privilege;
+};
 struct guest {
     uint64_t x[32], pc, retired, time, deadline, reservation;
     uint64_t f[32];
@@ -25,6 +30,7 @@ struct guest {
     void *ram_context;
     unsigned privilege, stopped, waiting, yield_on_idle, external_time;
     struct guest_tlb tlb[256];
+    struct guest_code_page code_page;
     /* Compressed instructions are a pure mapping of their 16-bit encoding.
      * Keying by the encoding (not PC) also handles self-modifying guest code. */
     uint32_t compressed[65536];

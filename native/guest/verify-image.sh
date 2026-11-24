@@ -9,7 +9,7 @@ LIVE=${MNOS_LIVE_SOURCE:-$ROOT/../live/src}
 image=${1:-$OUT/rootfs.squashfs}
 work=$(mktemp -d)
 trap 'rm -rf -- "$work"' EXIT
-paths=(usr/local/bin/mnos-apps usr/local/bin/mnos-gui usr/local/bin/mnos-pkg)
+paths=(usr/local/bin/mnos-apps usr/local/bin/mnos-gui usr/local/bin/mnos-pkg usr/local/bin/mnos-window-wait)
 unsquashfs -no-progress -d "$work/root" "$image" "${paths[@]}" > "$work/extract.log" 2>&1 || {
     cat "$work/extract.log" >&2
     exit 1
@@ -28,13 +28,13 @@ matches "$ROOT/guest/debian-help" usr/local/bin/help
 matches "$ROOT/guest/dhcp" usr/local/lib/mnos-dhcp
 matches "$ROOT/guest/xorg.conf" etc/X11/xorg.conf
 matches "$ROOT/guest/desktop-session" usr/local/lib/mnos/desktop-session
-for name in app-center.cpp gui-client.cpp; do
+for name in app-center.cpp gui-client.cpp window-wait.cpp; do
     matches "$ROOT/guest/$name" "usr/src/mnos-guest/$name"
 done
 for name in package.cpp install-notice.hpp mnos-locale.h; do
     matches "$LIVE/$name" "usr/src/mnos-guest/$name"
 done
-for app in mnos-apps mnos-gui mnos-pkg; do
+for app in mnos-apps mnos-gui mnos-pkg mnos-window-wait; do
     test -x "$work/root/usr/local/bin/$app"
     readelf -h "$work/root/usr/local/bin/$app" > "$work/header"
     grep -Eq 'Machine: +RISC-V' "$work/header"

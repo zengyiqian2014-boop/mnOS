@@ -6,7 +6,7 @@ ROOT=$(cd -- "$(dirname "$0")/.." && pwd)
 SYS=$(cd -- "${1:?Usage: prepare-debian.sh DEBIAN_ROOT}" && pwd)
 test -s "$SYS/etc/debian_version"
 test -s "$ROOT/build/guest/busybox"
-for app in mnos-apps mnos-gui mnos-pkg; do test -x "$SYS/usr/local/bin/$app"; done
+for app in mnos-apps mnos-gui mnos-pkg mnos-window-wait; do test -x "$SYS/usr/local/bin/$app"; done
 mkdir -p "$SYS"/{usr/local/bin,usr/local/sbin,usr/local/lib/mnos,etc/X11/xinit,root,run,tmp}
 install -m755 "$ROOT/build/guest/busybox" "$SYS/usr/local/lib/mnos/busybox"
 rm -f "$SYS/usr/local/bin/mnos-busybox"

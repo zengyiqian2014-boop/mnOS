@@ -530,9 +530,9 @@ int main(int argc, char **argv) {
                 // This also exercises GTK, dynamically discovered desktop files
                 // and a full browser without disabling its sandbox.
                 vm.command("linux send mnos-gui list > /root/gui-apps; grep -q firefox-esr.desktop /root/gui-apps && echo MNOS_GUI_DISCOVERY_PASS","\r\nMNOS_GUI_DISCOVERY_PASS\r\n",600);
-                // Repeatedly loading X11 utilities on the interpreted CPU can
-                // itself delay the application being observed. Poll less often.
-                vm.command("linux send wait_gui() { for i in $(seq 1 600); do DISPLAY=:0 xdotool search --onlyvisible --name \"$1\" >/dev/null && { echo MNOS_WINDOW_PASS; return; }; sleep 5; done; tail -30 /run/mnos-gui/session.log; }","linux-guest# ");
+                // One X11 client waits in-process. Repeated dynamic linking of
+                // xdotool on an interpreted CPU competes with the real app.
+                vm.command("linux send wait_gui() { DISPLAY=:0 mnos-window-wait \"$1\" \"${2:-1700}\" && echo MNOS_WINDOW_PASS || { tail -30 /run/mnos-gui/session.log; echo MNOS_TEST_FAILURE_window; }; }","linux-guest# ");
                 vm.command("linux open applications","UI: page 7");
                 vm.page_key("f5",4);
                 vm.command("linux send wait_gui 'mnOS Linux applications'","\r\nMNOS_WINDOW_PASS\r\n",1800);
@@ -542,7 +542,7 @@ int main(int argc, char **argv) {
                 vm.command("linux send mnos-gui open org.xfce.mousepad.desktop && wait_gui Mousepad","\r\nMNOS_WINDOW_PASS\r\n",1800);
                 vm.command("linux send printf '%s\\n' '<!doctype html><title>mnOS browser verification</title><h1>Linux GUI on mnOS</h1><canvas id=\"p\" width=\"400\" height=\"140\"></canvas>' > /root/browser.html; echo MNOS_HTML_READY","\r\nMNOS_HTML_READY\r\n");
                 vm.command("linux send printf '%s\\n' '<script>let c=document.getElementById(\"p\").getContext(\"2d\");c.fillStyle=\"#e34397\";c.fillRect(0,0,200,140);c.fillStyle=\"#59d6ea\";c.fillRect(200,0,200,140);</script>' >> /root/browser.html; echo MNOS_JS_READY","\r\nMNOS_JS_READY\r\n");
-                vm.command("linux send mnos-gui run firefox-esr --no-remote file:///root/browser.html && wait_gui Firefox","\r\nMNOS_WINDOW_PASS\r\n",3600);
+                vm.command("linux send mnos-gui run firefox-esr --no-remote file:///root/browser.html && wait_gui Firefox 3500","\r\nMNOS_WINDOW_PASS\r\n",3600);
                 vm.command("linux resume","UI: page 7");
                 auto browser_frame=build/(arch+"-linux-guest-firefox.ppm");
                 auto render_deadline=Clock::now()+3600s;

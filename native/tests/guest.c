@@ -47,6 +47,35 @@ int main(void) {
     put64(ram+8192,((GUEST_BASE+GUEST_LOAD)>>12)<<10|1|2|8|16);
     ins(&g,0x00100093);g.satp=(UINT64_C(8)<<60)|(GUEST_BASE>>12);g.pc=0x400000;g.privilege=0;
     guest_run(&g,1);assert(g.x[1]==1&&g.pc==0x400004);assert(ram[8192]&64);
+    /* The instruction-page fast path must still read changed bytes, reject
+     * noncanonical aliases and follow permission/remap fences. */
+    uint32_t changed=0x00200093;
+    assert(guest_copy(&g,GUEST_BASE+GUEST_LOAD,&changed,4));g.pc=0x400000;
+    guest_run(&g,1);assert(g.x[1]==2);
+    g.pc=0x400000|(UINT64_C(1)<<39);guest_run(&g,1);
+    assert(g.cause==12&&g.tval==(0x400000|(UINT64_C(1)<<39)));
+    permission_map(&g,ram,0x1b,0x13);g.privilege=0;
+    guest_run(&g,1);assert(g.x[10]==0x12345678);
+    uint32_t replacement=0x00700513;
+    assert(guest_copy(&g,GUEST_BASE+0x6000,&replacement,4));
+    put64(ram+8192,((GUEST_BASE+0x6000)>>12)<<10|0x1b);
+    guest_flush(&g);g.pc=0x400000;guest_run(&g,1);assert(g.x[10]==7);
+    put64(ram+8192,0x13);guest_flush(&g);g.pc=0x400000;guest_run(&g,1);
+    assert(g.cause==12&&g.tval==0x400000);
+    /* A cached first half of a straddling instruction cannot bypass execute
+     * permission on the second page or assume physically adjacent pages. */
+    for(unsigned executable=0;executable<2;executable++) {
+        permission_map(&g,ram,0x1b,executable?0x1b:0x13);g.privilege=0;
+        guest_run(&g,1);
+        const unsigned char low[]={0x93,0x00},high[]={0x50,0x00};
+        assert(guest_copy(&g,GUEST_BASE+GUEST_LOAD+4094,low,2));
+        assert(guest_copy(&g,GUEST_BASE+0x5000,high,2));g.pc=0x400ffe;
+        guest_run(&g,1);
+        if(executable)assert(!g.stopped&&g.x[1]==5&&g.pc==0x401002);
+        else assert(g.cause==12&&g.tval==0x401000&&g.x[1]==0);
+    }
+    /* Restore the original user RX mapping for the store-permission check. */
+    permission_map(&g,ram,0x1b,0x13);g.privilege=0;guest_run(&g,1);
     unsigned char store[]={0x23,0xb0,0x00,0x00};assert(guest_copy(&g,GUEST_BASE+GUEST_LOAD+4,store,4));
     g.x[1]=0x400000;guest_run(&g,1);assert(g.cause==15&&g.tval==0x400000);
     /* Revoke SUM/MXR or change privilege without flushing the warm TLB. */
@@ -108,5 +137,5 @@ int main(void) {
         g.x[1]=UINT64_MAX;g.x[2]=GUEST_BASE+GUEST_RAM-1;guest_run(&g,4);
         for(unsigned i=0;i<32;i++)assert(ram[GUEST_RAM+i]==0xa5);
     }
-    free(ram);puts("GUEST CORE PASS: arithmetic, C decode, bounds, misalignment, U/S permissions, Sv39 RX, timer and malformed instructions");
+    free(ram);puts("GUEST CORE PASS: arithmetic, C decode, bounds, misalignment, U/S permissions, checked instruction pages, Sv39 RX, timer and malformed instructions");
 }

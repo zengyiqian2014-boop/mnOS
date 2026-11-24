@@ -16,6 +16,7 @@ mnOS Linux 环境（Debian riscv64）
   mnos-gui run 程序 [参数]   在同一个 X11 会话中启动程序，参数不经过 shell 展开。
   mnos-gui desktop           打开图形会话，隐藏应用中心。
   mnos-gui status / hide     查询会话 / 隐藏应用中心；不会关闭其他程序。
+  mnos-window-wait 标题 秒数 等待匹配标题的可见 X11 窗口；成功返回 0，超时返回 1。
   xterm / xclock / xeyes     在图形终端里运行窗口程序。
   poweroff                   同步文件并关闭 Linux 客体，保留已安装软件。
 
@@ -47,6 +48,7 @@ mnOS Linux environment (Debian riscv64)
   mnos-gui run PROGRAM [ARG] Start a program in the same X11 session; no shell expansion.
   mnos-gui desktop           Start the graphical session; hide the application center.
   mnos-gui status / hide     Query the session / hide the center, keeping apps running.
+  mnos-window-wait TITLE SEC Wait for a visible X11 title; exit 0 on match, 1 on timeout.
   xterm / xclock / xeyes     Run windowed programs from an X terminal.
   poweroff                   Sync files and shut down the Linux guest.
 

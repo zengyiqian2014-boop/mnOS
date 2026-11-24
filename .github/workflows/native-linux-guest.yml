@@ -98,6 +98,7 @@ jobs:
             native/build/*.log
             native/build/desktop/*.log
             native/build/desktop/*-linux-guest*.ppm
+            native/build/desktop/*.log.ppm
             native/build/guest-source-build.log
           retention-days: 14
       - uses: actions/upload-artifact@v4

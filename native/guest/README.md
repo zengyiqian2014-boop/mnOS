@@ -164,15 +164,19 @@ Debian catalog under an outer QEMU software CPU can take billions of interpreted
 instructions. AMD64 and ARM64 run in separate CI jobs on matching host
 architectures; the release gate requires both, their matching source commit and
 identical guest package versions. GUI startup/window waits are bounded at 30
-minutes (one hour for the browser), and poll slowly to avoid spending the
-interpreted CPU on test utilities. When `/dev/kvm` is available on a matching
+minutes (one hour for the browser). A single C++ `mnos-window-wait` process
+keeps an X11 connection open and checks mapped window titles, including
+reparented windows. It avoids repeatedly executing and dynamically linking
+`xdotool` while the application starts. Timeout diagnostics include the GUI
+session log; CI also retains the last captured framebuffer after a failure.
+When `/dev/kvm` is available on a matching
 architecture, the **test host** can use it;
 `MNOS_TEST_TCG=1` forces TCG. This does not add hardware acceleration to the
 installed RV64 guest. The tests also boot without CPU/VirtIO random devices to
 exercise the UEFI TPM entropy fallback and refusal when all trusted sources are absent.
 
 `bash native/tests/gui_apps.sh` separately tests the GTK service and CLI under
-Xvfb: mapped windows, desktop discovery, hidden entries, literal arguments and a
+Xvfb: window-wait timeouts, hidden/renamed/reparented windows, desktop discovery, hidden entries, literal arguments and a
 silent client's inability to block the UI. These hosted checks complement the
 native boot tests; they do not replace them. Firefox runs with its standard
 sandbox; the guest kernel enables user namespaces and seccomp for that purpose.
