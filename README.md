@@ -69,6 +69,9 @@ help -cn updates
 | linux | amd64 | 2.2.0~preview6 | [mnos-auth_2.2.0.preview6_amd64.deb](https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/mnos-auth_2.2.0.preview6_amd64.deb) |
 | linux | amd64 | 2.2.0~preview6 | [mnos-full_2.2.0.preview6_amd64.deb](https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/mnos-full_2.2.0.preview6_amd64.deb) |
 | linux | amd64 | 2.2.0~preview6 | [mnos-runtime_2.2.0.preview6_amd64.deb](https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/mnos-runtime_2.2.0.preview6_amd64.deb) |
+| linux | amd64 | 2.2.0~preview7 | [mnos-auth_2.2.0.preview7_amd64.deb](https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/mnos-auth_2.2.0.preview7_amd64.deb) |
+| linux | amd64 | 2.2.0~preview7 | [mnos-full_2.2.0.preview7_amd64.deb](https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/mnos-full_2.2.0.preview7_amd64.deb) |
+| linux | amd64 | 2.2.0~preview7 | [mnos-runtime_2.2.0.preview7_amd64.deb](https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/mnos-runtime_2.2.0.preview7_amd64.deb) |
 | linux | arm64 | 2.2.0~preview1 | [mnos-auth_2.2.0.preview1_arm64.deb](https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/mnos-auth_2.2.0.preview1_arm64.deb) |
 | linux | arm64 | 2.2.0~preview1 | [mnos-full_2.2.0.preview1_arm64.deb](https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/mnos-full_2.2.0.preview1_arm64.deb) |
 | linux | arm64 | 2.2.0~preview1 | [mnos-runtime_2.2.0.preview1_arm64.deb](https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/mnos-runtime_2.2.0.preview1_arm64.deb) |
@@ -84,3 +87,6 @@ help -cn updates
 | linux | arm64 | 2.2.0~preview6 | [mnos-auth_2.2.0.preview6_arm64.deb](https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/mnos-auth_2.2.0.preview6_arm64.deb) |
 | linux | arm64 | 2.2.0~preview6 | [mnos-full_2.2.0.preview6_arm64.deb](https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/mnos-full_2.2.0.preview6_arm64.deb) |
 | linux | arm64 | 2.2.0~preview6 | [mnos-runtime_2.2.0.preview6_arm64.deb](https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/mnos-runtime_2.2.0.preview6_arm64.deb) |
+| linux | arm64 | 2.2.0~preview7 | [mnos-auth_2.2.0.preview7_arm64.deb](https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/mnos-auth_2.2.0.preview7_arm64.deb) |
+| linux | arm64 | 2.2.0~preview7 | [mnos-full_2.2.0.preview7_arm64.deb](https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/mnos-full_2.2.0.preview7_arm64.deb) |
+| linux | arm64 | 2.2.0~preview7 | [mnos-runtime_2.2.0.preview7_arm64.deb](https://github.com/zengyiqian2014-boop/mnOS/releases/download/updates-stable/mnos-runtime_2.2.0.preview7_arm64.deb) |
