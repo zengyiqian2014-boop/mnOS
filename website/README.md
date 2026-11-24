@@ -27,8 +27,10 @@ node website/scripts/build.mjs
 The homepage presents the original mnOS kernel and its optional Linux simulation
 environment. The independent Linux system has its own `linux.html` page and ISO
 selector. Each page's selector is fixed to its system: switching architectures or
-profiles cannot substitute the other system's installation image. Linux desktop
-applications and APT are described only on the independent Linux system page.
+profiles cannot substitute the other system's installation image. The native page
+describes the v0.10 Full image's optional RV64 software guest, including APT,
+the C++ application center and Debian riscv64 Firefox ESR. It distinguishes these
+from AMD64/ARM64 Linux DEBs, which require the independent Linux Edition.
 
 Screenshots in `assets/` come from actual native and Linux desktops. The new
 `native-home.png` and `native-editor.png` are PNG conversions of the ARM64 QEMU
