@@ -1,6 +1,6 @@
 {
   "release_tag": "v0.10-native-preview.1",
-  "source_sha": "43805430ba60429289279bb6ef203edd153a1ed3",
-  "build_run": "45348117408",
-  "authentication_run": "45348117602"
+  "source_sha": "bd543bc804ead867a1631e7b5d74fb6edc4873e8",
+  "build_run": "45365709066",
+  "authentication_run": "45365708910"
 }
