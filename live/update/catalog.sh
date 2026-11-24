@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Publish one signed catalog and a categorized download page in this repository.
 set -euo pipefail
-repo=${GH_REPO:?}; key=${1:?signing key fingerprint}; version=${2:?latest runtime version}
-[[ "$version" =~ ^[0-9][a-zA-Z0-9.+~-]*$ ]]
+repo=${GH_REPO:?}; key=${1:?signing key fingerprint}; version=${2:?runtime version or auto}
+[[ "$version" = auto || "$version" =~ ^[0-9][a-zA-Z0-9.+~-]*$ ]]
 test "$repo" = zengyiqian2014-boop/mnOS
 work=$(mktemp -d)
 gh api "repos/$repo/releases?per_page=100" > "$work/releases.json"
@@ -19,6 +19,10 @@ awk '
   /^Package: / {name=$2} /^Version: / {version=$2} /^Architecture: / {arch=$2}
   /^Filename: / {file=$2;sub(/^\.\//,"",file)} /^$/ {emit()} END {emit()}
 ' "$work/Packages" | jq -Rn '[inputs|split("\t")|{package:.[0],version:.[1],architecture:.[2],filename:.[3]}]' > "$work/versions.json"
+# A native ISO release does not publish the Linux Edition's runtime packages.
+# Refreshes must retain the actual signed, available version instead of taking
+# an unreleased version from the source tree and failing the entire catalog.
+version=$(bash "$(dirname "$0")/catalog-version.sh" "$work/versions.json" "$version")
 jq --slurpfile packages "$work/versions.json" --arg version "$version" --arg updated "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '
   {schema:1, latest_linux_runtime:$version, updated:$updated,
    resources:[.[] | select(.draft == false) | . as $release |

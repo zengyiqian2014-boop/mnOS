@@ -32,4 +32,5 @@ jobs:
           printf '%s' "$MNOS_APT_SIGNING_KEY" | gpg --batch --import
           unset MNOS_APT_SIGNING_KEY
           key=$(gpg --show-keys --with-colons live/keys/mnos-archive.gpg | awk -F: '$1=="fpr" {print $10;exit}')
-          bash live/update/catalog.sh "$key" "$(cat live/VERSION)"
+          bash live/tests/catalog_version.sh
+          bash live/update/catalog.sh "$key" auto
