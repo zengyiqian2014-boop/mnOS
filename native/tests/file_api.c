@@ -17,7 +17,11 @@ static unsigned writes, salt, pools_used;
 static bool io_fail;
 static void *pools[2];
 static struct task task = {.code=4096, .data=8192, .stack=12288};
+#ifdef __aarch64__
+#define STACK USER_STACK
+#else
 #define STACK (USER_STACK - PAGE)
+#endif
 __asm__(".data\nnative_hello_start: .zero 16\nnative_hello_end:\n"
         "native_spin_start: .zero 16\nnative_spin_end:\n"
         ".global native_hello_start,native_hello_end,native_spin_start,native_spin_end\n.text");

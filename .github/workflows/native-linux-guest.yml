@@ -39,6 +39,7 @@ jobs:
           docker build -t mnos-native-builder -f native/Builder.Dockerfile .
           docker run --rm --privileged -v "$PWD/native:/native" -v "$PWD/live/src:/mnos-live-src:ro" -e MNOS_LIVE_SOURCE=/mnos-live-src -e ARCHES="$ARCH" -w /native mnos-native-builder bash -ec '
             mkdir -p build
+            make host-tests
             if ! guest/build.sh > build/guest-source-build.log 2>&1; then
               tail -100 build/guest-source-build.log
               exit 1
@@ -50,7 +51,6 @@ jobs:
             if [ "$ARCHES" = amd64 ]; then
               bash guest/fetch-debian-sources.sh > build/debian-sources.log 2>&1
             fi
-            make host-tests
             bash tests/guest_build.sh
             GUEST=1 installer/build.sh
             c++ -std=c++17 -O2 -Wall -Wextra -Werror tests/desktop_vm.cpp -o build/desktop-vm
