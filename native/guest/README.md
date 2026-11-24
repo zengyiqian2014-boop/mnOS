@@ -165,9 +165,10 @@ instructions. AMD64 and ARM64 run in separate CI jobs on matching host
 architectures; the release gate requires both, their matching source commit and
 identical guest package versions. GUI startup/window waits are bounded at 30
 minutes (one hour for the browser). A single C++ `mnos-window-wait` process
-keeps an X11 connection open and checks mapped window titles, including
-reparented windows. It avoids repeatedly executing and dynamically linking
-`xdotool` while the application starts. Timeout diagnostics include the GUI
+keeps an X11 connection open and waits for window creation, mapping and title
+change events, including hidden ancestors and reparented windows. It sleeps on
+the connection instead of repeatedly querying every window or dynamically
+linking `xdotool` while the application starts. Timeout diagnostics include the GUI
 session log; CI also retains the last captured framebuffer after a failure.
 When `/dev/kvm` is available on a matching
 architecture, the **test host** can use it;

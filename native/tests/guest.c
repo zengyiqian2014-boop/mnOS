@@ -78,6 +78,28 @@ int main(void) {
     permission_map(&g,ram,0x1b,0x13);g.privilege=0;guest_run(&g,1);
     unsigned char store[]={0x23,0xb0,0x00,0x00};assert(guest_copy(&g,GUEST_BASE+GUEST_LOAD+4,store,4));
     g.x[1]=0x400000;guest_run(&g,1);assert(g.cause==15&&g.tval==0x400000);
+    /* A hot data translation must not authorize a noncanonical Sv39 alias.
+     * Check reads and writes separately because their permission tags differ. */
+    for(unsigned access=1;access<=2;access++) {
+        permission_map(&g,ram,0x1b,0x17);g.privilege=0;g.x[10]=0x76543210;
+        uint32_t operation=access==1?0x0005b503:0x00a5b023;
+        assert(guest_copy(&g,GUEST_BASE+GUEST_LOAD,&operation,4));guest_run(&g,1);
+        assert(!g.stopped);g.pc=0x400000;g.x[11]=0x401000|(UINT64_C(1)<<39);
+        guest_run(&g,1);assert(g.cause==(access==1?13u:15u)&&g.tval==g.x[11]);
+    }
+    /* A host may supply an unaligned contiguous RAM buffer. Aligned native
+     * loads are only an optimization, never a new requirement on that API. */
+    for(unsigned offset=0;offset<8;offset++)for(unsigned width=0;width<4;width++) {
+        unsigned char *base=ram+offset;reset(&g,base);
+        g.x[10]=GUEST_BASE+0x5000;g.x[11]=UINT64_C(0xfedcba9876543210);
+        ins(&g,(11u<<20)|(10u<<15)|(width<<12)|0x23);guest_run(&g,1);assert(!g.stopped);
+        unsigned n=1u<<width;for(unsigned i=0;i<n;i++)assert(base[0x5000+i]==(unsigned char)(g.x[11]>>(8*i)));
+        assert(base[0x5000+n]==0);
+        ins(&g,(10u<<15)|((width==3?3u:width+4u)<<12)|(12u<<7)|3);guest_run(&g,1);
+        uint64_t mask=width==3?UINT64_MAX:(UINT64_C(1)<<(8*n))-1;
+        assert(!g.stopped&&g.x[12]==(g.x[11]&mask));
+    }
+    memset(ram+GUEST_RAM,0xa5,32);
     /* Revoke SUM/MXR or change privilege without flushing the warm TLB. */
     permission_map(&g,ram,0x0b,0x13);g.status=1u<<18;
     guest_run(&g,1);assert(g.x[10]==0x12345678);

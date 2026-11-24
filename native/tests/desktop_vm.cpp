@@ -532,7 +532,7 @@ int main(int argc, char **argv) {
                 vm.command("linux send mnos-gui list > /root/gui-apps; grep -q firefox-esr.desktop /root/gui-apps && echo MNOS_GUI_DISCOVERY_PASS","\r\nMNOS_GUI_DISCOVERY_PASS\r\n",600);
                 // One X11 client waits in-process. Repeated dynamic linking of
                 // xdotool on an interpreted CPU competes with the real app.
-                vm.command("linux send wait_gui() { DISPLAY=:0 mnos-window-wait \"$1\" \"${2:-1700}\" && echo MNOS_WINDOW_PASS || { tail -30 /run/mnos-gui/session.log; echo MNOS_TEST_FAILURE_window; }; }","linux-guest# ");
+                vm.command("linux send wait_gui() { DISPLAY=:0 mnos-window-wait \"$1\" \"${2:-1700}\" && echo MNOS_WINDOW_PASS || { ps -eo pid,comm,stat,time; head -5 /proc/meminfo; tail -30 /run/mnos-gui/session.log; echo MNOS_TEST_FAILURE_window; }; }","linux-guest# ");
                 vm.command("linux open applications","UI: page 7");
                 vm.page_key("f5",4);
                 vm.command("linux send wait_gui 'mnOS Linux applications'","\r\nMNOS_WINDOW_PASS\r\n",1800);

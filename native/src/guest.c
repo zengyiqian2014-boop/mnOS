@@ -58,20 +58,33 @@ bool guest_read(struct guest *g,uint64_t p,void *destination,size_t n) {
 }
 static uint64_t le(const uint8_t *p, unsigned n) {
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    /* Guest alignment and bounds were checked before this load. Explicit
-     * builtins also inline in a freestanding -fno-builtin host kernel. */
-    if(n==8){uint64_t v;__builtin_memcpy(&v,p,8);return v;}
-    if(n==4){uint32_t v;__builtin_memcpy(&v,p,4);return v;}
-    if(n==2){uint16_t v;__builtin_memcpy(&v,p,2);return v;}
+    /* Guest alignment and bounds were checked before this load. Check host
+     * alignment separately: callers may provide unaligned RAM. This permits
+     * word loads on strict-alignment ARM builds without aliasing type-puns. */
+    if(n==8){uint64_t v;
+        if(!((uintptr_t)p&7))__builtin_memcpy(&v,__builtin_assume_aligned(p,8),8);
+        else __builtin_memcpy(&v,p,8);return v;}
+    if(n==4){uint32_t v;
+        if(!((uintptr_t)p&3))__builtin_memcpy(&v,__builtin_assume_aligned(p,4),4);
+        else __builtin_memcpy(&v,p,4);return v;}
+    if(n==2){uint16_t v;
+        if(!((uintptr_t)p&1))__builtin_memcpy(&v,__builtin_assume_aligned(p,2),2);
+        else __builtin_memcpy(&v,p,2);return v;}
 #endif
     uint64_t v = 0; for (unsigned i = 0; i < n; i++) v |= (uint64_t)p[i] << (8*i);
     return v;
 }
 static void put(uint8_t *p, unsigned n, uint64_t v) {
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    if(n==8){__builtin_memcpy(p,&v,8);return;}
-    if(n==4){uint32_t word=(uint32_t)v;__builtin_memcpy(p,&word,4);return;}
-    if(n==2){uint16_t half=(uint16_t)v;__builtin_memcpy(p,&half,2);return;}
+    if(n==8){uint64_t value=(uint64_t)v;
+        if(!((uintptr_t)p&7))__builtin_memcpy(__builtin_assume_aligned(p,8),&value,8);
+        else __builtin_memcpy(p,&value,8);return;}
+    if(n==4){uint32_t value=(uint32_t)v;
+        if(!((uintptr_t)p&3))__builtin_memcpy(__builtin_assume_aligned(p,4),&value,4);
+        else __builtin_memcpy(p,&value,4);return;}
+    if(n==2){uint16_t value=(uint16_t)v;
+        if(!((uintptr_t)p&1))__builtin_memcpy(__builtin_assume_aligned(p,2),&value,2);
+        else __builtin_memcpy(p,&value,2);return;}
 #endif
     for (unsigned i = 0; i < n; i++) p[i] = (uint8_t)(v >> (8*i));
 }
@@ -90,17 +103,21 @@ static void trap(struct guest *g, uint64_t cause, uint64_t value) {
 /* Access: 0 instruction, 1 read, 2 write. Permission context belongs in the
  * tag, so trap entry/return need not destroy every valid translation. satp
  * writes and SFENCE still flush; cached permission never crosses U/S/SUM/MXR. */
+static uint64_t translation_tag(const struct guest *g,uint64_t va,unsigned access) {
+    /* Retain all virtual address bits: a noncanonical alias must miss even
+     * when its low 39 bits match a cached, authorized page. */
+    return (va&~UINT64_C(4095))|access|(g->privilege?4u:0u)|((g->status>>15)&24u);
+}
 static bool translate(struct guest *g, uint64_t va, unsigned access, uint64_t *pa) {
     unsigned mode = g->satp >> 60;
     if (!mode) { *pa = va; return true; }
-    if (mode != 8 || sx(va & (BIT(39)-1), 39) != va) goto fault;
-    uint64_t tag = ((va & (BIT(39)-1)) >> 12) * 32 + access +
-                   (g->privilege ? 4 : 0) + ((g->status & SUM) ? 8 : 0) +
-                   ((g->status & MXR) ? 16 : 0);
+    if (mode != 8) goto fault;
+    uint64_t tag = translation_tag(g,va,access);
     /* Reads and writes of one page must not evict each other. Keep distinct
      * access tags so a cached read can never grant write/execute permission. */
     struct guest_tlb *t = &g->tlb[((va >> 12)*3+access) & 255];
     if (t->valid && t->tag == tag) { *pa = t->physical | (va & 4095); return true; }
+    if (sx(va & (BIT(39)-1), 39) != va) goto fault;
     uint64_t table = (g->satp & (BIT(44)-1)) << 12;
     for (int level = 2; level >= 0; level--) {
         uint64_t addr = table + ((va >> (12 + 9*level)) & 511) * 8;
@@ -130,7 +147,7 @@ static bool translate(struct guest *g, uint64_t va, unsigned access, uint64_t *p
 fault:
     trap(g, access == 0 ? 12 : access == 1 ? 13 : 15, va); return false;
 }
-static bool memory(struct guest *g, uint64_t addr, unsigned n, unsigned access, uint64_t *value) {
+static bool memory_slow(struct guest *g, uint64_t addr, unsigned n, unsigned access, uint64_t *value) {
     if (addr & (n-1)) { trap(g, access == 0 ? 0 : access == 1 ? 4 : 6, addr); return false; }
     uint64_t pa;
     if (!translate(g, addr, access, &pa)) return false;
@@ -141,6 +158,21 @@ static bool memory(struct guest *g, uint64_t addr, unsigned n, unsigned access, 
     if (access == 2) { put(p, n, *value); g->reservation = UINT64_MAX; }
     else *value = le(p, n);
     return true;
+}
+static inline __attribute__((always_inline)) bool memory(struct guest *g,uint64_t addr,unsigned n,unsigned access,uint64_t *value) {
+    /* Inline only the checked TLB hit. Page walks, sparse allocation and
+     * faults stay out of the load/store loop. Natural alignment also proves
+     * that these 1/2/4/8-byte accesses cannot cross the authorized page. */
+    if(!(addr&(n-1))&&(g->satp>>60)==8) {
+        struct guest_tlb *t=&g->tlb[((addr>>12)*3+access)&255];
+        if(t->valid&&t->tag==translation_tag(g,addr,access)&&t->pointer) {
+            uint8_t *p=t->pointer+(addr&4095);
+            if(access==2){put(p,n,*value);g->reservation=UINT64_MAX;}
+            else *value=le(p,n);
+            return true;
+        }
+    }
+    return memory_slow(g,addr,n,access,value);
 }
 static bool instruction(struct guest *g,uint32_t *raw,unsigned *size) {
     uint64_t pa;if(g->pc&1){trap(g,0,g->pc);return false;}

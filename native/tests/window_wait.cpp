@@ -50,6 +50,7 @@ int main(int argc, char **argv) {
         // GTK's UTF-8 title and renaming after mapping must also work.
         XDeleteProperty(display, child_window, XA_WM_NAME);
         XSync(display, False); waiter = start(argv[1], "UTF8 fixture", "4");
+        std::this_thread::sleep_for(250ms);
         Atom property = XInternAtom(display, "_NET_WM_NAME", False), utf8 = XInternAtom(display, "UTF8_STRING", False);
         const char title[] = "mnOS UTF8 fixture";
         XChangeProperty(display, child_window, property, utf8, 8, PropModeReplace,
@@ -60,6 +61,20 @@ int main(int argc, char **argv) {
             XMapWindow(display, transient); XDestroyWindow(display, transient);
         }
         XSync(display, False); finish(waiter, 0);
+        // A child can already be mapped while its parent is hidden. Waking
+        // only for changes on the child would miss this ancestor transition.
+        XUnmapWindow(display, frame); XSync(display, False);
+        waiter = start(argv[1], "UTF8 fixture", "4");
+        std::this_thread::sleep_for(250ms);
+        require(waitpid(waiter, &status, WNOHANG) == 0, "matched a hidden ancestor");
+        XMapWindow(display, frame); XSync(display, False); finish(waiter, 0);
+        // Discover clients created after the initial scan and ignore unrelated
+        // properties without losing the bounded timeout.
+        waiter = start(argv[1], "late fixture", "4");
+        std::this_thread::sleep_for(250ms);
+        Window late = XCreateSimpleWindow(display, root, 0, 0, 160, 80, 0, 0, 0);
+        XStoreName(display, late, "mnOS late fixture"); XMapWindow(display, late); XSync(display, False);
+        finish(waiter, 0); XDestroyWindow(display, late);
         XDestroyWindow(display, frame); XDestroyWindow(display, hidden); XCloseDisplay(display);
         std::cout << "WINDOW WAIT PASS: hidden/mapped/reparented/renamed windows, UTF-8 title, timeout and disappearing windows\n";
     } catch (const std::exception &error) { std::cerr << error.what() << '\n'; return 1; }
